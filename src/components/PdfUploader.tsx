@@ -10,6 +10,10 @@ interface Transaction {
   value: number;
   date_iso: string;
   category: string;
+  subcategory?: string;
+  statement_id?: string | null;
+  statement_start?: string | null;
+  statement_end?: string | null;
 }
 
 interface PdfUploaderProps {

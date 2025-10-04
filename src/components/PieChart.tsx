@@ -23,97 +23,43 @@ const COLORS = [
   '#84CC16'  // Lime
 ];
 
-// Custom center label component
-const CenterLabel = ({ total }: { total: number }) => {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-gray-900">
-          {total.toLocaleString('en-NZ', {
-            style: 'currency',
-            currency: 'NZD'
-          })}
+const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
+  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div className="text-center">
+      {title && (
+        <div className="text-xs font-semibold text-gray-500 tracking-wide uppercase mb-1">
+          {title}
         </div>
+      )}
+      <div className="text-2xl font-bold text-gray-900">
+        {total.toLocaleString('en-NZ', {
+          style: 'currency',
+          currency: 'NZD'
+        })}
       </div>
     </div>
-  );
-};
-
-// Custom label for segments showing category totals
-const RADIAN = Math.PI / 180;
-const renderCategoryLabel = ({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  value,
-  index
-}: {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  value: number;
-  index: number;
-}) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="white"
-      textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-      fontSize="12"
-      fontWeight="bold"
-      className="drop-shadow-md"
-    >
-      {value.toLocaleString('en-NZ', {
-        style: 'currency',
-        currency: 'NZD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      })}
-    </text>
-  );
-};
-
-// Custom cell component with padding between segments
-const PaddedCell = ({ entry, index, onClick, isSelected }: {
-  entry: ChartDataPoint;
-  index: number;
-  onClick: (data: ChartDataPoint) => void;
-  isSelected: boolean;
-}) => {
-  return (
-    <Cell
-      key={`cell-${index}`}
-      fill={COLORS[index % COLORS.length]}
-      stroke="#ffffff"
-      strokeWidth={8} // Creates spacing between segments
-      className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
-      onClick={() => onClick(entry)}
-    />
-  );
-};
+  </div>
+);
 
 export default function PieChartComponent({
   data,
   onSegmentClick,
   selectedCategory
 }: PieChartComponentProps) {
-  const handleClick = (data: ChartDataPoint) => {
-    if (onSegmentClick) {
-      onSegmentClick(data.name);
-    }
-  };
-
   const totalAmount = data.reduce((sum, item) => sum + item.value, 0);
+  const isInteractive = Boolean(onSegmentClick);
+
+  if (!data || data.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative w-full h-full flex items-center justify-center"
+      >
+        <p className="text-sm text-gray-500">No data available for the selected filters.</p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -134,21 +80,23 @@ export default function PieChartComponent({
             startAngle={90}
             endAngle={450}
             dataKey="value"
-            paddingAngle={4} // Creates gaps between segments
-            cornerRadius={8} // Rounded corners for segments
+            paddingAngle={4}
+            cornerRadius={8}
           >
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={COLORS[index % COLORS.length]}
-                className="hover:opacity-80 transition-opacity duration-200 cursor-pointer"
-                onClick={() => handleClick(entry)}
+                stroke="#ffffff"
+                strokeWidth={6}
+                className={`${isInteractive ? 'cursor-pointer' : 'cursor-default'} hover:opacity-80 transition-opacity duration-200`}
+                onClick={onSegmentClick ? () => onSegmentClick(entry.name) : undefined}
               />
             ))}
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <CenterLabel total={totalAmount} />
+      <CenterLabel total={totalAmount} title={selectedCategory || undefined} />
     </motion.div>
   );
 }

@@ -2,23 +2,34 @@
 
 import { motion } from 'framer-motion';
 import { Calendar } from 'lucide-react';
+import { PeriodFilterOption } from '@/hooks/useStatementFilters';
 
-export type FilterPeriod = 'lastMonth' | 'lastStatement' | 'last3Months' | 'last6Months' | 'lastYear';
+export type FilterPeriod = string;
 
 interface PeriodFilterProps {
   selectedPeriod: FilterPeriod;
   onPeriodChange: (period: FilterPeriod) => void;
+  options: PeriodFilterOption[];
 }
 
-const filterOptions = [
-  { key: 'lastMonth' as FilterPeriod, label: 'Last Month', bgColor: 'bg-blue-100', textColor: 'text-blue-700', hoverColor: 'hover:bg-blue-200' },
-  { key: 'lastStatement' as FilterPeriod, label: 'Last Statement', bgColor: 'bg-green-100', textColor: 'text-green-700', hoverColor: 'hover:bg-green-200' },
-  { key: 'last3Months' as FilterPeriod, label: 'Last 3 Months', bgColor: 'bg-purple-100', textColor: 'text-purple-700', hoverColor: 'hover:bg-purple-200' },
-  { key: 'last6Months' as FilterPeriod, label: 'Last 6 Months', bgColor: 'bg-orange-100', textColor: 'text-orange-700', hoverColor: 'hover:bg-orange-200' },
-  { key: 'lastYear' as FilterPeriod, label: 'Last Year', bgColor: 'bg-red-100', textColor: 'text-red-700', hoverColor: 'hover:bg-red-200' },
+const STATEMENT_STYLES = [
+  { bgColor: 'bg-blue-100', textColor: 'text-blue-700', hoverColor: 'hover:bg-blue-200' },
+  { bgColor: 'bg-green-100', textColor: 'text-green-700', hoverColor: 'hover:bg-green-200' },
+  { bgColor: 'bg-purple-100', textColor: 'text-purple-700', hoverColor: 'hover:bg-purple-200' },
+  { bgColor: 'bg-pink-100', textColor: 'text-pink-700', hoverColor: 'hover:bg-pink-200' },
+  { bgColor: 'bg-indigo-100', textColor: 'text-indigo-700', hoverColor: 'hover:bg-indigo-200' },
+  { bgColor: 'bg-orange-100', textColor: 'text-orange-700', hoverColor: 'hover:bg-orange-200' },
+  { bgColor: 'bg-teal-100', textColor: 'text-teal-700', hoverColor: 'hover:bg-teal-200' },
+  { bgColor: 'bg-amber-100', textColor: 'text-amber-700', hoverColor: 'hover:bg-amber-200' }
 ];
 
-export default function PeriodFilter({ selectedPeriod, onPeriodChange }: PeriodFilterProps) {
+const ACCUMULATIVE_STYLE = {
+  bgColor: 'bg-gray-900',
+  textColor: 'text-white',
+  hoverColor: 'hover:bg-gray-800'
+};
+
+export default function PeriodFilter({ selectedPeriod, onPeriodChange, options }: PeriodFilterProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -33,19 +44,27 @@ export default function PeriodFilter({ selectedPeriod, onPeriodChange }: PeriodF
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {filterOptions.map((option) => (
-            <button
-              key={option.key}
-              onClick={() => onPeriodChange(option.key)}
-              className={`px-4 py-2 rounded-md transition-colors text-sm font-medium ${
-                selectedPeriod === option.key
-                  ? `${option.bgColor} ${option.textColor} ring-2 ring-offset-1 ring-blue-500`
-                  : `${option.bgColor} ${option.textColor} ${option.hoverColor}`
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+          {options.map((option, index) => {
+            const style = option.type === 'accumulative'
+              ? ACCUMULATIVE_STYLE
+              : STATEMENT_STYLES[index % STATEMENT_STYLES.length];
+
+            const isSelected = selectedPeriod === option.key;
+
+            return (
+              <button
+                key={option.key}
+                onClick={() => onPeriodChange(option.key)}
+                className={`px-4 py-2 rounded-md transition-colors text-sm font-medium ${
+                  isSelected
+                    ? `${style.bgColor} ${style.textColor} ring-2 ring-offset-1 ring-blue-500`
+                    : `${style.bgColor} ${style.textColor} ${style.hoverColor}`
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </motion.div>

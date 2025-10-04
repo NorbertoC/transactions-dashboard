@@ -158,13 +158,20 @@ export default function TransactionsTable({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    selectedCategory === transaction.category
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {transaction.category}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      selectedCategory === transaction.category
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {transaction.category || 'Other'}
+                    </span>
+                    {transaction.subcategory && (
+                      <span className="mt-1 text-xs text-gray-500">
+                        {transaction.subcategory}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <span className={`font-semibold ${

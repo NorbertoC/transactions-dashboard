@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw, TrendingDown, Calendar, DollarSign, LogOut, Upload } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
@@ -11,7 +11,7 @@ import PeriodFilter, { FilterPeriod } from '@/components/PeriodFilter';
 import AuthGuard from '@/components/AuthGuard';
 import PdfUploader from '@/components/PdfUploader';
 import { useTransactions, useChartData, useFilteredTransactions } from '@/hooks/useTransactions';
-import { getPeriodDates } from '@/utils/dateHelpers';
+import { useStatementFilters } from '@/hooks/useStatementFilters';
 
 const COLORS = [
   '#8B5CF6', // Purple for largest segment
@@ -30,11 +30,23 @@ function Dashboard() {
   const { data: session } = useSession();
   const { transactions, loading, error, refetch } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>('lastMonth');
+  const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>('');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Calculate dates based on selected period
-  const { startDate, endDate } = getPeriodDates(selectedPeriod);
+  const { options: periodOptions, optionsMap, defaultKey } = useStatementFilters(transactions);
+
+  useEffect(() => {
+    if (defaultKey && (!selectedPeriod || !optionsMap[selectedPeriod])) {
+      setSelectedPeriod(defaultKey);
+    }
+  }, [defaultKey, optionsMap, selectedPeriod]);
+
+  const currentPeriod = useMemo(() => {
+    return selectedPeriod ? optionsMap[selectedPeriod] : undefined;
+  }, [optionsMap, selectedPeriod]);
+
+  const startDate = currentPeriod?.startDate ?? null;
+  const endDate = currentPeriod?.endDate ?? null;
 
   const filteredTransactions = useFilteredTransactions(
     transactions,
@@ -50,7 +62,14 @@ function Dashboard() {
     selectedCategory // Filter by category for table display
   );
 
-  const chartData = useChartData(filteredTransactions);
+  const {
+    categories: categoryData,
+    subcategories: subcategoryData
+  } = useChartData(filteredTransactions);
+
+  const chartData = selectedCategory
+    ? subcategoryData[selectedCategory] || []
+    : categoryData;
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(selectedCategory === category ? null : category);
@@ -75,7 +94,7 @@ function Dashboard() {
   const totalTransactions = filteredTransactions.length;
   const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.value, 0);
   const selectedCategoryData = selectedCategory
-    ? chartData.find(d => d.name === selectedCategory)
+    ? categoryData.find(d => d.name === selectedCategory)
     : null;
 
   if (loading) {
@@ -155,6 +174,7 @@ function Dashboard() {
         <PeriodFilter
           selectedPeriod={selectedPeriod}
           onPeriodChange={handlePeriodChange}
+          options={periodOptions}
         />
 
         <motion.div
@@ -193,7 +213,7 @@ function Dashboard() {
               <Calendar className="h-8 w-8 text-purple-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Categories</p>
-                <p className="text-2xl font-bold text-gray-900">{chartData.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{categoryData.length}</p>
               </div>
             </div>
           </div>
@@ -275,9 +295,7 @@ function Dashboard() {
                 </p>
 
                 <div className="space-y-3 flex-1 overflow-y-auto">
-                  {chartData
-                    .sort((a, b) => b.value - a.value) // Sort by value descending
-                    .map((category, index) => (
+                  {categoryData.map((category, index) => (
                       <div
                         key={category.name}
                         className="flex justify-between items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
@@ -318,7 +336,7 @@ function Dashboard() {
             <div className="h-full">
               <PieChartComponent
                 data={chartData}
-                onSegmentClick={handleCategorySelect}
+                onSegmentClick={selectedCategory ? undefined : handleCategorySelect}
                 selectedCategory={selectedCategory}
               />
             </div>
@@ -332,7 +350,7 @@ function Dashboard() {
           className="mb-8"
         >
           <MonthlyEvolutionChart
-            transactions={transactions}
+            transactions={filteredTransactions}
             selectedCategory={selectedCategory}
           />
         </motion.div>

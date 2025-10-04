@@ -36,6 +36,10 @@ export function useFilteredTransactions(
   selectedCategory: string | null
 ): Transaction[] {
   return transactions.filter(transaction => {
+    if (!transaction.date_iso) {
+      return false;
+    }
+
     // Filter by date range
     if (startDate && transaction.date_iso < startDate) {
       return false;
@@ -53,23 +57,74 @@ export function useFilteredTransactions(
   });
 }
 
-export function useChartData(transactions: Transaction[]): ChartDataPoint[] {
-  const categoryData = transactions.reduce((acc, transaction) => {
-    const category = transaction.category;
-    if (!acc[category]) {
-      acc[category] = { value: 0, count: 0 };
+export interface ChartHierarchy {
+  categories: ChartDataPoint[];
+  subcategories: Record<string, ChartDataPoint[]>;
+  totalValue: number;
+}
+
+const DEFAULT_CATEGORY = 'Other';
+const DEFAULT_SUBCATEGORY = 'General';
+
+export function useChartData(transactions: Transaction[]): ChartHierarchy {
+  const categoryTotals: Record<string, { value: number; count: number }> = {};
+  const subcategoryTotals: Record<string, Record<string, { value: number; count: number }>> = {};
+
+  for (const transaction of transactions) {
+    if (!transaction) {
+      continue;
     }
-    acc[category].value += transaction.value;
-    acc[category].count += 1;
-    return acc;
-  }, {} as Record<string, { value: number; count: number }>);
 
-  const totalValue = Object.values(categoryData).reduce((sum, cat) => sum + cat.value, 0);
+    const category = transaction.category || DEFAULT_CATEGORY;
+    const subcategory = transaction.subcategory || DEFAULT_SUBCATEGORY;
 
-  return Object.entries(categoryData).map(([category, data]) => ({
-    name: category,
-    value: data.value,
-    count: data.count,
-    percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0
-  })).sort((a, b) => b.value - a.value);
+    if (!categoryTotals[category]) {
+      categoryTotals[category] = { value: 0, count: 0 };
+    }
+    categoryTotals[category].value += transaction.value;
+    categoryTotals[category].count += 1;
+
+    if (!subcategoryTotals[category]) {
+      subcategoryTotals[category] = {};
+    }
+    if (!subcategoryTotals[category][subcategory]) {
+      subcategoryTotals[category][subcategory] = { value: 0, count: 0 };
+    }
+    subcategoryTotals[category][subcategory].value += transaction.value;
+    subcategoryTotals[category][subcategory].count += 1;
+  }
+
+  const totalValue = Object.values(categoryTotals).reduce((sum, cat) => sum + cat.value, 0);
+
+  const categories = Object.entries(categoryTotals)
+    .map(([category, data]) => ({
+      name: category,
+      value: data.value,
+      count: data.count,
+      percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const subcategories: Record<string, ChartDataPoint[]> = {};
+
+  for (const [category, subMap] of Object.entries(subcategoryTotals)) {
+    const parentTotal = categoryTotals[category]?.value || 0;
+    const entries = Object.entries(subMap)
+      .map(([subcategory, data]) => ({
+        name: subcategory,
+        value: data.value,
+        count: data.count,
+        percentage: parentTotal > 0 ? (data.value / parentTotal) * 100 : 0,
+        parentCategory: category
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    subcategories[category] = entries;
+  }
+
+  return {
+    categories,
+    subcategories,
+    totalValue
+  };
 }

@@ -7,7 +7,11 @@
     "currency": "NZ$",
     "value": 4.99,
     "date_iso": "2025-09-16",
-    "category": "Other"
+    "category": "Subscriptions & Services",
+    "subcategory": "Software & Cloud",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 63,
@@ -17,7 +21,11 @@
     "currency": "NZ$",
     "value": 45.95,
     "date_iso": "2025-09-03",
-    "category": "Gaming"
+    "category": "Entertainment",
+    "subcategory": "Gaming",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 62,
@@ -25,9 +33,13 @@
     "amount": "NZ$127.50",
     "date": "02/09/2025",
     "currency": "NZ$",
-    "value": 127.50,
+    "value": 127.5,
     "date_iso": "2025-09-02",
-    "category": "Groceries"
+    "category": "Groceries",
+    "subcategory": "Supermarkets",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 61,
@@ -37,7 +49,11 @@
     "currency": "NZ$",
     "value": 19.99,
     "date_iso": "2025-09-01",
-    "category": "Entertainment"
+    "category": "Entertainment",
+    "subcategory": "Streaming",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 60,
@@ -45,9 +61,13 @@
     "amount": "NZ$23.40",
     "date": "31/08/2025",
     "currency": "NZ$",
-    "value": 23.40,
+    "value": 23.4,
     "date_iso": "2025-08-31",
-    "category": "Transport"
+    "category": "Transport",
+    "subcategory": "Rideshare",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 59,
@@ -57,7 +77,11 @@
     "currency": "NZ$",
     "value": 69.99,
     "date_iso": "2025-08-30",
-    "category": "Gaming"
+    "category": "Entertainment",
+    "subcategory": "Gaming",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 58,
@@ -65,9 +89,13 @@
     "amount": "NZ$18.50",
     "date": "29/08/2025",
     "currency": "NZ$",
-    "value": 18.50,
+    "value": 18.5,
     "date_iso": "2025-08-29",
-    "category": "Food"
+    "category": "Dining",
+    "subcategory": "Fast Food",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 57,
@@ -75,9 +103,13 @@
     "amount": "NZ$89.30",
     "date": "28/08/2025",
     "currency": "NZ$",
-    "value": 89.30,
+    "value": 89.3,
     "date_iso": "2025-08-28",
-    "category": "Groceries"
+    "category": "Groceries",
+    "subcategory": "Supermarkets",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 56,
@@ -87,7 +119,11 @@
     "currency": "NZ$",
     "value": 16.99,
     "date_iso": "2025-08-27",
-    "category": "Entertainment"
+    "category": "Entertainment",
+    "subcategory": "Streaming",
+    "statement_id": "2025-09-26",
+    "statement_start": "2025-08-27",
+    "statement_end": "2025-09-26"
   },
   {
     "id": 55,
@@ -95,8 +131,12 @@
     "amount": "NZ$75.20",
     "date": "26/08/2025",
     "currency": "NZ$",
-    "value": 75.20,
+    "value": 75.2,
     "date_iso": "2025-08-26",
-    "category": "Transport"
+    "category": "Transport",
+    "subcategory": "Fuel",
+    "statement_id": "2025-08-26",
+    "statement_start": "2025-07-27",
+    "statement_end": "2025-08-26"
   }
 ]

@@ -8,6 +8,10 @@ interface Transaction {
   value: number;
   date_iso: string;
   category: string;
+  subcategory: string;
+  statement_id: string | null;
+  statement_start: string | null;
+  statement_end: string | null;
 }
 
 interface PdfItem {
@@ -15,99 +19,104 @@ interface PdfItem {
   y?: number;
 }
 
-// Category detection based on merchant name
-function detectCategory(place: string): string {
-  const placeLower = place.toLowerCase();
+interface CategoryRule {
+  pattern: RegExp;
+  category: string;
+  subcategory: string;
+}
 
-  // Transport
-  if (placeLower.includes('public transport') ||
-      placeLower.includes('uber') ||
-      placeLower.includes('lime')) {
-    return 'transport';
+const CATEGORY_RULES: CategoryRule[] = [
+  { pattern: /(public transport|at hop|bus|train|ferry)/i, category: 'Transport', subcategory: 'Public Transport' },
+  { pattern: /(uber|ola|didi|lyft)/i, category: 'Transport', subcategory: 'Rideshare' },
+  { pattern: /(lime|beam|neuron)/i, category: 'Transport', subcategory: 'Micromobility' },
+  { pattern: /(bp|z energy|caltex|mobil|gull|petrol|gasoline)/i, category: 'Transport', subcategory: 'Fuel' },
+
+  { pattern: /(woolworths|pak n save|new world|countdown|farro|supermarket)/i, category: 'Groceries', subcategory: 'Supermarkets' },
+  { pattern: /(butcher|bakery|deli|organics|wholefoods)/i, category: 'Groceries', subcategory: 'Specialty Food' },
+
+  { pattern: /(starbucks|coffee|cafe)/i, category: 'Dining', subcategory: 'Cafes' },
+  { pattern: /(mcdonald|kfc|burger king|subway|domino|pizza hut|hungry jacks)/i, category: 'Dining', subcategory: 'Fast Food' },
+  { pattern: /(restaurant|bistro|dining|cuisine|grill|izakaya|eatery)/i, category: 'Dining', subcategory: 'Restaurants' },
+
+  { pattern: /(netflix|spotify|disney\+?|apple music|youtube|paramount|hbo|amazon prime)/i, category: 'Entertainment', subcategory: 'Streaming' },
+  { pattern: /(playstation|steam|nintendo|xbox|game pass|gaming)/i, category: 'Entertainment', subcategory: 'Gaming' },
+  { pattern: /(event cinema|cinemas|movies|theatre)/i, category: 'Entertainment', subcategory: 'Movies & Events' },
+
+  { pattern: /(openai|claude|cursor|expressvpn|cloudflare|apple\.com|applecom|icloud|itunes|microsoft|google)/i, category: 'Subscriptions & Services', subcategory: 'Software & Cloud' },
+  { pattern: /(paypal|stripe|xero|freshbooks|accounting)/i, category: 'Subscriptions & Services', subcategory: 'Financial Services' },
+
+  { pattern: /(kmart|warehouse|briscoes|bunnings|mitre 10|ikea|noel leeming|harvey norman|jb hi fi)/i, category: 'Shopping', subcategory: 'Retail & Home' },
+  { pattern: /(farmer|fashion|adidas|puma|nike|seed heritage|hallenstein)/i, category: 'Shopping', subcategory: 'Apparel' },
+
+  { pattern: /(chemist|pharmacy|unimeds|medical|clinic)/i, category: 'Health', subcategory: 'Pharmacy & Health' },
+
+  { pattern: /(hotel|airbnb|accor|hilton|marriott|motel)/i, category: 'Travel', subcategory: 'Accommodation' },
+  { pattern: /(air new zealand|jetstar|qantas|airline|flight)/i, category: 'Travel', subcategory: 'Flights' }
+];
+
+function detectCategory(place: string): { category: string; subcategory: string } {
+  const rule = CATEGORY_RULES.find(({ pattern }) => pattern.test(place));
+
+  if (rule) {
+    return { category: rule.category, subcategory: rule.subcategory };
   }
 
-  // Groceries
-  if (placeLower.includes('woolworths') ||
-      placeLower.includes('pak n save') ||
-      placeLower.includes('new world') ||
-      placeLower.includes('countdown') ||
-      placeLower.includes('farro fresh')) {
-    return 'groceries';
+  return { category: 'Other', subcategory: 'General' };
+}
+
+function computeStatementMetadata(dateIso: string): {
+  statement_id: string | null;
+  statement_start: string | null;
+  statement_end: string | null;
+} {
+  if (!dateIso) {
+    return {
+      statement_id: null,
+      statement_start: null,
+      statement_end: null
+    };
   }
 
-  // Alcohol
-  if (placeLower.includes('liquorland') ||
-      placeLower.includes('super liquor') ||
-      placeLower.includes('liquor')) {
-    return 'alcohol';
+  const date = new Date(`${dateIso}T00:00:00Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      statement_id: null,
+      statement_start: null,
+      statement_end: null
+    };
   }
 
-  // Clothing
-  if (placeLower.includes('adidas') ||
-      placeLower.includes('hallenstein') ||
-      placeLower.includes('puma') ||
-      placeLower.includes('seed heritage')) {
-    return 'clothing';
+  let closingYear = date.getUTCFullYear();
+  let closingMonth = date.getUTCMonth();
+
+  if (date.getUTCDate() > 26) {
+    closingMonth += 1;
+    if (closingMonth > 11) {
+      closingMonth = 0;
+      closingYear += 1;
+    }
   }
 
-  // Electronics/Home
-  if (placeLower.includes('jb hi fi') ||
-      placeLower.includes('briscoe')) {
-    return 'electronics';
+  const statementEnd = new Date(Date.UTC(closingYear, closingMonth, 26));
+
+  let openingMonth = closingMonth - 1;
+  let openingYear = closingYear;
+
+  if (openingMonth < 0) {
+    openingMonth = 11;
+    openingYear -= 1;
   }
 
-  // Pharmacy
-  if (placeLower.includes('chemist') ||
-      placeLower.includes('pharmacy')) {
-    return 'pharmacy';
-  }
+  const statementStart = new Date(Date.UTC(openingYear, openingMonth, 27));
 
-  // Subscriptions
-  if (placeLower.includes('paypal') ||
-      placeLower.includes('openai') ||
-      placeLower.includes('claude') ||
-      placeLower.includes('cursor') ||
-      placeLower.includes('expressvpn') ||
-      placeLower.includes('apple.com') ||
-      placeLower.includes('cloudflare') ||
-      placeLower.includes('twitch')) {
-    return 'subscriptions';
-  }
+  const toIso = (value: Date) => value.toISOString().split('T')[0];
 
-  // Home improvement
-  if (placeLower.includes('bunnings')) {
-    return 'home_improvement';
-  }
-
-  // Hotel
-  if (placeLower.includes('hotel')) {
-    return 'hotel';
-  }
-
-  // Tea
-  if (placeLower.includes('t2 ')) {
-    return 'tea';
-  }
-
-  // Travel
-  if (placeLower.includes('air new zealand') ||
-      placeLower.includes('jetstar')) {
-    return 'travel';
-  }
-
-  // Entertainment
-  if (placeLower.includes('event cinema')) {
-    return 'entertainment';
-  }
-
-  // Retail/Department stores
-  if (placeLower.includes('kmart') ||
-      placeLower.includes('warehouse') ||
-      placeLower.includes('briscoe')) {
-    return 'retail';
-  }
-
-  return 'other';
+  return {
+    statement_id: toIso(statementEnd),
+    statement_start: toIso(statementStart),
+    statement_end: toIso(statementEnd)
+  };
 }
 
 // Parse date from DD.MM.YY format to YYYY-MM-DD
@@ -194,7 +203,8 @@ function extractTransactions(text: string): Transaction[] {
     if (matchedAmount) {
       const date_iso = parseDate(trans.date);
       const place = trans.description;
-      const category = detectCategory(place);
+      const { category, subcategory } = detectCategory(place);
+      const statementMetadata = computeStatementMetadata(date_iso);
 
       transactions.push({
         place,
@@ -203,7 +213,9 @@ function extractTransactions(text: string): Transaction[] {
         currency: 'NZD',
         value: matchedAmount.value,
         date_iso,
-        category
+        category,
+        subcategory,
+        ...statementMetadata
       });
     }
   }
@@ -215,7 +227,6 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const _saveToDb = formData.get('saveToDb') === 'true';
 
     if (!file) {
       return NextResponse.json(
