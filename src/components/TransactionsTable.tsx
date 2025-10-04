@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
+import { lightenColor, adjustColor } from '@/utils/color';
 
 interface TransactionsTableProps {
   transactions: Transaction[];
   selectedCategory?: string | null;
+  categoryColors?: Record<string, string>;
 }
 
 type SortField = 'date' | 'place' | 'category' | 'amount';
@@ -15,7 +17,8 @@ type SortDirection = 'asc' | 'desc';
 
 export default function TransactionsTable({
   transactions,
-  selectedCategory
+  selectedCategory,
+  categoryColors
 }: TransactionsTableProps) {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -90,6 +93,16 @@ export default function TransactionsTable({
       </div>
     </button>
   );
+
+  const getCategoryColor = (category: string) => categoryColors?.[category] || '#6366f1';
+
+  const getSubcategoryStyles = (category: string) => {
+    const base = getCategoryColor(category);
+    return {
+      backgroundColor: lightenColor(base, 0.75),
+      color: adjustColor(base, -0.4),
+    };
+  };
 
   return (
     <motion.div
@@ -167,7 +180,10 @@ export default function TransactionsTable({
                       {transaction.category || 'Other'}
                     </span>
                     {transaction.subcategory && (
-                      <span className="mt-1 text-xs text-gray-500">
+                      <span
+                        className="mt-1 inline-flex w-fit text-xs font-semibold px-2 py-1 rounded"
+                        style={getSubcategoryStyles(transaction.category)}
+                      >
                         {transaction.subcategory}
                       </span>
                     )}

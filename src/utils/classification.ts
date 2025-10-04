@@ -31,6 +31,8 @@ const CATEGORY_RULES: CategoryRule[] = [
   { category: 'Entertainment', subcategory: 'Gaming', keywords: ['playstation', 'steam', 'nintendo', 'xbox', 'game pass', 'gaming'] },
   { category: 'Entertainment', subcategory: 'Movies & Events', keywords: ['event cinema', 'cinemas', 'movies', 'theatre'] },
   { category: 'Subscriptions & Services', subcategory: 'Software & Cloud', keywords: ['openai', 'claude', 'cursor', 'expressvpn', 'cloudflare', 'apple.com', 'applecom', 'icloud', 'itunes', 'microsoft', 'google', 'adobe', 'github'] },
+  { category: 'Subscriptions & Services', subcategory: 'Mobile Phone', keywords: ['skinny mobile', 'vodafone', 'spark mobile'] },
+  { category: 'Subscriptions & Services', subcategory: 'Memberships', keywords: ['uber one membership', 'uber one'] },
   { category: 'Shopping', subcategory: 'Retail & Home', keywords: ['kmart', 'warehouse', 'briscoes', 'bunnings', 'mitre 10', 'ikea', 'noel leeming', 'harvey norman', 'jb hi fi', 'mighty ape'] },
   { category: 'Shopping', subcategory: 'Apparel', keywords: ['farmer', 'fashion', 'adidas', 'puma', 'nike', 'seed heritage', 'hallenstein', 'glassons'] },
   { category: 'Health', subcategory: 'Pharmacy & Health', keywords: ['chemist', 'pharmacy', 'unimeds', 'medical', 'clinic'] },

@@ -8,6 +8,7 @@ interface PieChartComponentProps {
   data: ChartDataPoint[];
   onSegmentClick?: (category: string) => void;
   selectedCategory?: string | null;
+  colorMap?: Record<string, string>;
 }
 
 const COLORS = [
@@ -44,7 +45,8 @@ const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
 export default function PieChartComponent({
   data,
   onSegmentClick,
-  selectedCategory
+  selectedCategory,
+  colorMap
 }: PieChartComponentProps) {
   const totalAmount = data.reduce((sum, item) => sum + item.value, 0);
   const isInteractive = Boolean(onSegmentClick);
@@ -83,16 +85,22 @@ export default function PieChartComponent({
             paddingAngle={4}
             cornerRadius={8}
           >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.color ?? COLORS[index % COLORS.length]}
-                stroke="#ffffff"
-                strokeWidth={6}
-                className={`${isInteractive ? 'cursor-pointer' : 'cursor-default'} hover:opacity-80 transition-opacity duration-200`}
-                onClick={onSegmentClick ? () => onSegmentClick(entry.name) : undefined}
-              />
-            ))}
+            {data.map((entry, index) => {
+              const entryColor = typeof entry.color === 'string' ? entry.color : undefined;
+              const colorFromMap = colorMap ? colorMap[entry.name] : undefined;
+              const fillColor = entryColor || colorFromMap || COLORS[index % COLORS.length];
+
+              return (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={fillColor}
+                  stroke="#ffffff"
+                  strokeWidth={6}
+                  className={`${isInteractive ? 'cursor-pointer' : 'cursor-default'} hover:opacity-80 transition-opacity duration-200`}
+                  onClick={onSegmentClick ? () => onSegmentClick(entry.name) : undefined}
+                />
+              );
+            })}
           </Pie>
         </PieChart>
       </ResponsiveContainer>

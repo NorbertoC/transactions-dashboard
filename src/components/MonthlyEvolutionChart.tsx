@@ -7,6 +7,7 @@ import { Transaction } from '@/types/transaction';
 interface MonthlyEvolutionChartProps {
   transactions: Transaction[];
   selectedCategory?: string | null;
+  categoryColors?: Record<string, string>;
 }
 
 interface MonthlyData {
@@ -67,7 +68,8 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
 
 export default function MonthlyEvolutionChart({
   transactions,
-  selectedCategory
+  selectedCategory,
+  categoryColors
 }: MonthlyEvolutionChartProps) {
   // Filter transactions by category if selected
   const filteredTransactions = selectedCategory
@@ -101,7 +103,7 @@ export default function MonthlyEvolutionChart({
     .slice(-6); // Show last 6 months
 
   const categoryColor = selectedCategory
-    ? COLORS[Math.abs(selectedCategory.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % COLORS.length]
+    ? (categoryColors?.[selectedCategory] || COLORS[Math.abs(selectedCategory.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % COLORS.length])
     : '#8B5CF6';
 
   if (chartData.length === 0) {

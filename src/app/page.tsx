@@ -12,6 +12,7 @@ import AuthGuard from '@/components/AuthGuard';
 import PdfUploader from '@/components/PdfUploader';
 import { useTransactions, useChartData, useFilteredTransactions } from '@/hooks/useTransactions';
 import { useStatementFilters } from '@/hooks/useStatementFilters';
+import { lightenColor } from '@/utils/color';
 
 const COLORS = [
   '#8B5CF6', // Purple for largest segment
@@ -67,9 +68,31 @@ function Dashboard() {
     subcategories: subcategoryData
   } = useChartData(filteredTransactions);
 
-  const chartData = selectedCategory
-    ? subcategoryData[selectedCategory] || []
-    : categoryData;
+  const categoryColors = useMemo(() => {
+    const colorMap: Record<string, string> = {};
+    categoryData.forEach((category, index) => {
+      colorMap[category.name] = COLORS[index % COLORS.length];
+    });
+    return colorMap;
+  }, [categoryData]);
+
+  const pieChartData = useMemo(() => {
+    if (selectedCategory) {
+      const baseColor = categoryColors[selectedCategory] || COLORS[0];
+      const subcategories = subcategoryData[selectedCategory] || [];
+      const total = Math.max(1, subcategories.length);
+
+      return subcategories.map((subcategory, index) => ({
+        ...subcategory,
+        color: lightenColor(baseColor, Math.min(0.8, 0.25 + (index / total) * 0.5))
+      }));
+    }
+
+    return categoryData.map((category) => ({
+      ...category,
+      color: categoryColors[category.name] || COLORS[0]
+    }));
+  }, [selectedCategory, subcategoryData, categoryData, categoryColors]);
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(selectedCategory === category ? null : category);
@@ -304,7 +327,7 @@ function Dashboard() {
                         <div className="flex items-center gap-3">
                           <div
                             className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: category.color ?? COLORS[index % COLORS.length] }}
+                            style={{ backgroundColor: categoryColors[category.name] || COLORS[index % COLORS.length] }}
                           ></div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">{category.name}</p>
@@ -335,9 +358,10 @@ function Dashboard() {
           >
             <div className="h-full">
               <PieChartComponent
-                data={chartData}
+                data={pieChartData}
                 onSegmentClick={selectedCategory ? undefined : handleCategorySelect}
                 selectedCategory={selectedCategory}
+                colorMap={categoryColors}
               />
             </div>
           </motion.div>
@@ -352,6 +376,7 @@ function Dashboard() {
           <MonthlyEvolutionChart
             transactions={filteredTransactions}
             selectedCategory={selectedCategory}
+            categoryColors={categoryColors}
           />
         </motion.div>
 
@@ -363,6 +388,7 @@ function Dashboard() {
           <TransactionsTable
             transactions={displayTransactions}
             selectedCategory={selectedCategory}
+            categoryColors={categoryColors}
           />
         </motion.div>
       </div>
