@@ -141,8 +141,12 @@ function extractTransactions(text: string): Transaction[] {
       const cleanAmount = amountMatch[1].replace(/,/g, '');
       const value = parseFloat(cleanAmount);
 
-      // Filter out unrealistic amounts
-      if (value > 0 && value < 10000) {
+      // Check if next line is "CR" (credit) - skip those
+      const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+      const isCreditAmount = nextLine === 'CR';
+
+      // Filter out unrealistic amounts and credit amounts
+      if (value > 0 && value < 10000 && !isCreditAmount) {
         amounts.push({ value, index: i });
       }
     }
