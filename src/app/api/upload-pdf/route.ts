@@ -128,28 +128,26 @@ function extractTransactions(text: string): Transaction[] {
   // Pattern for standalone amount lines
   const amountPattern = /^([\d,]+\.\d{2})$/;
 
-  // Collect amounts with their line numbers (amounts appear before transactions in PDF extraction)
-  const amounts: Array<{value: number, index: number, used: boolean}> = [];
+  // Collect amounts and transactions with their line numbers
+  const amounts: Array<{value: number, index: number}> = [];
+  const transactionLines: Array<{date: string, description: string, index: number}> = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    const amountMatch = line.match(amountPattern);
 
+    // Check for amounts
+    const amountMatch = line.match(amountPattern);
     if (amountMatch && !line.includes('CR') && !line.includes('DOLLAR') && !line.includes('%')) {
       const cleanAmount = amountMatch[1].replace(/,/g, '');
       const value = parseFloat(cleanAmount);
 
       // Filter out unrealistic amounts
       if (value > 0 && value < 10000) {
-        amounts.push({ value, index: i, used: false });
+        amounts.push({ value, index: i });
       }
     }
-  }
 
-  // Now find transactions and match with the closest preceding unused amount
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
+    // Check for transactions
     const transMatch = line.match(transactionPattern);
     if (transMatch) {
       const [, day, month, year, description] = transMatch;
@@ -161,37 +159,48 @@ function extractTransactions(text: string): Transaction[] {
         continue;
       }
 
-      // Find the closest unused amount that appears before this transaction (within 50 lines)
-      let closestAmount = null;
-      let minDistance = Infinity;
+      transactionLines.push({
+        date: dateStr,
+        description: description.trim(),
+        index: i
+      });
+    }
+  }
 
-      for (const amt of amounts) {
-        const distance = i - amt.index;
-        // Amount should be before transaction (positive distance), unused, and within 50 lines
-        if (!amt.used && distance > 0 && distance < 50 && distance < minDistance) {
-          minDistance = distance;
-          closestAmount = amt;
-        }
+  // Match amounts to transactions sequentially
+  // When amounts appear before transactions, match them in order
+  let amountIndex = 0;
+
+  for (const trans of transactionLines) {
+    // Find the next unused amount that appears before this transaction
+    let matchedAmount = null;
+
+    for (let i = amountIndex; i < amounts.length; i++) {
+      const amt = amounts[i];
+      const distance = trans.index - amt.index;
+
+      // Amount should be before transaction (positive distance) and within reasonable range
+      if (distance > 0 && distance < 100) {
+        matchedAmount = amt;
+        amountIndex = i + 1; // Move to next amount for next transaction
+        break;
       }
+    }
 
-      if (closestAmount) {
-        const date_iso = parseDate(dateStr);
-        const place = description.trim();
-        const category = detectCategory(place);
+    if (matchedAmount) {
+      const date_iso = parseDate(trans.date);
+      const place = trans.description;
+      const category = detectCategory(place);
 
-        transactions.push({
-          place,
-          amount: `$${closestAmount.value.toFixed(2)}`,
-          date: date_iso,
-          currency: 'NZD',
-          value: closestAmount.value,
-          date_iso,
-          category
-        });
-
-        // Mark amount as used
-        closestAmount.used = true;
-      }
+      transactions.push({
+        place,
+        amount: `$${matchedAmount.value.toFixed(2)}`,
+        date: date_iso,
+        currency: 'NZD',
+        value: matchedAmount.value,
+        date_iso,
+        category
+      });
     }
   }
 
@@ -272,14 +281,54 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Send to backend API
+      // First, fetch existing transactions to check for duplicates
+      const existingResponse = await fetch(process.env.NEXT_PUBLIC_API_URL || `${apiUrl}/transactions`, {
+        headers: {
+          'X-API-Key': apiKey
+        }
+      });
+
+      if (!existingResponse.ok) {
+        throw new Error('Failed to fetch existing transactions');
+      }
+
+      const existingTransactions = await existingResponse.json();
+
+      // Filter out duplicates based on date, place, and amount
+      const newTransactions = transactions.filter(newTx => {
+        const isDuplicate = existingTransactions.some((existingTx: Transaction) =>
+          existingTx.date_iso === newTx.date_iso &&
+          existingTx.place.trim() === newTx.place.trim() &&
+          Math.abs(existingTx.value - newTx.value) < 0.01 // Handle floating point comparison
+        );
+        return !isDuplicate;
+      });
+
+      const duplicateCount = transactions.length - newTransactions.length;
+
+      console.log(`Total transactions: ${transactions.length}`);
+      console.log(`Duplicates found: ${duplicateCount}`);
+      console.log(`New transactions: ${newTransactions.length}`);
+
+      if (newTransactions.length === 0) {
+        return NextResponse.json({
+          success: true,
+          transactions: [],
+          count: 0,
+          duplicateCount,
+          saved: false,
+          message: 'All transactions are duplicates. No new transactions to save.'
+        });
+      }
+
+      // Send only new transactions to backend API
       const response = await fetch(`${apiUrl}/transactions/bulk`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': apiKey
         },
-        body: JSON.stringify(transactions)
+        body: JSON.stringify(newTransactions)
       });
 
       if (!response.ok) {
@@ -292,8 +341,9 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        transactions,
-        count: transactions.length,
+        transactions: newTransactions,
+        count: newTransactions.length,
+        duplicateCount,
         saved: true,
         saveResult
       });

@@ -22,6 +22,7 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [transactionCount, setTransactionCount] = useState(0);
+  const [duplicateCount, setDuplicateCount] = useState(0);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -62,6 +63,7 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
 
       setSuccess(true);
       setTransactionCount(data.count);
+      setDuplicateCount(data.duplicateCount || 0);
 
       // Call the callback if provided
       if (onTransactionsExtracted) {
@@ -122,7 +124,12 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
           <p className="text-sm text-green-600">
-            ✓ Successfully extracted {transactionCount} transactions
+            ✓ Successfully added {transactionCount} new transaction{transactionCount !== 1 ? 's' : ''}
+            {duplicateCount > 0 && (
+              <span className="text-yellow-600 ml-2">
+                ({duplicateCount} duplicate{duplicateCount !== 1 ? 's' : ''} skipped)
+              </span>
+            )}
           </p>
         </div>
       )}
@@ -158,6 +165,7 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
           <li>Credit card PDF statements</li>
           <li>Automatic transaction categorization</li>
           <li>Date and amount extraction</li>
+          <li>Duplicate detection (safe to re-upload same statement)</li>
         </ul>
       </div>
     </div>
