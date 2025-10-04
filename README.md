@@ -1,36 +1,150 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Transactions Dashboard
+
+An interactive Next.js application for visualizing financial transactions with pie charts and detailed tables. Features smooth animations and responsive design.
+
+## Features
+
+- **🔐 Secure Authentication**: NextAuth.js with credentials-based login for 2 users
+- **📊 Interactive Pie Chart**: Click on any category to drill down into specific transaction details
+- **📅 Date Range Filtering**: Custom date picker with "Last Month" and "Last Statement" presets
+- **🔄 Dynamic Table Sorting**: Sort by amount, date, place, or category with visual indicators
+- **📱 Responsive Design**: Works seamlessly on desktop and mobile devices
+- **🎨 Smooth Animations**: Framer Motion animations for enhanced user experience
+- **🔌 API Integration**: Fetches data from external API with secure credential management
+
+## Tech Stack
+
+- **Next.js 15** - React framework with App Router
+- **NextAuth.js** - Authentication and session management
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first styling
+- **Recharts** - Interactive chart library
+- **Framer Motion** - Animation library
+- **Lucide React** - Icon library
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd transactions-dashboard
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Create environment variables:
+```bash
+cp .env.local.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Update the environment variables in `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=https://api.norberto.work/transactions
+API_KEY=your-api-key-here
+```
 
-## Learn More
+5. Start the development server:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Interactive Features
 
-## Deploy on Vercel
+1. **Category Selection**: Click on any segment of the pie chart to filter transactions by category
+2. **Reset View**: Use the "Reset" button to return to the overview
+3. **Detailed Statistics**: When a category is selected, view detailed breakdown including:
+   - Total amount spent
+   - Number of transactions
+   - Percentage of total spending
+   - Average transaction amount
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Data Format
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application expects transaction data in the following format:
+
+```json
+{
+  "id": 64,
+  "place": "APPLECOMBILL",
+  "amount": "NZ$4.99",
+  "date": "16/09/2025",
+  "currency": "NZ$",
+  "value": 4.99,
+  "date_iso": "2025-09-16",
+  "category": "Other"
+}
+```
+
+## API Integration
+
+The application supports both live API data and fallback to sample data:
+
+- **Live Data**: Configure API credentials in `.env.local`
+- **Sample Data**: Falls back to `data.json` if API is unavailable
+- **Error Handling**: Graceful degradation with user-friendly error messages
+
+## Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build production application
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint code analysis
+
+### Code Structure
+
+```
+src/
+├── app/
+│   ├── api/transactions/     # API routes
+│   └── page.tsx             # Main dashboard page
+├── components/
+│   ├── PieChart.tsx         # Interactive pie chart component
+│   └── TransactionsTable.tsx # Filterable transactions table
+├── hooks/
+│   └── useTransactions.ts   # Data fetching and processing hooks
+├── services/
+│   └── api.ts              # API service layer
+└── types/
+    └── transaction.ts      # TypeScript type definitions
+```
+
+## Security
+
+- Environment variables are properly configured and excluded from version control
+- API keys are securely stored in `.env.local`
+- No sensitive data is exposed to the client-side
+
+## Performance
+
+- Server-side data fetching with fallback mechanisms
+- Optimized re-renders with React hooks
+- Responsive animations that don't block the UI
+- Efficient data processing and filtering
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-feature`
+3. Commit changes: `git commit -am 'Add new feature'`
+4. Push to branch: `git push origin feature/new-feature`
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.

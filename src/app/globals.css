@@ -24,3 +24,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Remove focus outline from chart elements */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-sector,
+.recharts-pie,
+svg {
+  outline: none !important;
+}
+
+/* Remove focus outline when clicking or focusing */
+*:focus {
+  outline: none !important;
+}
+
+/* Specifically target chart containers */
+[role="img"],
+[role="graphics-symbol"],
+.recharts-responsive-container,
+.recharts-responsive-container * {
+  outline: none !important;
+}

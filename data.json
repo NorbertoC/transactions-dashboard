@@ -1,0 +1,102 @@
+[
+  {
+    "id": 64,
+    "place": "APPLECOMBILL",
+    "amount": "NZ$4.99",
+    "date": "16/09/2025",
+    "currency": "NZ$",
+    "value": 4.99,
+    "date_iso": "2025-09-16",
+    "category": "Other"
+  },
+  {
+    "id": 63,
+    "place": "PLAYSTATION",
+    "amount": "NZ$45.95",
+    "date": "03/09/2025",
+    "currency": "NZ$",
+    "value": 45.95,
+    "date_iso": "2025-09-03",
+    "category": "Gaming"
+  },
+  {
+    "id": 62,
+    "place": "SUPERMARKET COUNTDOWN",
+    "amount": "NZ$127.50",
+    "date": "02/09/2025",
+    "currency": "NZ$",
+    "value": 127.50,
+    "date_iso": "2025-09-02",
+    "category": "Groceries"
+  },
+  {
+    "id": 61,
+    "place": "NETFLIX",
+    "amount": "NZ$19.99",
+    "date": "01/09/2025",
+    "currency": "NZ$",
+    "value": 19.99,
+    "date_iso": "2025-09-01",
+    "category": "Entertainment"
+  },
+  {
+    "id": 60,
+    "place": "UBER",
+    "amount": "NZ$23.40",
+    "date": "31/08/2025",
+    "currency": "NZ$",
+    "value": 23.40,
+    "date_iso": "2025-08-31",
+    "category": "Transport"
+  },
+  {
+    "id": 59,
+    "place": "STEAM GAMES",
+    "amount": "NZ$69.99",
+    "date": "30/08/2025",
+    "currency": "NZ$",
+    "value": 69.99,
+    "date_iso": "2025-08-30",
+    "category": "Gaming"
+  },
+  {
+    "id": 58,
+    "place": "MCDONALD'S",
+    "amount": "NZ$18.50",
+    "date": "29/08/2025",
+    "currency": "NZ$",
+    "value": 18.50,
+    "date_iso": "2025-08-29",
+    "category": "Food"
+  },
+  {
+    "id": 57,
+    "place": "NEW WORLD",
+    "amount": "NZ$89.30",
+    "date": "28/08/2025",
+    "currency": "NZ$",
+    "value": 89.30,
+    "date_iso": "2025-08-28",
+    "category": "Groceries"
+  },
+  {
+    "id": 56,
+    "place": "SPOTIFY",
+    "amount": "NZ$16.99",
+    "date": "27/08/2025",
+    "currency": "NZ$",
+    "value": 16.99,
+    "date_iso": "2025-08-27",
+    "category": "Entertainment"
+  },
+  {
+    "id": 55,
+    "place": "PETROL STATION BP",
+    "amount": "NZ$75.20",
+    "date": "26/08/2025",
+    "currency": "NZ$",
+    "value": 75.20,
+    "date_iso": "2025-08-26",
+    "category": "Transport"
+  }
+]
