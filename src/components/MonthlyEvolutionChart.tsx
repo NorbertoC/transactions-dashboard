@@ -100,7 +100,6 @@ export default function MonthlyEvolutionChart({
     .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
     .slice(-6); // Show last 6 months
 
-  const maxAmount = Math.max(...chartData.map(d => d.amount));
   const categoryColor = selectedCategory
     ? COLORS[Math.abs(selectedCategory.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % COLORS.length]
     : '#8B5CF6';

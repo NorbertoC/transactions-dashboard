@@ -66,7 +66,7 @@ const handler = NextAuth({
     signIn: '/auth/signin',
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Allow credentials login (username/password)
       if (account?.provider === 'credentials') {
         return true;

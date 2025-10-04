@@ -10,6 +10,11 @@ interface Transaction {
   category: string;
 }
 
+interface PdfItem {
+  text?: string;
+  y?: number;
+}
+
 // Category detection based on merchant name
 function detectCategory(place: string): string {
   const placeLower = place.toLowerCase();
@@ -25,13 +30,15 @@ function detectCategory(place: string): string {
   if (placeLower.includes('woolworths') ||
       placeLower.includes('pak n save') ||
       placeLower.includes('new world') ||
-      placeLower.includes('countdown')) {
+      placeLower.includes('countdown') ||
+      placeLower.includes('farro fresh')) {
     return 'groceries';
   }
 
   // Alcohol
   if (placeLower.includes('liquorland') ||
-      placeLower.includes('super liquor')) {
+      placeLower.includes('super liquor') ||
+      placeLower.includes('liquor')) {
     return 'alcohol';
   }
 
@@ -82,6 +89,24 @@ function detectCategory(place: string): string {
     return 'tea';
   }
 
+  // Travel
+  if (placeLower.includes('air new zealand') ||
+      placeLower.includes('jetstar')) {
+    return 'travel';
+  }
+
+  // Entertainment
+  if (placeLower.includes('event cinema')) {
+    return 'entertainment';
+  }
+
+  // Retail/Department stores
+  if (placeLower.includes('kmart') ||
+      placeLower.includes('warehouse') ||
+      placeLower.includes('briscoe')) {
+    return 'retail';
+  }
+
   return 'other';
 }
 
@@ -98,83 +123,75 @@ function extractTransactions(text: string): Transaction[] {
   const lines = text.split('\n');
 
   // Pattern for transaction lines: DD . MM . YY DESCRIPTION
-  // Note: spaces around dots due to PDF extraction
   const transactionPattern = /^(\d{2})\s*\.\s*(\d{2})\s*\.\s*(\d{2})\s+(.+)$/;
 
-  // Pattern for amount lines: just a number with optional comma and 2 decimals
+  // Pattern for standalone amount lines
   const amountPattern = /^([\d,]+\.\d{2})$/;
 
-  // Collect all transaction details
-  const transactionLines: Array<{date: string, description: string, index: number}> = [];
-  const amounts: Array<{value: number, index: number}> = [];
+  // Collect amounts with their line numbers (amounts appear before transactions in PDF extraction)
+  const amounts: Array<{value: number, index: number, used: boolean}> = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    const amountMatch = line.match(amountPattern);
 
-    // Check for transaction line
+    if (amountMatch && !line.includes('CR') && !line.includes('DOLLAR') && !line.includes('%')) {
+      const cleanAmount = amountMatch[1].replace(/,/g, '');
+      const value = parseFloat(cleanAmount);
+
+      // Filter out unrealistic amounts
+      if (value > 0 && value < 10000) {
+        amounts.push({ value, index: i, used: false });
+      }
+    }
+  }
+
+  // Now find transactions and match with the closest preceding unused amount
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
     const transMatch = line.match(transactionPattern);
     if (transMatch) {
       const [, day, month, year, description] = transMatch;
       const dateStr = `${day}.${month}.${year}`;
 
-      // Skip payments
-      if (description.includes('PAYMENT - THANK YOU')) {
+      // Skip payments and summary lines
+      if (description.includes('PAYMENT - THANK YOU') ||
+          description.includes('Total of New Transactions')) {
         continue;
       }
 
-      transactionLines.push({
-        date: dateStr,
-        description: description.trim(),
-        index: i
-      });
-    }
+      // Find the closest unused amount that appears before this transaction (within 50 lines)
+      let closestAmount = null;
+      let minDistance = Infinity;
 
-    // Check for amount line
-    const amountMatch = line.match(amountPattern);
-    if (amountMatch && !line.includes('CR')) {
-      const cleanAmount = amountMatch[1].replace(/,/g, '');
-      const value = parseFloat(cleanAmount);
-
-      // Filter out unrealistic amounts (like card numbers or limits)
-      if (value > 0 && value < 10000) {
-        amounts.push({ value, index: i });
+      for (const amt of amounts) {
+        const distance = i - amt.index;
+        // Amount should be before transaction (positive distance), unused, and within 50 lines
+        if (!amt.used && distance > 0 && distance < 50 && distance < minDistance) {
+          minDistance = distance;
+          closestAmount = amt;
+        }
       }
-    }
-  }
 
-  // Match transactions with amounts by proximity
-  for (const trans of transactionLines) {
-    // Look for the closest amount within 20 lines before the transaction
-    let closestAmount = null;
-    let minDistance = Infinity;
+      if (closestAmount) {
+        const date_iso = parseDate(dateStr);
+        const place = description.trim();
+        const category = detectCategory(place);
 
-    for (const amt of amounts) {
-      const distance = trans.index - amt.index;
-      // Amount should come before transaction (positive distance) within 20 lines
-      if (distance > 0 && distance < 20 && distance < minDistance) {
-        minDistance = distance;
-        closestAmount = amt;
+        transactions.push({
+          place,
+          amount: `$${closestAmount.value.toFixed(2)}`,
+          date: date_iso,
+          currency: 'NZD',
+          value: closestAmount.value,
+          date_iso,
+          category
+        });
+
+        // Mark amount as used
+        closestAmount.used = true;
       }
-    }
-
-    if (closestAmount) {
-      const date_iso = parseDate(trans.date);
-      const place = trans.description;
-      const category = detectCategory(place);
-
-      transactions.push({
-        place,
-        amount: `$${closestAmount.value.toFixed(2)}`,
-        date: date_iso,
-        currency: 'NZD',
-        value: closestAmount.value,
-        date_iso,
-        category
-      });
-
-      // Remove used amount to avoid duplicates
-      const amtIndex = amounts.indexOf(closestAmount);
-      if (amtIndex > -1) amounts.splice(amtIndex, 1);
     }
   }
 
@@ -185,7 +202,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const saveToDb = formData.get('saveToDb') === 'true';
+    const _saveToDb = formData.get('saveToDb') === 'true';
 
     if (!file) {
       return NextResponse.json(
@@ -205,7 +222,7 @@ export async function POST(request: NextRequest) {
       let currentLine = '';
       let lastY = 0;
 
-      new PdfReader({}).parseBuffer(buffer, (err: Error | null, item: any) => {
+      new PdfReader({}).parseBuffer(buffer, (err: Error | null, item?: PdfItem) => {
         if (err) {
           reject(err);
         } else if (!item) {
