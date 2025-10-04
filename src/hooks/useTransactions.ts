@@ -66,6 +66,15 @@ export interface ChartHierarchy {
 const DEFAULT_CATEGORY = 'Other';
 const DEFAULT_SUBCATEGORY = 'General';
 
+function getCategoryColor(count: number): string {
+  if (count >= 500) return '#b91c1c'; // red-700
+  if (count >= 350) return '#ef4444'; // red-500
+  if (count >= 250) return '#f97316'; // orange-500
+  if (count >= 150) return '#f59e0b'; // amber-500
+  if (count >= 75) return '#84cc16'; // lime-500
+  return '#22c55e'; // green-500
+}
+
 export function useChartData(transactions: Transaction[]): ChartHierarchy {
   const categoryTotals: Record<string, { value: number; count: number }> = {};
   const subcategoryTotals: Record<string, Record<string, { value: number; count: number }>> = {};
@@ -101,7 +110,8 @@ export function useChartData(transactions: Transaction[]): ChartHierarchy {
       name: category,
       value: data.value,
       count: data.count,
-      percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0
+      percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+      color: getCategoryColor(data.count)
     }))
     .sort((a, b) => b.value - a.value);
 
@@ -115,7 +125,8 @@ export function useChartData(transactions: Transaction[]): ChartHierarchy {
         value: data.value,
         count: data.count,
         percentage: parentTotal > 0 ? (data.value / parentTotal) * 100 : 0,
-        parentCategory: category
+        parentCategory: category,
+        color: getCategoryColor(data.count)
       }))
       .sort((a, b) => b.value - a.value);
 

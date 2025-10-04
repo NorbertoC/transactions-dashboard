@@ -25,5 +25,6 @@ export interface ChartDataPoint {
   value: number;
   count: number;
   percentage: number;
+  color?: string;
   [key: string]: string | number;
 }

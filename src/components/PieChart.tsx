@@ -86,7 +86,7 @@ export default function PieChartComponent({
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
+                fill={entry.color ?? COLORS[index % COLORS.length]}
                 stroke="#ffffff"
                 strokeWidth={6}
                 className={`${isInteractive ? 'cursor-pointer' : 'cursor-default'} hover:opacity-80 transition-opacity duration-200`}

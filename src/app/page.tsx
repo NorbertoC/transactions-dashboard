@@ -304,7 +304,7 @@ function Dashboard() {
                         <div className="flex items-center gap-3">
                           <div
                             className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            style={{ backgroundColor: category.color ?? COLORS[index % COLORS.length] }}
                           ></div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">{category.name}</p>
