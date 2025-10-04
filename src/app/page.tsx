@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { RotateCcw, TrendingDown, Calendar, DollarSign, LogOut } from 'lucide-react';
+import { RotateCcw, TrendingDown, Calendar, DollarSign, LogOut, Upload } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import PieChartComponent from '@/components/PieChart';
 import MonthlyEvolutionChart from '@/components/MonthlyEvolutionChart';
 import TransactionsTable from '@/components/TransactionsTable';
 import PeriodFilter, { FilterPeriod } from '@/components/PeriodFilter';
 import AuthGuard from '@/components/AuthGuard';
+import PdfUploader from '@/components/PdfUploader';
 import { useTransactions, useChartData, useFilteredTransactions } from '@/hooks/useTransactions';
 import { getPeriodDates } from '@/utils/dateHelpers';
 
@@ -30,6 +31,7 @@ function Dashboard() {
   const { transactions, loading, error } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>('lastMonth');
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Calculate dates based on selected period
   const { startDate, endDate } = getPeriodDates(selectedPeriod);
@@ -61,6 +63,15 @@ function Dashboard() {
   const handlePeriodChange = (period: FilterPeriod) => {
     setSelectedPeriod(period);
     setSelectedCategory(null);
+  };
+
+  const handleTransactionsExtracted = (extractedTransactions: unknown[]) => {
+    console.log('Extracted transactions:', extractedTransactions);
+    // TODO: Save to database or refresh data
+    // For now, just close the modal
+    setShowUploadModal(false);
+    // You could also show a success message or refresh the transactions
+    window.location.reload(); // Simple refresh for now
   };
 
   const totalTransactions = filteredTransactions.length;
@@ -126,6 +137,13 @@ function Dashboard() {
             <span className="text-sm text-gray-600">
               Welcome, {session?.user?.name}
             </span>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+            >
+              <Upload className="h-4 w-4" />
+              Upload PDF
+            </button>
             <button
               onClick={() => signOut()}
               className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm"
@@ -219,7 +237,7 @@ function Dashboard() {
                   <div className="space-y-2 flex-1 overflow-y-auto">
                     {displayTransactions
                       .slice(0, 5)
-                      .map((transaction, index) => (
+                      .map((transaction) => (
                         <div key={transaction.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                           <div>
                             <p className="text-sm font-medium text-gray-900">{transaction.place}</p>
@@ -332,6 +350,41 @@ function Dashboard() {
           />
         </motion.div>
       </div>
+
+      {/* Upload PDF Modal */}
+      {showUploadModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUploadModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', duration: 0.3 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-800">Upload Statement</h2>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <PdfUploader onTransactionsExtracted={handleTransactionsExtracted} />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

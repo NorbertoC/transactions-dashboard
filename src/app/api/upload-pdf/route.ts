@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
 
 interface Transaction {
   place: string;
@@ -152,7 +151,9 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Parse PDF
+    // Parse PDF using require (CommonJS) for compatibility
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdf = require('pdf-parse');
     const data = await pdf(buffer);
     const text = data.text;
 

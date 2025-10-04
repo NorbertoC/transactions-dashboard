@@ -81,10 +81,12 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Upload Credit Card Statement</h2>
+    <div className="w-full">
+      <p className="text-gray-600 mb-6">
+        Upload your credit card statement in PDF format. Transactions will be automatically extracted and categorized.
+      </p>
 
-      <div className="mb-4">
+      <div className="mb-6">
         <label
           htmlFor="pdf-upload"
           className="block text-sm font-medium text-gray-700 mb-2"
@@ -102,40 +104,61 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
             file:text-sm file:font-semibold
             file:bg-blue-50 file:text-blue-700
             hover:file:bg-blue-100
-            cursor-pointer"
+            cursor-pointer border border-gray-300 rounded-md"
         />
+        {file && (
+          <p className="mt-2 text-sm text-green-600">
+            ✓ {file.name} selected
+          </p>
+        )}
       </div>
 
-      <button
-        onClick={handleUpload}
-        disabled={!file || loading}
-        className={`w-full py-2 px-4 rounded-md font-semibold text-white
-          ${!file || loading
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
-          }
-          transition-colors duration-200`}
-      >
-        {loading ? 'Processing...' : 'Upload & Extract Transactions'}
-      </button>
-
       {error && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
           <p className="text-sm text-green-600">
             ✓ Successfully extracted {transactionCount} transactions
           </p>
         </div>
       )}
 
-      <div className="mt-4 text-xs text-gray-500">
-        <p>Supported formats: PDF credit card statements</p>
-        <p>Transactions will be automatically categorized</p>
+      <div className="flex gap-3">
+        <button
+          onClick={handleUpload}
+          disabled={!file || loading}
+          className={`flex-1 py-3 px-4 rounded-md font-semibold text-white
+            ${!file || loading
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+            }
+            transition-colors duration-200`}
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            'Upload & Extract Transactions'
+          )}
+        </button>
+      </div>
+
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <p className="text-xs text-blue-700 font-medium mb-1">Supported features:</p>
+        <ul className="text-xs text-blue-600 list-disc list-inside space-y-1">
+          <li>Credit card PDF statements</li>
+          <li>Automatic transaction categorization</li>
+          <li>Date and amount extraction</li>
+        </ul>
       </div>
     </div>
   );

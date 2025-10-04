@@ -33,7 +33,18 @@ const MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
-function CustomTooltip({ active, payload, label }: any) {
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: {
+      amount: number;
+      count: number;
+    };
+  }>;
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: TooltipProps) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
