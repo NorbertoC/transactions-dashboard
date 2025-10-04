@@ -92,43 +92,89 @@ function parseDate(dateStr: string): string {
   return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
-// Extract transactions from PDF text
+// Extract transactions from PDF text (American Express format)
 function extractTransactions(text: string): Transaction[] {
   const transactions: Transaction[] = [];
   const lines = text.split('\n');
 
-  // Pattern: DD.MM.YY DESCRIPTION AMOUNT (with optional commas in amount)
-  // Handles amounts like "80.95" or "2,426.09"
-  const transactionPattern = /^(\d{2}\.\d{2}\.\d{2})\s+(.+?)\s+([\d,]+\.\d{2})(?:\s+CR)?$/;
+  // Pattern for transaction lines: DD . MM . YY DESCRIPTION
+  // Note: spaces around dots due to PDF extraction
+  const transactionPattern = /^(\d{2})\s*\.\s*(\d{2})\s*\.\s*(\d{2})\s+(.+)$/;
+
+  // Pattern for amount lines: just a number with optional comma and 2 decimals
+  const amountPattern = /^([\d,]+\.\d{2})$/;
+
+  // Collect all transaction details
+  const transactionLines: Array<{date: string, description: string, index: number}> = [];
+  const amounts: Array<{value: number, index: number}> = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    const match = line.match(transactionPattern);
 
-    if (match) {
-      const [, dateStr, description, amountStr] = match;
+    // Check for transaction line
+    const transMatch = line.match(transactionPattern);
+    if (transMatch) {
+      const [, day, month, year, description] = transMatch;
+      const dateStr = `${day}.${month}.${year}`;
 
-      // Skip payment credits (we only want debits for this case)
+      // Skip payments
       if (description.includes('PAYMENT - THANK YOU')) {
         continue;
       }
 
-      // Remove commas from amount string
-      const cleanAmount = amountStr.replace(/,/g, '');
+      transactionLines.push({
+        date: dateStr,
+        description: description.trim(),
+        index: i
+      });
+    }
+
+    // Check for amount line
+    const amountMatch = line.match(amountPattern);
+    if (amountMatch && !line.includes('CR')) {
+      const cleanAmount = amountMatch[1].replace(/,/g, '');
       const value = parseFloat(cleanAmount);
-      const date_iso = parseDate(dateStr);
-      const place = description.trim();
+
+      // Filter out unrealistic amounts (like card numbers or limits)
+      if (value > 0 && value < 10000) {
+        amounts.push({ value, index: i });
+      }
+    }
+  }
+
+  // Match transactions with amounts by proximity
+  for (const trans of transactionLines) {
+    // Look for the closest amount within 20 lines before the transaction
+    let closestAmount = null;
+    let minDistance = Infinity;
+
+    for (const amt of amounts) {
+      const distance = trans.index - amt.index;
+      // Amount should come before transaction (positive distance) within 20 lines
+      if (distance > 0 && distance < 20 && distance < minDistance) {
+        minDistance = distance;
+        closestAmount = amt;
+      }
+    }
+
+    if (closestAmount) {
+      const date_iso = parseDate(trans.date);
+      const place = trans.description;
       const category = detectCategory(place);
 
       transactions.push({
         place,
-        amount: `$${value.toFixed(2)}`,
+        amount: `$${closestAmount.value.toFixed(2)}`,
         date: date_iso,
         currency: 'NZD',
-        value,
+        value: closestAmount.value,
         date_iso,
         category
       });
+
+      // Remove used amount to avoid duplicates
+      const amtIndex = amounts.indexOf(closestAmount);
+      if (amtIndex > -1) amounts.splice(amtIndex, 1);
     }
   }
 
@@ -151,29 +197,100 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Parse PDF using require (CommonJS) for compatibility
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdf = require('pdf-parse');
-    const data = await pdf(buffer);
-    const text = data.text;
+    // Parse PDF using pdfreader (simple Node.js library)
+    const { PdfReader } = await import('pdfreader');
+
+    const text = await new Promise<string>((resolve, reject) => {
+      let fullText = '';
+      let currentLine = '';
+      let lastY = 0;
+
+      new PdfReader({}).parseBuffer(buffer, (err: Error | null, item: any) => {
+        if (err) {
+          reject(err);
+        } else if (!item) {
+          // End of file
+          if (currentLine) fullText += currentLine + '\n';
+          resolve(fullText);
+        } else if (item.text) {
+          // New line detection based on Y position
+          if (lastY !== item.y && currentLine) {
+            fullText += currentLine + '\n';
+            currentLine = '';
+          }
+          currentLine += item.text + ' ';
+          lastY = item.y;
+        }
+      });
+    });
+
+    // Log the extracted text for debugging
+    console.log('=== PDF Text Extracted ===');
+    console.log('First 500 characters:', text.substring(0, 500));
+    console.log('Total length:', text.length);
 
     // Extract transactions
     const transactions = extractTransactions(text);
+    console.log('Transactions extracted:', transactions.length);
 
-    // Optionally save to database/API
-    if (saveToDb) {
-      // TODO: Implement database save logic here
-      // This would depend on your database setup
-      // Example: await saveTransactionsToDb(transactions);
-      console.log('Saving transactions to database...');
+    if (transactions.length === 0) {
+      console.log('No transactions found. Showing more lines:');
+      text.split('\n').slice(0, 100).forEach((line, i) => {
+        if (line.trim()) console.log(`Line ${i}:`, line);
+      });
+    } else {
+      console.log('=== Transactions JSON ===');
+      console.log(JSON.stringify(transactions, null, 2));
     }
 
-    return NextResponse.json({
-      success: true,
-      transactions,
-      count: transactions.length,
-      rawText: text // Include raw text for debugging if needed
-    });
+    // Save transactions to backend API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/transactions', '') || 'http://localhost:3000';
+    const apiKey = process.env.API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    try {
+      // Send to backend API
+      const response = await fetch(`${apiUrl}/transactions/bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify(transactions)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save transactions to database');
+      }
+
+      const saveResult = await response.json();
+      console.log('Transactions saved:', saveResult);
+
+      return NextResponse.json({
+        success: true,
+        transactions,
+        count: transactions.length,
+        saved: true,
+        saveResult
+      });
+    } catch (saveError) {
+      console.error('Error saving to database:', saveError);
+      return NextResponse.json(
+        {
+          error: 'Transactions extracted but failed to save to database',
+          transactions,
+          count: transactions.length
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error('PDF parsing error:', error);

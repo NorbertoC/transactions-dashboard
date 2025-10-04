@@ -14,6 +14,7 @@
     "next": "15.5.3",
     "next-auth": "^4.24.11",
     "pdf-parse": "^2.1.6",
+    "pdfreader": "^3.0.7",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "recharts": "^3.2.1"

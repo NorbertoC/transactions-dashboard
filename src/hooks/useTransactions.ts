@@ -9,23 +9,24 @@ export function useTransactions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const data = await ApiService.fetchTransactionsClient();
-        setTransactions(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch transactions');
-      } finally {
-        setLoading(false);
-      }
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const data = await ApiService.fetchTransactionsClient();
+      setTransactions(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch transactions');
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchData();
   }, []);
 
-  return { transactions, loading, error, refetch: () => window.location.reload() };
+  return { transactions, loading, error, refetch: fetchData };
 }
 
 export function useFilteredTransactions(

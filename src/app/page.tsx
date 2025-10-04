@@ -28,7 +28,7 @@ const COLORS = [
 
 function Dashboard() {
   const { data: session } = useSession();
-  const { transactions, loading, error } = useTransactions();
+  const { transactions, loading, error, refetch } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>('lastMonth');
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -65,13 +65,11 @@ function Dashboard() {
     setSelectedCategory(null);
   };
 
-  const handleTransactionsExtracted = (extractedTransactions: unknown[]) => {
+  const handleTransactionsExtracted = async (extractedTransactions: unknown[]) => {
     console.log('Extracted transactions:', extractedTransactions);
-    // TODO: Save to database or refresh data
-    // For now, just close the modal
     setShowUploadModal(false);
-    // You could also show a success message or refresh the transactions
-    window.location.reload(); // Simple refresh for now
+    // Refresh transactions data without page reload
+    await refetch();
   };
 
   const totalTransactions = filteredTransactions.length;
