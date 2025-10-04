@@ -20,6 +20,12 @@ interface PdfItem {
   y?: number;
 }
 
+type PdfReaderInstance = {
+  parseBuffer: (buffer: Buffer, callback: (err: Error | null, item?: PdfItem) => void) => void;
+};
+
+type PdfReaderConstructor = new (options?: unknown) => PdfReaderInstance;
+
 function computeStatementMetadata(dateIso: string): {
   statement_id: string | null;
   statement_start: string | null;
@@ -202,7 +208,10 @@ export async function POST(request: NextRequest) {
       let currentLine = '';
       let lastY = 0;
 
-      new PdfReader({}).parseBuffer(buffer, (err: Error | null, item?: PdfItem) => {
+      const PdfReaderCtor = PdfReader as unknown as PdfReaderConstructor;
+      const reader = new PdfReaderCtor({});
+
+      reader.parseBuffer(buffer, (err: Error | null, item?: PdfItem) => {
         if (err) {
           reject(err);
         } else if (!item) {
@@ -210,13 +219,14 @@ export async function POST(request: NextRequest) {
           if (currentLine) fullText += currentLine + '\n';
           resolve(fullText);
         } else if (item.text) {
+          const currentY = typeof item.y === 'number' ? item.y : lastY;
           // New line detection based on Y position
-          if (lastY !== item.y && currentLine) {
+          if (lastY !== currentY && currentLine) {
             fullText += currentLine + '\n';
             currentLine = '';
           }
           currentLine += item.text + ' ';
-          lastY = item.y;
+          lastY = currentY;
         }
       });
     });
