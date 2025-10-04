@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { categorizeMerchant } from '@/utils/classification';
 
 interface Transaction {
   place: string;
@@ -17,51 +18,6 @@ interface Transaction {
 interface PdfItem {
   text?: string;
   y?: number;
-}
-
-interface CategoryRule {
-  pattern: RegExp;
-  category: string;
-  subcategory: string;
-}
-
-const CATEGORY_RULES: CategoryRule[] = [
-  { pattern: /(public transport|at hop|bus|train|ferry)/i, category: 'Transport', subcategory: 'Public Transport' },
-  { pattern: /(uber|ola|didi|lyft)/i, category: 'Transport', subcategory: 'Rideshare' },
-  { pattern: /(lime|beam|neuron)/i, category: 'Transport', subcategory: 'Micromobility' },
-  { pattern: /(bp|z energy|caltex|mobil|gull|petrol|gasoline)/i, category: 'Transport', subcategory: 'Fuel' },
-
-  { pattern: /(woolworths|pak n save|new world|countdown|farro|supermarket)/i, category: 'Groceries', subcategory: 'Supermarkets' },
-  { pattern: /(butcher|bakery|deli|organics|wholefoods)/i, category: 'Groceries', subcategory: 'Specialty Food' },
-
-  { pattern: /(starbucks|coffee|cafe)/i, category: 'Dining', subcategory: 'Cafes' },
-  { pattern: /(mcdonald|kfc|burger king|subway|domino|pizza hut|hungry jacks)/i, category: 'Dining', subcategory: 'Fast Food' },
-  { pattern: /(restaurant|bistro|dining|cuisine|grill|izakaya|eatery)/i, category: 'Dining', subcategory: 'Restaurants' },
-
-  { pattern: /(netflix|spotify|disney\+?|apple music|youtube|paramount|hbo|amazon prime)/i, category: 'Entertainment', subcategory: 'Streaming' },
-  { pattern: /(playstation|steam|nintendo|xbox|game pass|gaming)/i, category: 'Entertainment', subcategory: 'Gaming' },
-  { pattern: /(event cinema|cinemas|movies|theatre)/i, category: 'Entertainment', subcategory: 'Movies & Events' },
-
-  { pattern: /(openai|claude|cursor|expressvpn|cloudflare|apple\.com|applecom|icloud|itunes|microsoft|google)/i, category: 'Subscriptions & Services', subcategory: 'Software & Cloud' },
-  { pattern: /(paypal|stripe|xero|freshbooks|accounting)/i, category: 'Subscriptions & Services', subcategory: 'Financial Services' },
-
-  { pattern: /(kmart|warehouse|briscoes|bunnings|mitre 10|ikea|noel leeming|harvey norman|jb hi fi)/i, category: 'Shopping', subcategory: 'Retail & Home' },
-  { pattern: /(farmer|fashion|adidas|puma|nike|seed heritage|hallenstein)/i, category: 'Shopping', subcategory: 'Apparel' },
-
-  { pattern: /(chemist|pharmacy|unimeds|medical|clinic)/i, category: 'Health', subcategory: 'Pharmacy & Health' },
-
-  { pattern: /(hotel|airbnb|accor|hilton|marriott|motel)/i, category: 'Travel', subcategory: 'Accommodation' },
-  { pattern: /(air new zealand|jetstar|qantas|airline|flight)/i, category: 'Travel', subcategory: 'Flights' }
-];
-
-function detectCategory(place: string): { category: string; subcategory: string } {
-  const rule = CATEGORY_RULES.find(({ pattern }) => pattern.test(place));
-
-  if (rule) {
-    return { category: rule.category, subcategory: rule.subcategory };
-  }
-
-  return { category: 'Other', subcategory: 'General' };
 }
 
 function computeStatementMetadata(dateIso: string): {
@@ -203,7 +159,7 @@ function extractTransactions(text: string): Transaction[] {
     if (matchedAmount) {
       const date_iso = parseDate(trans.date);
       const place = trans.description;
-      const { category, subcategory } = detectCategory(place);
+      const { category, subcategory } = categorizeMerchant(place);
       const statementMetadata = computeStatementMetadata(date_iso);
 
       transactions.push({

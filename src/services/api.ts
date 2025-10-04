@@ -1,5 +1,6 @@
 import { Transaction } from '@/types/transaction';
 import sampleData from '../../data.json';
+import { categorizeMerchant } from '@/utils/classification';
 
 export class ApiService {
   private static readonly API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -12,6 +13,16 @@ export class ApiService {
         category: transaction.category || 'Other',
         subcategory: transaction.subcategory || 'General'
       };
+
+      const classification = categorizeMerchant(transaction.place || '');
+
+      if (!normalized.category || normalized.category.toLowerCase() === 'other') {
+        normalized.category = classification.category;
+      }
+
+      if (!normalized.subcategory || normalized.subcategory.toLowerCase() === 'general') {
+        normalized.subcategory = classification.subcategory;
+      }
 
       if (!normalized.statement_id || !normalized.statement_start || !normalized.statement_end) {
         const metadata = ApiService.computeStatementMetadata(normalized.date_iso);
@@ -78,7 +89,7 @@ export class ApiService {
   static async fetchTransactions(): Promise<Transaction[]> {
     if (!this.API_URL || !this.API_KEY) {
       console.warn('API credentials not found, using sample data');
-      return sampleData as Transaction[];
+      return ApiService.normalizeTransactions(sampleData as Transaction[]);
     }
 
     try {
