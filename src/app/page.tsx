@@ -25,19 +25,7 @@ import {
 } from "@/hooks/useTransactions";
 import { useStatementFilters } from "@/hooks/useStatementFilters";
 import { lightenColor, generateColorVariants } from "@/utils/color";
-
-const COLORS = [
-  "#8B5CF6", // Purple for largest segment
-  "#EC4899", // Pink for second segment
-  "#6B7280", // Gray for smallest segment
-  "#3B82F6", // Blue
-  "#10B981", // Green
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#8B5CF6", // Purple variant
-  "#06B6D4", // Cyan
-  "#84CC16", // Lime
-];
+import { getCategoryHexColor, getCategoryBadgeStyles } from "@/constants/categories";
 
 function Dashboard() {
   const { data: session } = useSession();
@@ -84,15 +72,15 @@ function Dashboard() {
 
   const categoryColors = useMemo(() => {
     const colorMap: Record<string, string> = {};
-    categoryData.forEach((category, index) => {
-      colorMap[category.name] = COLORS[index % COLORS.length];
+    categoryData.forEach((category) => {
+      colorMap[category.name] = getCategoryHexColor(category.name);
     });
     return colorMap;
   }, [categoryData]);
 
   const pieChartData = useMemo(() => {
     if (selectedCategory) {
-      const baseColor = categoryColors[selectedCategory] || COLORS[0];
+      const baseColor = categoryColors[selectedCategory] || getCategoryHexColor(selectedCategory);
       const subcategories = subcategoryData[selectedCategory] || [];
 
       // Sort subcategories by value (highest first) to assign lighter colors to higher values
@@ -115,7 +103,7 @@ function Dashboard() {
 
     return categoryData.map((category) => ({
       ...category,
-      color: categoryColors[category.name] || COLORS[0],
+      color: categoryColors[category.name] || getCategoryHexColor(category.name),
     }));
   }, [selectedCategory, subcategoryData, categoryData, categoryColors]);
 
@@ -131,6 +119,7 @@ function Dashboard() {
     setSelectedPeriod(period);
     setSelectedCategory(null);
   };
+
 
   const handleTransactionsExtracted = async (
     extractedTransactions: unknown[]
@@ -206,7 +195,32 @@ function Dashboard() {
               transition={{ duration: 0.6 }}
               className="rounded-lg border border-gray-200 dark:border-gray-800 bg-background-light dark:bg-background-dark p-6 shadow-sm"
             >
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Spending by Category</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Spending by Category</h3>
+                  {selectedCategory && (
+                    <span
+                      className={`inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium ${
+                        getCategoryBadgeStyles(selectedCategory).bg
+                      } ${getCategoryBadgeStyles(selectedCategory).text}`}
+                    >
+                      {selectedCategory}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={handleReset}
+                  disabled={!selectedCategory}
+                  className={`flex items-center gap-1 text-sm font-medium transition-colors ${
+                    selectedCategory
+                      ? 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer'
+                      : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                  }`}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Reset</span>
+                </button>
+              </div>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">${totalAmount.toFixed(0)}</p>
               <div className="mt-1 flex items-center gap-2 text-sm">
                 <span className="text-gray-500 dark:text-gray-400">Last Month</span>
@@ -222,15 +236,24 @@ function Dashboard() {
                   colorMap={categoryColors}
                 />
               </div>
-              <div className="mt-4 flex justify-center">
-                {selectedCategory && (
-                  <button
-                    onClick={handleReset}
-                    className="text-sm font-medium text-primary hover:underline"
+              <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
+                {pieChartData.map((item, index) => (
+                  <div
+                    key={item.name}
+                    className={`flex items-center gap-2 ${
+                      !selectedCategory ? 'cursor-pointer' : 'cursor-default'
+                    }`}
+                    onClick={() => !selectedCategory && handleCategorySelect(item.name)}
                   >
-                    Reset
-                  </button>
-                )}
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    ></span>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {item.name}
+                    </p>
+                  </div>
+                ))}
               </div>
             </motion.div>
 

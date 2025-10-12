@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
 import { lightenColor, generateColorVariants } from '@/utils/color';
+import { getCategoryBadgeStyles, getCategoryHexColor } from '@/constants/categories';
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -102,7 +103,7 @@ export default function TransactionsTable({
 
     // Generate color variants for each category's subcategories
     Object.entries(categorySubcategories).forEach(([category, subcategories]) => {
-      const baseColor = categoryColors?.[category] || '#6366f1';
+      const baseColor = categoryColors?.[category] || getCategoryHexColor(category);
 
       // Sort subcategories by value (highest first)
       const sortedSubcategories = [...subcategories].sort((a, b) => b.value - a.value);
@@ -151,24 +152,8 @@ export default function TransactionsTable({
     </button>
   );
 
-  const getCategoryBadgeColor = (category: string) => {
-    const categoryColors: Record<string, { bg: string; text: string }> = {
-      'Food': { bg: 'bg-green-500/20', text: 'text-green-500' },
-      'Groceries': { bg: 'bg-green-500/20', text: 'text-green-500' },
-      'Transport': { bg: 'bg-orange-500/20', text: 'text-orange-500' },
-      'Transportation': { bg: 'bg-orange-500/20', text: 'text-orange-500' },
-      'Entertainment': { bg: 'bg-purple-500/20', text: 'text-purple-500' },
-      'Utilities': { bg: 'bg-sky-500/20', text: 'text-sky-500' },
-      'Shopping': { bg: 'bg-pink-500/20', text: 'text-pink-500' },
-      'Rent': { bg: 'bg-primary/10', text: 'text-primary' },
-      'Travel': { bg: 'bg-primary/10', text: 'text-primary' },
-    };
-
-    return categoryColors[category] || { bg: 'bg-gray-500/20', text: 'text-gray-500' };
-  };
-
   const renderCategoryBadge = (category: string) => {
-    const colors = getCategoryBadgeColor(category);
+    const colors = getCategoryBadgeStyles(category);
     return (
       <span className={`inline-flex items-center rounded-lg ${colors.bg} px-2 py-1 text-sm font-medium ${colors.text}`}>
         {category}
@@ -178,7 +163,7 @@ export default function TransactionsTable({
 
   const getSubcategoryColor = (category: string, subcategory: string): string => {
     const key = `${category}:${subcategory}`;
-    return subcategoryColorMap[key] || categoryColors?.[category] || '#6366f1';
+    return subcategoryColorMap[key] || categoryColors?.[category] || getCategoryHexColor(category);
   };
 
   const renderSubcategory = (category: string, subcategory: string | undefined) => {

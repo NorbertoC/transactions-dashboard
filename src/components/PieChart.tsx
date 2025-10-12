@@ -3,6 +3,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { ChartDataPoint } from "@/types/transaction";
+import { getCategoryHexColor } from "@/constants/categories";
 
 interface PieChartComponentProps {
   data: ChartDataPoint[];
@@ -10,19 +11,6 @@ interface PieChartComponentProps {
   selectedCategory?: string | null;
   colorMap?: Record<string, string>;
 }
-
-const COLORS = [
-  "#8B5CF6", // Purple for largest segment
-  "#EC4899", // Pink for second segment
-  "#6B7280", // Gray for smallest segment
-  "#3B82F6", // Blue
-  "#10B981", // Green
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#8B5CF6", // Purple variant
-  "#06B6D4", // Cyan
-  "#84CC16", // Lime
-];
 
 const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -91,9 +79,9 @@ export default function PieChartComponent({
               const entryColor =
                 typeof entry.color === "string" ? entry.color : undefined;
               const colorFromMap = colorMap ? colorMap[entry.name] : undefined;
-              // Prioritize entry.color (for subcategories with variants), then colorMap, then default colors
+              // Prioritize entry.color (for subcategories with variants), then colorMap, then default category colors
               const fillColor =
-                entryColor || colorFromMap || COLORS[index % COLORS.length];
+                entryColor || colorFromMap || getCategoryHexColor(entry.name);
 
               return (
                 <Cell
@@ -115,7 +103,7 @@ export default function PieChartComponent({
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <CenterLabel total={totalAmount} title={selectedCategory || undefined} />
+      <CenterLabel total={totalAmount} />
     </motion.div>
   );
 }
