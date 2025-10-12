@@ -78,26 +78,47 @@ function Dashboard() {
     return colorMap;
   }, [categoryData]);
 
+  // Generate subcategory info for each category
+  const categorySubcategoriesInfo = useMemo(() => {
+    const info: Record<string, Array<{ name: string; color: string; initials: string }>> = {};
+
+    Object.entries(subcategoryData).forEach(([category, subcategories]) => {
+      const baseColor = categoryColors[category] || getCategoryHexColor(category);
+
+      // Sort subcategories by value (highest first)
+      const sortedSubcategories = [...subcategories].sort((a, b) => b.value - a.value);
+
+      // Generate color variants
+      const colorVariants = generateColorVariants(baseColor, sortedSubcategories.length, true);
+
+      info[category] = sortedSubcategories.map((sub, index) => ({
+        name: sub.name,
+        color: colorVariants[index],
+        initials: sub.name
+          .split(' ')
+          .map(word => word[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 3) // Max 3 characters
+      }));
+    });
+
+    return info;
+  }, [subcategoryData, categoryColors]);
+
   const pieChartData = useMemo(() => {
     if (selectedCategory) {
-      const baseColor = categoryColors[selectedCategory] || getCategoryHexColor(selectedCategory);
+      const subcategoryInfo = categorySubcategoriesInfo[selectedCategory] || [];
       const subcategories = subcategoryData[selectedCategory] || [];
 
-      // Sort subcategories by value (highest first) to assign lighter colors to higher values
+      // Sort subcategories by value (highest first) to match the color assignment
       const sortedSubcategories = [...subcategories].sort(
         (a, b) => b.value - a.value
       );
 
-      // Generate color variants based on the sorted order
-      const colorVariants = generateColorVariants(
-        baseColor,
-        sortedSubcategories.length,
-        true
-      );
-
       return sortedSubcategories.map((subcategory, index) => ({
         ...subcategory,
-        color: colorVariants[index],
+        color: subcategoryInfo[index]?.color || getCategoryHexColor(selectedCategory),
       }));
     }
 
@@ -105,7 +126,7 @@ function Dashboard() {
       ...category,
       color: categoryColors[category.name] || getCategoryHexColor(category.name),
     }));
-  }, [selectedCategory, subcategoryData, categoryData, categoryColors]);
+  }, [selectedCategory, subcategoryData, categoryData, categoryColors, categorySubcategoriesInfo]);
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(selectedCategory === category ? null : category);
@@ -237,23 +258,47 @@ function Dashboard() {
                 />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                {pieChartData.map((item, index) => (
-                  <div
-                    key={item.name}
-                    className={`flex items-center gap-2 ${
-                      !selectedCategory ? 'cursor-pointer' : 'cursor-default'
-                    }`}
-                    onClick={() => !selectedCategory && handleCategorySelect(item.name)}
-                  >
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    ></span>
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {item.name}
-                    </p>
-                  </div>
-                ))}
+                {pieChartData.map((item, index) => {
+                  const subcategories = categorySubcategoriesInfo[item.name] || [];
+                  const showSubcategories = !selectedCategory && subcategories.length > 0;
+
+                  return (
+                    <div
+                      key={item.name}
+                      className={`flex items-center gap-2 ${
+                        !selectedCategory ? 'cursor-pointer' : 'cursor-default'
+                      }`}
+                      onClick={() => !selectedCategory && handleCategorySelect(item.name)}
+                    >
+                      <span
+                        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: item.color }}
+                      ></span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          {item.name}
+                        </p>
+                        {showSubcategories && (
+                          <div className="flex items-center gap-1">
+                            {subcategories.map((sub) => (
+                              <span
+                                key={sub.name}
+                                className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+                                style={{
+                                  backgroundColor: lightenColor(sub.color, 0.85),
+                                  color: sub.color
+                                }}
+                                title={sub.name}
+                              >
+                                {sub.initials}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
 
