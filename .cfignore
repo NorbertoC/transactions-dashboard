@@ -1,10 +1,23 @@
 # Cloudflare Pages Functions
 functions/
 
-# Build output
-.next/
+# Build cache and large files
+.next/cache/
+.next/standalone/
+cache/
+**/*.pack
+**/*.cache
+
+# Build output (keep .next but exclude cache)
 out/
 
 # Environment variables
 .env.local
 .env.production.local
+
+# Development files
+node_modules/
+.git/
+.gitignore
+README.md
+*.log
