@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { motion } from 'framer-motion';
-import { ChartDataPoint } from '@/types/transaction';
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
+import { ChartDataPoint } from "@/types/transaction";
 
 interface PieChartComponentProps {
   data: ChartDataPoint[];
@@ -12,16 +12,16 @@ interface PieChartComponentProps {
 }
 
 const COLORS = [
-  '#8B5CF6', // Purple for largest segment
-  '#EC4899', // Pink for second segment
-  '#6B7280', // Gray for smallest segment
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Amber
-  '#EF4444', // Red
-  '#8B5CF6', // Purple variant
-  '#06B6D4', // Cyan
-  '#84CC16'  // Lime
+  "#8B5CF6", // Purple for largest segment
+  "#EC4899", // Pink for second segment
+  "#6B7280", // Gray for smallest segment
+  "#3B82F6", // Blue
+  "#10B981", // Green
+  "#F59E0B", // Amber
+  "#EF4444", // Red
+  "#8B5CF6", // Purple variant
+  "#06B6D4", // Cyan
+  "#84CC16", // Lime
 ];
 
 const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
@@ -33,9 +33,9 @@ const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
         </div>
       )}
       <div className="text-2xl font-bold text-gray-900">
-        {total.toLocaleString('en-NZ', {
-          style: 'currency',
-          currency: 'NZD'
+        {total.toLocaleString("en-NZ", {
+          style: "currency",
+          currency: "NZD",
         })}
       </div>
     </div>
@@ -46,7 +46,7 @@ export default function PieChartComponent({
   data,
   onSegmentClick,
   selectedCategory,
-  colorMap
+  colorMap,
 }: PieChartComponentProps) {
   const totalAmount = data.reduce((sum, item) => sum + item.value, 0);
   const isInteractive = Boolean(onSegmentClick);
@@ -58,7 +58,9 @@ export default function PieChartComponent({
         animate={{ opacity: 1 }}
         className="relative w-full h-full flex items-center justify-center"
       >
-        <p className="text-sm text-gray-500">No data available for the selected filters.</p>
+        <p className="text-sm text-gray-500">
+          No data available for the selected filters.
+        </p>
       </motion.div>
     );
   }
@@ -69,10 +71,10 @@ export default function PieChartComponent({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
       className="relative w-full h-full outline-none focus:outline-none"
-      style={{ outline: 'none' }}
+      style={{ outline: "none" }}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart style={{ outline: 'none' }}>
+        <PieChart style={{ outline: "none" }}>
           <Pie
             data={data}
             cx="50%"
@@ -86,9 +88,11 @@ export default function PieChartComponent({
             cornerRadius={8}
           >
             {data.map((entry, index) => {
-              const entryColor = typeof entry.color === 'string' ? entry.color : undefined;
+              const entryColor =
+                typeof entry.color === "string" ? entry.color : undefined;
               const colorFromMap = colorMap ? colorMap[entry.name] : undefined;
-              const fillColor = entryColor || colorFromMap || COLORS[index % COLORS.length];
+              const fillColor =
+                entryColor || colorFromMap || COLORS[index % COLORS.length];
 
               return (
                 <Cell
@@ -96,8 +100,14 @@ export default function PieChartComponent({
                   fill={fillColor}
                   stroke="#ffffff"
                   strokeWidth={6}
-                  className={`${isInteractive ? 'cursor-pointer' : 'cursor-default'} hover:opacity-80 transition-opacity duration-200`}
-                  onClick={onSegmentClick ? () => onSegmentClick(entry.name) : undefined}
+                  className={`${
+                    isInteractive ? "cursor-pointer" : "cursor-default"
+                  } hover:opacity-80 transition-opacity duration-200`}
+                  onClick={
+                    onSegmentClick
+                      ? () => onSegmentClick(entry.name)
+                      : undefined
+                  }
                 />
               );
             })}
