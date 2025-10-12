@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
 import { lightenColor, adjustColor } from '@/utils/color';
 
@@ -22,6 +22,7 @@ export default function TransactionsTable({
 }: TransactionsTableProps) {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -32,7 +33,19 @@ export default function TransactionsTable({
     }
   };
 
-  const sortedTransactions = [...transactions].sort((a, b) => {
+  // Filter transactions by search query
+  const filteredTransactions = transactions.filter((transaction) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      transaction.place.toLowerCase().includes(query) ||
+      transaction.category.toLowerCase().includes(query) ||
+      transaction.subcategory?.toLowerCase().includes(query) ||
+      transaction.value.toString().includes(query)
+    );
+  });
+
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     let aValue: string | number;
     let bValue: string | number;
 
@@ -105,103 +118,72 @@ export default function TransactionsTable({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white rounded-lg shadow-lg overflow-hidden"
-    >
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">
-          {selectedCategory ? `${selectedCategory} Transactions` : 'All Transactions'}
-        </h3>
-        <p className="text-sm text-gray-600 mt-1">
-          {sortedTransactions.length} transaction{sortedTransactions.length !== 1 ? 's' : ''}
-          <span className="ml-2 text-blue-600 font-medium">
-            Total: {sortedTransactions.reduce((sum, t) => sum + t.value, 0).toLocaleString('en-NZ', {
-              style: 'currency',
-              currency: 'NZD'
-            })}
-          </span>
-        </p>
+    <div>
+      <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-white">All Transactions</h2>
+      <div className="mb-4">
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <Search className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            className="block w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark py-2 pl-10 pr-3 text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+            placeholder="Search transactions"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800"
+      >
 
-      <div className="overflow-x-auto">
         <motion.table
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="w-full"
+          className="min-w-full divide-y divide-gray-200 dark:divide-gray-800"
         >
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-800/50">
             <tr>
-              <th className="px-6 py-3 text-left text-gray-500">
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
                 <SortButton field="date">Date</SortButton>
               </th>
-              <th className="px-6 py-3 text-left text-gray-500">
-                <SortButton field="place">Place</SortButton>
-              </th>
-              <th className="px-6 py-3 text-left text-gray-500">
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
                 <SortButton field="category">Category</SortButton>
               </th>
-              <th className="px-6 py-3 text-right text-gray-500">
-                <div className="flex justify-end">
-                  <SortButton field="amount">Amount</SortButton>
-                </div>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
+                <SortButton field="place">Description</SortButton>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
+                <SortButton field="amount">Amount</SortButton>
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-background-dark">
             {sortedTransactions.map((transaction) => (
               <motion.tr
                 key={transaction.id}
                 variants={rowVariants}
-                className="hover:bg-gray-50 transition-colors duration-150"
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(transaction.date_iso).toLocaleDateString('en-NZ', {
-                    day: '2-digit',
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  {new Date(transaction.date_iso).toLocaleDateString('en-US', {
+                    year: 'numeric',
                     month: '2-digit',
-                    year: 'numeric'
+                    day: '2-digit'
                   })}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {transaction.place}
-                  </div>
+                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                  {transaction.category || 'Other'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      selectedCategory === transaction.category
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {transaction.category || 'Other'}
-                    </span>
-                    {transaction.subcategory && (
-                      <span
-                        className="mt-1 inline-flex w-fit text-xs font-semibold px-2 py-1 rounded"
-                        style={getSubcategoryStyles(transaction.category)}
-                      >
-                        {transaction.subcategory}
-                      </span>
-                    )}
-                  </div>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  {transaction.place}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <span className={`font-semibold ${
-                    transaction.value <= 50
-                      ? 'text-green-600'
-                      : transaction.value <= 100
-                        ? 'text-yellow-600'
-                        : 'text-red-600'
-                  }`}>
-                    {transaction.value.toLocaleString('en-NZ', {
-                      style: 'currency',
-                      currency: 'NZD'
-                    })}
-                  </span>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white">
+                  ${transaction.value.toFixed(2)}
                 </td>
               </motion.tr>
             ))}
@@ -214,10 +196,10 @@ export default function TransactionsTable({
             animate={{ opacity: 1 }}
             className="text-center py-12"
           >
-            <p className="text-gray-500">No transactions found</p>
+            <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
           </motion.div>
         )}
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }

@@ -108,45 +108,30 @@ export default function MonthlyEvolutionChart({
 
   if (chartData.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-white rounded-lg shadow-lg p-6"
-      >
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          Monthly Evolution {selectedCategory ? `- ${selectedCategory}` : ''}
-        </h3>
-        <div className="flex items-center justify-center h-64 text-gray-500">
-          <p>No data available to display</p>
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Monthly Evolution</h3>
+        <p className="text-3xl font-bold text-gray-900 dark:text-white">$0</p>
+        <div className="mt-1 flex items-center gap-2 text-sm">
+          <span className="text-gray-500 dark:text-gray-400">Last 6 Months</span>
         </div>
-      </motion.div>
+        <div className="mt-6 h-60 w-full flex items-center justify-center">
+          <p className="text-gray-500 dark:text-gray-400">No data available to display</p>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white rounded-lg shadow-lg p-6"
-    >
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-semibold text-gray-800">
-          Monthly Evolution {selectedCategory ? `- ${selectedCategory}` : ''}
-        </h3>
-        <div className="text-right">
-          <p className="text-sm text-gray-600">Period Total</p>
-          <p className="text-lg font-bold text-gray-900">
-            {chartData.reduce((sum, d) => sum + d.amount, 0).toLocaleString('en-NZ', {
-              style: 'currency',
-              currency: 'NZD'
-            })}
-          </p>
-        </div>
-      </div>
+  const totalAmount = chartData.reduce((sum, d) => sum + d.amount, 0);
 
-      <div className="h-80">
+  return (
+    <div>
+      <h3 className="text-lg font-medium text-gray-900 dark:text-white">Monthly Evolution</h3>
+      <p className="text-3xl font-bold text-gray-900 dark:text-white">${totalAmount.toFixed(0)}</p>
+      <div className="mt-1 flex items-center gap-2 text-sm">
+        <span className="text-gray-500 dark:text-gray-400">Last 6 Months</span>
+        <span className="font-medium text-red-500">-5%</span>
+      </div>
+      <div className="mt-6 h-60 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
@@ -181,24 +166,6 @@ export default function MonthlyEvolutionChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-gray-600">Monthly Average</p>
-          <p className="font-semibold text-gray-900">
-            {(chartData.reduce((sum, d) => sum + d.amount, 0) / chartData.length).toLocaleString('en-NZ', {
-              style: 'currency',
-              currency: 'NZD'
-            })}
-          </p>
-        </div>
-        <div>
-          <p className="text-gray-600">Total Transactions</p>
-          <p className="font-semibold text-gray-900">
-            {chartData.reduce((sum, d) => sum + d.count, 0)}
-          </p>
-        </div>
-      </div>
-    </motion.div>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
+import Header from "@/components/Header";
 import PieChartComponent from "@/components/PieChart";
 import MonthlyEvolutionChart from "@/components/MonthlyEvolutionChart";
 import TransactionsTable from "@/components/TransactionsTable";
@@ -148,15 +149,15 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
           className="text-center"
         >
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading transactions...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Loading transactions...</p>
         </motion.div>
       </div>
     );
@@ -164,13 +165,13 @@ function Dashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center bg-white p-8 rounded-lg shadow-lg"
+          className="text-center bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg"
         >
-          <p className="text-red-600 text-lg mb-4">Error: {error}</p>
+          <p className="text-red-600 dark:text-red-400 text-lg mb-4">Error: {error}</p>
           <button
             onClick={() => window.location.reload()}
             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
@@ -183,269 +184,83 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
-        <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex justify-between items-center mb-8"
-        >
-          <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              Transactions Dashboard
-            </h1>
-            <p className="text-gray-600">
-              Interactive visualization of your spending patterns
-            </p>
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1 px-4 py-8 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financial Overview</h1>
+            <p className="text-gray-500 dark:text-gray-400">Track your spending and manage your finances effectively.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              Welcome, {session?.user?.name}
-            </span>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+
+          <PeriodFilter
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={handlePeriodChange}
+            options={periodOptions}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-background-dark p-6 shadow-sm"
             >
-              <Upload className="h-4 w-4" />
-              Upload PDF
-            </button>
-            <button
-              onClick={() => signOut()}
-              className="flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          </div>
-        </motion.header>
-
-        <PeriodFilter
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={handlePeriodChange}
-          options={periodOptions}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-        >
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Spent</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {totalAmount.toLocaleString("en-NZ", {
-                    style: "currency",
-                    currency: "NZD",
-                  })}
-                </p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Spending by Category</h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">${totalAmount.toFixed(0)}</p>
+              <div className="mt-1 flex items-center gap-2 text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Last Month</span>
+                <span className="font-medium text-green-500">+12%</span>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center">
-              <TrendingDown className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  Transactions
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {totalTransactions}
-                </p>
+              <div className="mt-6 h-60 w-full">
+                <PieChartComponent
+                  data={pieChartData}
+                  onSegmentClick={
+                    selectedCategory ? undefined : handleCategorySelect
+                  }
+                  selectedCategory={selectedCategory}
+                  colorMap={categoryColors}
+                />
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Categories</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {categoryData.length}
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-lg p-6 h-[500px] flex flex-col"
-          >
-            {selectedCategory ? (
-              // Selected category view
-              <>
-                <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  {selectedCategory}
+              <div className="mt-4 flex justify-center">
+                {selectedCategory && (
                   <button
                     onClick={handleReset}
-                    className="ml-auto flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    className="text-sm font-medium text-primary hover:underline"
                   >
-                    <RotateCcw className="h-3 w-3" />
                     Reset
                   </button>
-                </h3>
+                )}
+              </div>
+            </motion.div>
 
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {selectedCategoryData?.value.toLocaleString("en-NZ", {
-                      style: "currency",
-                      currency: "NZD",
-                    })}
-                  </p>
-                </div>
-
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                    Recent Transactions
-                  </h4>
-                  <div className="space-y-2 flex-1 overflow-y-auto">
-                    {displayTransactions.slice(0, 5).map((transaction) => (
-                      <div
-                        key={transaction.id}
-                        className="flex justify-between items-center p-2 bg-gray-50 rounded"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {transaction.place}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            {new Date(transaction.date_iso).toLocaleDateString(
-                              "en-NZ",
-                              {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              }
-                            )}
-                          </p>
-                        </div>
-                        <span
-                          className={`text-sm font-semibold ${
-                            transaction.value <= 50
-                              ? "text-green-600"
-                              : transaction.value <= 100
-                              ? "text-yellow-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {transaction.value.toLocaleString("en-NZ", {
-                            style: "currency",
-                            currency: "NZD",
-                          })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
-              // Global categories overview
-              <>
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                  All Categories
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Click on any category to see details
-                </p>
-
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {categoryData.map((category, index) => (
-                    <div
-                      key={category.name}
-                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => handleCategorySelect(category.name)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{
-                            backgroundColor:
-                              categoryColors[category.name] ||
-                              COLORS[index % COLORS.length],
-                          }}
-                        ></div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {category.name}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            {category.count} transactions
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-gray-900">
-                          {category.value.toLocaleString("en-NZ", {
-                            style: "currency",
-                            currency: "NZD",
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {category.percentage.toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-background-dark p-6 shadow-sm"
+            >
+              <MonthlyEvolutionChart
+                transactions={filteredTransactions}
+                selectedCategory={selectedCategory}
+                categoryColors={categoryColors}
+              />
+            </motion.div>
+          </div>
 
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="bg-white rounded-lg shadow-lg p-4 h-[500px] relative lg:col-span-3"
           >
-            <div className="h-full">
-              <PieChartComponent
-                data={pieChartData}
-                onSegmentClick={
-                  selectedCategory ? undefined : handleCategorySelect
-                }
-                selectedCategory={selectedCategory}
-                colorMap={categoryColors}
-              />
-            </div>
+            <TransactionsTable
+              transactions={displayTransactions}
+              selectedCategory={selectedCategory}
+              categoryColors={categoryColors}
+            />
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="mb-8"
-        >
-          <MonthlyEvolutionChart
-            transactions={filteredTransactions}
-            selectedCategory={selectedCategory}
-            categoryColors={categoryColors}
-          />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-        >
-          <TransactionsTable
-            transactions={displayTransactions}
-            selectedCategory={selectedCategory}
-            categoryColors={categoryColors}
-          />
-        </motion.div>
-      </div>
+      </main>
 
       {/* Upload PDF Modal */}
       {showUploadModal && (
