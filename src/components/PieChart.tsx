@@ -91,6 +91,7 @@ export default function PieChartComponent({
               const entryColor =
                 typeof entry.color === "string" ? entry.color : undefined;
               const colorFromMap = colorMap ? colorMap[entry.name] : undefined;
+              // Prioritize entry.color (for subcategories with variants), then colorMap, then default colors
               const fillColor =
                 entryColor || colorFromMap || COLORS[index % COLORS.length];
 
