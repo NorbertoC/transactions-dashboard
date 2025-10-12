@@ -204,7 +204,7 @@ function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-background-dark p-6 shadow-sm"
+              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-background-light dark:bg-background-dark p-6 shadow-sm"
             >
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Spending by Category</h3>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">${totalAmount.toFixed(0)}</p>
@@ -238,7 +238,7 @@ function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-background-dark p-6 shadow-sm"
+              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-background-light dark:bg-background-dark p-6 shadow-sm"
             >
               <MonthlyEvolutionChart
                 transactions={filteredTransactions}

@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -26,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background-light dark:bg-background-dark text-gray-800 dark:text-gray-200`}
+        className={`${inter.variable} font-display bg-background-light dark:bg-background-dark text-gray-800 dark:text-gray-200`}
       >
         <SessionProvider>
           {children}

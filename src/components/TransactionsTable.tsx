@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
-import { lightenColor, adjustColor } from '@/utils/color';
+import { lightenColor, generateColorVariants } from '@/utils/color';
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -75,6 +75,50 @@ export default function TransactionsTable({
     return 0;
   });
 
+  // Generate subcategory color mapping
+  const subcategoryColorMap = useMemo(() => {
+    const colorMap: Record<string, string> = {};
+
+    // Group transactions by category and subcategory
+    const categorySubcategories: Record<string, Array<{ name: string; value: number }>> = {};
+
+    transactions.forEach((transaction) => {
+      const category = transaction.category;
+      const subcategory = transaction.subcategory;
+
+      if (!category || !subcategory) return;
+
+      if (!categorySubcategories[category]) {
+        categorySubcategories[category] = [];
+      }
+
+      const existing = categorySubcategories[category].find(s => s.name === subcategory);
+      if (existing) {
+        existing.value += transaction.value;
+      } else {
+        categorySubcategories[category].push({ name: subcategory, value: transaction.value });
+      }
+    });
+
+    // Generate color variants for each category's subcategories
+    Object.entries(categorySubcategories).forEach(([category, subcategories]) => {
+      const baseColor = categoryColors?.[category] || '#6366f1';
+
+      // Sort subcategories by value (highest first)
+      const sortedSubcategories = [...subcategories].sort((a, b) => b.value - a.value);
+
+      // Generate color variants
+      const colorVariants = generateColorVariants(baseColor, sortedSubcategories.length, true);
+
+      // Map subcategory names to colors
+      sortedSubcategories.forEach((subcategory, index) => {
+        colorMap[`${category}:${subcategory.name}`] = colorVariants[index];
+      });
+    });
+
+    return colorMap;
+  }, [transactions, categoryColors]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -107,14 +151,55 @@ export default function TransactionsTable({
     </button>
   );
 
-  const getCategoryColor = (category: string) => categoryColors?.[category] || '#6366f1';
-
-  const getSubcategoryStyles = (category: string) => {
-    const base = getCategoryColor(category);
-    return {
-      backgroundColor: lightenColor(base, 0.75),
-      color: adjustColor(base, -0.4),
+  const getCategoryBadgeColor = (category: string) => {
+    const categoryColors: Record<string, { bg: string; text: string }> = {
+      'Food': { bg: 'bg-green-500/20', text: 'text-green-500' },
+      'Groceries': { bg: 'bg-green-500/20', text: 'text-green-500' },
+      'Transport': { bg: 'bg-orange-500/20', text: 'text-orange-500' },
+      'Transportation': { bg: 'bg-orange-500/20', text: 'text-orange-500' },
+      'Entertainment': { bg: 'bg-purple-500/20', text: 'text-purple-500' },
+      'Utilities': { bg: 'bg-sky-500/20', text: 'text-sky-500' },
+      'Shopping': { bg: 'bg-pink-500/20', text: 'text-pink-500' },
+      'Rent': { bg: 'bg-primary/10', text: 'text-primary' },
+      'Travel': { bg: 'bg-primary/10', text: 'text-primary' },
     };
+
+    return categoryColors[category] || { bg: 'bg-gray-500/20', text: 'text-gray-500' };
+  };
+
+  const renderCategoryBadge = (category: string) => {
+    const colors = getCategoryBadgeColor(category);
+    return (
+      <span className={`inline-flex items-center rounded-lg ${colors.bg} px-2 py-1 text-sm font-medium ${colors.text}`}>
+        {category}
+      </span>
+    );
+  };
+
+  const getSubcategoryColor = (category: string, subcategory: string): string => {
+    const key = `${category}:${subcategory}`;
+    return subcategoryColorMap[key] || categoryColors?.[category] || '#6366f1';
+  };
+
+  const renderSubcategory = (category: string, subcategory: string | undefined) => {
+    if (!subcategory) {
+      return <span className="text-gray-500 dark:text-gray-400">-</span>;
+    }
+
+    const color = getSubcategoryColor(category, subcategory);
+    const bgColor = lightenColor(color, 0.85);
+
+    return (
+      <span
+        className="inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium"
+        style={{
+          backgroundColor: bgColor,
+          color: color
+        }}
+      >
+        {subcategory}
+      </span>
+    );
   };
 
   return (
@@ -126,7 +211,7 @@ export default function TransactionsTable({
             <Search className="h-5 w-5 text-gray-400" />
           </div>
           <input
-            className="block w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark py-2 pl-10 pr-3 text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+            className="block w-full rounded border border-gray-200 dark:border-gray-700 bg-background-light dark:bg-background-dark py-2 pl-10 pr-3 text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
             placeholder="Search transactions"
             type="text"
             value={searchQuery}
@@ -153,17 +238,20 @@ export default function TransactionsTable({
                 <SortButton field="date">Date</SortButton>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
-                <SortButton field="category">Category</SortButton>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
                 <SortButton field="place">Description</SortButton>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
+                <SortButton field="category">Category</SortButton>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
+                Subcategory
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
                 <SortButton field="amount">Amount</SortButton>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-background-dark">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-background-light dark:bg-background-dark">
             {sortedTransactions.map((transaction) => (
               <motion.tr
                 key={transaction.id}
@@ -176,13 +264,16 @@ export default function TransactionsTable({
                     day: '2-digit'
                   })}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                  {transaction.category || 'Other'}
-                </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                   {transaction.place}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white">
+                <td className="whitespace-nowrap px-6 py-4 text-sm">
+                  {renderCategoryBadge(transaction.category || 'Other')}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm">
+                  {renderSubcategory(transaction.category, transaction.subcategory)}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white text-right">
                   ${transaction.value.toFixed(2)}
                 </td>
               </motion.tr>

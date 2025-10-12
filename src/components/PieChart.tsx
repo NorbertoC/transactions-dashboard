@@ -28,11 +28,11 @@ const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
     <div className="text-center">
       {title && (
-        <div className="text-xs font-semibold text-gray-500 tracking-wide uppercase mb-1">
+        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide uppercase mb-1">
           {title}
         </div>
       )}
-      <div className="text-2xl font-bold text-gray-900">
+      <div className="text-xl font-bold text-gray-900 dark:text-white">
         {total.toLocaleString("en-NZ", {
           style: "currency",
           currency: "NZD",
@@ -79,8 +79,8 @@ export default function PieChartComponent({
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={100}
-            outerRadius={170}
+            innerRadius={70}
+            outerRadius={115}
             startAngle={90}
             endAngle={450}
             dataKey="value"

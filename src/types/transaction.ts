@@ -11,6 +11,7 @@ export interface Transaction {
   statement_id?: string | null;
   statement_start?: string | null;
   statement_end?: string | null;
+  status?: 'Completed' | 'Pending' | 'Overdue';
 }
 
 export interface CategoryData {
