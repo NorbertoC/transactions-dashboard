@@ -48,7 +48,8 @@ export function darkenColor(hex: string, factor: number): string {
  * @returns Array of color variants, with lightest colors for highest values
  */
 export function generateColorVariants(baseColor: string, count: number, sortedByValue: boolean = true): string[] {
-  if (count <= 1) return [baseColor];
+  if (count <= 0) return [];
+  if (count === 1) return [baseColor];
   
   const variants: string[] = [];
   

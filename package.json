@@ -7,7 +7,12 @@
     "build": "next build",
     "build:cf": "rm -rf .next && next build && echo 'Build completed for Cloudflare Pages'",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "prepare": "husky"
   },
   "dependencies": {
     "framer-motion": "^12.23.13",
@@ -25,9 +30,14 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
+    "husky": "^9.1.7",
+    "jsdom": "^27.0.0",
+    "lint-staged": "^16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
