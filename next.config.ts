@@ -1,16 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Configuration for Cloudflare Pages
-  distDir: '.next',
+  // Configuration optimized for Cloudflare Pages
+  
+  // Enable static export for pages but keep API routes as functions
+  trailingSlash: true,
+  
+  // Optimize images for Cloudflare
+  images: {
+    unoptimized: true,
+  },
   
   // Optimize for Cloudflare Pages
   compress: true,
   
-  // Disable webpack cache for production builds
+  // Disable webpack cache for production builds to avoid size issues
   webpack: (config, { dev }) => {
     if (!dev) {
-      // Disable webpack cache in production to avoid large cache files
       config.cache = false;
     }
     return config;
