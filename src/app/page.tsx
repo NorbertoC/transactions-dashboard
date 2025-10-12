@@ -2,15 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  RotateCcw,
-  TrendingDown,
-  Calendar,
-  DollarSign,
-  LogOut,
-  Upload,
-} from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { RotateCcw } from "lucide-react";
+import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 import PieChartComponent from "@/components/PieChart";
 import MonthlyEvolutionChart from "@/components/MonthlyEvolutionChart";
@@ -195,7 +188,7 @@ function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <Header onUploadClick={() => setShowUploadModal(true)} />
       <main className="flex-1 px-4 py-8 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8">

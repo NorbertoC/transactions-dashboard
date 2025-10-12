@@ -173,10 +173,6 @@ function extractTransactions(text: string): Transaction[] {
     }
   }
 
-  if (amountsRaw.length > transactionsRaw.length) {
-    amountsRaw.splice(0, amountsRaw.length - transactionsRaw.length);
-  }
-
   if (directTransactions.length > 0 && transactionsRaw.length === 0) {
     return directTransactions.map(({ date, description, value }) => {
       const date_iso = parseDate(date);
@@ -205,26 +201,29 @@ function extractTransactions(text: string): Transaction[] {
     let bestIdx: number | null = null;
     let bestDiff = Number.POSITIVE_INFINITY;
 
+    // First pass: Find the closest amount AFTER the transaction (within reasonable distance)
     for (let i = 0; i < amountsRaw.length; i++) {
       if (usedAmounts.has(i)) {
         continue;
       }
       const diff = amountsRaw[i].index - transactionIndex;
-      if (diff >= 0 && diff < bestDiff) {
+      // Only match amounts that come after the transaction and within 5 lines
+      if (diff > 0 && diff <= 5 && diff < bestDiff) {
         bestDiff = diff;
         bestIdx = i;
       }
     }
 
+    // Second pass: If no close match found, look for amounts on the same line
     if (bestIdx === null) {
-      for (let i = amountsRaw.length - 1; i >= 0; i--) {
+      for (let i = 0; i < amountsRaw.length; i++) {
         if (usedAmounts.has(i)) {
           continue;
         }
-        const diff = transactionIndex - amountsRaw[i].index;
-        if (diff >= 0 && diff < bestDiff) {
-          bestDiff = diff;
+        const diff = Math.abs(amountsRaw[i].index - transactionIndex);
+        if (diff === 0) {
           bestIdx = i;
+          break;
         }
       }
     }
@@ -240,6 +239,7 @@ function extractTransactions(text: string): Transaction[] {
   for (const transactionLine of transactionsRaw) {
     const matchedAmount = findAmountForTransaction(transactionLine.index);
     if (!matchedAmount) {
+      console.warn(`No amount found for transaction at line ${transactionLine.index}: ${transactionLine.description}`);
       continue;
     }
 
