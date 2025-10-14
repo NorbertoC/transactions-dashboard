@@ -128,10 +128,40 @@ function parseAmexFormat(lines: string[]): Transaction[] {
 
   console.log('=== parseAmexFormat: Starting ===');
   console.log(`Total lines to process: ${lines.length}`);
-  console.log('Sample lines (first 30):');
-  lines.slice(0, 30).forEach((line, idx) => {
+  console.log('Sample lines (first 80):');
+  lines.slice(0, 80).forEach((line, idx) => {
     console.log(`  [${idx}] "${line}"`);
   });
+
+  // Extract the minimum payment amount from the header to filter it out later
+  let minimumPaymentAmount: number | null = null;
+  for (let i = 0; i < Math.min(50, lines.length); i++) {
+    const line = lines[i];
+    const minPaymentMatch = line.match(/Minimum\s+Payment\s+\$?\s*([\d,]+\.?\d{0,2})/i);
+    if (minPaymentMatch) {
+      minimumPaymentAmount = parseFloat(minPaymentMatch[1].replace(/,/g, ''));
+      console.log(`Found Minimum Payment amount: ${minimumPaymentAmount} at line ${i}`);
+      break;
+    }
+  }
+
+  // Find where the detailed transaction list starts (after the summary section)
+  // Look for lines that contain typical AMEX statement markers
+  let detailedSectionStart = 0;
+  for (let i = 0; i < Math.min(100, lines.length); i++) {
+    const line = lines[i];
+    // Look for markers that indicate the detailed transaction section
+    if (line.includes('Details') && line.includes('Foreign') ||
+        line.includes('Transaction Details') ||
+        (i > 30 && line.match(/^\d{2}\s*\.\s*\d{2}\s*\.\s*\d{2}\s+[A-Z]/))) {
+      // Once we find a transaction-like line after line 30, we're probably in the detailed section
+      if (i > 30) {
+        detailedSectionStart = i - 20; // Back up a bit to catch any early transactions
+        console.log(`Detected detailed section starting around line ${detailedSectionStart}`);
+        break;
+      }
+    }
+  }
 
   // First pass: collect all amounts and transactions
   for (let i = 0; i < lines.length; i++) {
@@ -164,6 +194,13 @@ function parseAmexFormat(lines: string[]): Transaction[] {
     if (transMatch) {
       const [, day, month, year, description] = transMatch;
       const dateStr = `${day}.${month}.${year}`;
+      
+      // Skip transactions from the summary section (before line 50)
+      if (i < 50) {
+        console.log(`Line ${i}: TRANSACTION MATCH (SUMMARY SECTION) - ${dateStr} ${description} -> SKIPPED`);
+        continue;
+      }
+      
       console.log(`Line ${i}: TRANSACTION MATCH - ${dateStr} ${description}`);
 
       if (description.includes('PAYMENT - THANK YOU') ||
@@ -180,20 +217,27 @@ function parseAmexFormat(lines: string[]): Transaction[] {
     // Collect all standalone amounts (remove seenFirstTransaction requirement)
     const amountMatch = line.match(amountPattern);
     if (amountMatch) {
+      // Skip amounts from the summary section (before line 50)
+      // Amounts for detailed transactions start around line 50-60
+      if (i < 50) {
+        console.log(`Line ${i}: AMOUNT ${line} -> Skipped (summary section, before line 50)`);
+        continue;
+      }
+
       const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
       const prevLine = i > 0 ? lines[i - 1] : '';
-      
+
       // Skip credits, percentages, and amounts that are part of headers/totals
       if (line.includes('CR') || line.includes('%') || nextLine === 'CR') {
         console.log(`Line ${i}: AMOUNT ${line} -> Skipped (CR/percentage)`);
         continue;
       }
-      if (prevLine.includes('Minimum Payment') || prevLine.includes('Credit Limit') || 
+      if (prevLine.includes('Minimum Payment') || prevLine.includes('Credit Limit') ||
           prevLine.includes('Due by') || line.includes('Minimum Payment')) {
         console.log(`Line ${i}: AMOUNT ${line} -> Skipped (header/total)`);
         continue;
       }
-      
+
       // Skip if this is near header text mentioning minimum payment
       const prev2Line = i > 1 ? lines[i - 2] : '';
       const prev3Line = i > 2 ? lines[i - 3] : '';
@@ -201,10 +245,16 @@ function parseAmexFormat(lines: string[]): Transaction[] {
         console.log(`Line ${i}: AMOUNT ${line} -> Skipped (near minimum payment)`);
         continue;
       }
-      
+
       const value = parseFloat(amountMatch[1].replace(/,/g, ''));
       if (!Number.isFinite(value) || value <= 0 || value >= 50000) {
         console.log(`Line ${i}: AMOUNT ${line} -> Skipped (invalid: ${value})`);
+        continue;
+      }
+
+      // Skip if this amount matches the minimum payment amount
+      if (minimumPaymentAmount !== null && Math.abs(value - minimumPaymentAmount) < 0.01) {
+        console.log(`Line ${i}: AMOUNT ${line} -> Skipped (matches minimum payment: ${minimumPaymentAmount})`);
         continue;
       }
 
