@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 import { categorizeMerchant } from '@/utils/classification';
 
 interface Transaction {
@@ -367,6 +369,17 @@ function createTransaction(dateStr: string, description: string, value: number, 
 
 export async function POST(request: NextRequest) {
   console.log('=== PDF Upload Route Called ===');
+  
+  // Check authentication
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    console.log('Unauthorized: No session found');
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+  
   try {
     console.log('Parsing form data...');
     const formData = await request.formData();

@@ -15,12 +15,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api/auth (auth endpoints)
+     * - api (API routes including auth)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - auth/signin (signin page)
+     * - auth (all auth pages)
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|auth/signin).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|auth).*)',
   ],
 };
