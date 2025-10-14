@@ -90,10 +90,32 @@ function parseDate(dateStr: string): string {
   return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
-// Extract transactions from PDF text (American Express format)
+// Enhanced PDF parser that can handle multiple statement formats
 function extractTransactions(text: string): Transaction[] {
-  const lines = text.split('\n');
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // Try different parsing strategies
+  const parsers = [
+    parseAmexFormat,
+    parseStandardBankFormat,
+    parseTabularFormat,
+    parseNZBankFormat
+  ];
 
+  for (const parser of parsers) {
+    const transactions = parser(lines);
+    if (transactions.length > 0) {
+      console.log(`Successfully parsed using ${parser.name}, found ${transactions.length} transactions`);
+      return transactions;
+    }
+  }
+
+  console.warn('No suitable parser found for this PDF format');
+  return [];
+}
+
+// American Express format parser (existing logic)
+function parseAmexFormat(lines: string[]): Transaction[] {
   const transactionWithAmountPattern = /^(\d{2})\s*\.\s*(\d{2})\s*\.\s*(\d{2})\s+(.+?)\s+([\d,]+\.\d{2})$/;
   const transactionPattern = /^(\d{2})\s*\.\s*(\d{2})\s*\.\s*(\d{2})\s+(.+)$/;
   const amountPattern = /^([\d,]+\.\d{2})$/;
@@ -105,10 +127,7 @@ function extractTransactions(text: string): Transaction[] {
   let seenFirstTransaction = false;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]?.trim() ?? '';
-    if (!line) {
-      continue;
-    }
+    const line = lines[i];
 
     const directMatch = line.match(transactionWithAmountPattern);
     if (directMatch) {
@@ -121,17 +140,9 @@ function extractTransactions(text: string): Transaction[] {
       }
 
       const value = parseFloat(amountRaw.replace(/,/g, ''));
+      if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
 
-      if (!Number.isFinite(value) || value <= 0 || value >= 10000) {
-        continue;
-      }
-
-      directTransactions.push({
-        date: dateStr,
-        description: descriptionRaw.trim(),
-        value
-      });
-
+      directTransactions.push({ date: dateStr, description: descriptionRaw.trim(), value });
       seenFirstTransaction = true;
       continue;
     }
@@ -146,130 +157,229 @@ function extractTransactions(text: string): Transaction[] {
         continue;
       }
 
-      transactionsRaw.push({
-        date: dateStr,
-        description: description.trim(),
-        index: i
-      });
+      transactionsRaw.push({ date: dateStr, description: description.trim(), index: i });
       seenFirstTransaction = true;
       continue;
     }
 
     const amountMatch = line.match(amountPattern);
     if (amountMatch && seenFirstTransaction) {
-      const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
-      if (line.includes('CR') || line.includes('%') || nextLine === 'CR') {
-        continue;
-      }
+      const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+      if (line.includes('CR') || line.includes('%') || nextLine === 'CR') continue;
 
-      const cleanAmount = amountMatch[1].replace(/,/g, '');
-      const value = parseFloat(cleanAmount);
-
-      if (!Number.isFinite(value) || value <= 0 || value >= 10000) {
-        continue;
-      }
+      const value = parseFloat(amountMatch[1].replace(/,/g, ''));
+      if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
 
       amountsRaw.push({ value, index: i });
     }
   }
 
-  if (directTransactions.length > 0 && transactionsRaw.length === 0) {
-    return directTransactions.map(({ date, description, value }) => {
-      const date_iso = parseDate(date);
-      const place = description;
-      const { category, subcategory } = categorizeMerchant(place);
-      const statementMetadata = computeStatementMetadata(date_iso);
-
-      return {
-        place,
-        amount: `$${value.toFixed(2)}`,
-        date: date_iso,
-        currency: 'NZD',
-        value,
-        date_iso,
-        category,
-        subcategory,
-        ...statementMetadata
-      };
-    });
+  if (directTransactions.length > 0) {
+    return directTransactions.map(({ date, description, value }) => 
+      createTransaction(date, description, value, parseDate(date))
+    );
   }
 
+  // Match transactions with amounts for AMEX format
   const usedAmounts = new Set<number>();
   const transactions: Transaction[] = [];
 
-  const findAmountForTransaction = (transactionIndex: number) => {
-    let bestIdx: number | null = null;
-    let bestDiff = Number.POSITIVE_INFINITY;
-
-    // First pass: Find the closest amount AFTER the transaction (within reasonable distance)
-    for (let i = 0; i < amountsRaw.length; i++) {
-      if (usedAmounts.has(i)) {
-        continue;
-      }
-      const diff = amountsRaw[i].index - transactionIndex;
-      // Only match amounts that come after the transaction and within 5 lines
-      if (diff > 0 && diff <= 5 && diff < bestDiff) {
-        bestDiff = diff;
-        bestIdx = i;
-      }
-    }
-
-    // Second pass: If no close match found, look for amounts on the same line
-    if (bestIdx === null) {
-      for (let i = 0; i < amountsRaw.length; i++) {
-        if (usedAmounts.has(i)) {
-          continue;
-        }
-        const diff = Math.abs(amountsRaw[i].index - transactionIndex);
-        if (diff === 0) {
-          bestIdx = i;
-          break;
-        }
-      }
-    }
-
-    if (bestIdx === null) {
-      return null;
-    }
-
-    usedAmounts.add(bestIdx);
-    return amountsRaw[bestIdx];
-  };
-
   for (const transactionLine of transactionsRaw) {
-    const matchedAmount = findAmountForTransaction(transactionLine.index);
-    if (!matchedAmount) {
-      console.warn(`No amount found for transaction at line ${transactionLine.index}: ${transactionLine.description}`);
-      continue;
-    }
+    const matchedAmount = findClosestAmount(transactionLine.index, amountsRaw, usedAmounts);
+    if (!matchedAmount) continue;
 
     const date_iso = parseDate(transactionLine.date);
-    const place = transactionLine.description;
-    const { category, subcategory } = categorizeMerchant(place);
-    const statementMetadata = computeStatementMetadata(date_iso);
-
-    transactions.push({
-      place,
-      amount: `$${matchedAmount.value.toFixed(2)}`,
-      date: date_iso,
-      currency: 'NZD',
-      value: matchedAmount.value,
-      date_iso,
-      category,
-      subcategory,
-      ...statementMetadata
-    });
+    transactions.push(createTransaction(transactionLine.date, transactionLine.description, matchedAmount.value, date_iso));
   }
 
   return transactions;
 }
 
+// Standard bank format parser (DD/MM/YYYY or DD-MM-YYYY with description and amount)
+function parseStandardBankFormat(lines: string[]): Transaction[] {
+  const transactions: Transaction[] = [];
+  
+  // Pattern for dates like DD/MM/YYYY or DD-MM-YYYY followed by description and amount
+  const transactionPattern = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(.+?)\s+([\$\£\€]?[\d,]+\.?\d{0,2})$/;
+  
+  for (const line of lines) {
+    const match = line.match(transactionPattern);
+    if (!match) continue;
+    
+    const [, day, month, year, description, amountStr] = match;
+    
+    // Skip payment/credit entries
+    if (description.toLowerCase().includes('payment') || 
+        description.toLowerCase().includes('credit') ||
+        description.toLowerCase().includes('thank you')) {
+      continue;
+    }
+    
+    const value = parseFloat(amountStr.replace(/[\$\£\€,]/g, ''));
+    if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
+    
+    const dateStr = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year.slice(-2)}`;
+    const date_iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    
+    transactions.push(createTransaction(dateStr, description.trim(), value, date_iso));
+  }
+  
+  return transactions;
+}
+
+// Tabular format parser (for PDFs with clear column structure)
+function parseTabularFormat(lines: string[]): Transaction[] {
+  const transactions: Transaction[] = [];
+  
+  // Look for lines that might be tabular data with multiple whitespace separators
+  const tabularPattern = /^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})\s{2,}(.+?)\s{2,}([\$\£\€]?[\d,]+\.?\d{0,2})$/;
+  
+  for (const line of lines) {
+    const match = line.match(tabularPattern);
+    if (!match) continue;
+    
+    const [, dateStr, description, amountStr] = match;
+    
+    if (description.toLowerCase().includes('payment') || 
+        description.toLowerCase().includes('credit')) {
+      continue;
+    }
+    
+    const value = parseFloat(amountStr.replace(/[\$\£\€,]/g, ''));
+    if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
+    
+    const [day, month, year] = dateStr.split(/[\/\-]/);
+    const date_iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    const normalizedDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year.slice(-2)}`;
+    
+    transactions.push(createTransaction(normalizedDate, description.trim(), value, date_iso));
+  }
+  
+  return transactions;
+}
+
+// New Zealand bank format parser (common NZ bank statement formats)
+function parseNZBankFormat(lines: string[]): Transaction[] {
+  const transactions: Transaction[] = [];
+  
+  // NZ format: often uses DD MMM YYYY or DD/MM/YY
+  const nzPatterns = [
+    // Pattern like "01 Aug 2024    MERCHANT NAME    $123.45"
+    /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+(.+?)\s+(NZ\$|[\$])?([\d,]+\.?\d{0,2})$/,
+    // Pattern like "01/08/24    MERCHANT NAME    $123.45"
+    /^(\d{1,2})\/(\d{1,2})\/(\d{2})\s+(.+?)\s+(NZ\$|[\$])?([\d,]+\.?\d{0,2})$/,
+    // Pattern like "2024-08-01    MERCHANT NAME    123.45"
+    /^(\d{4})-(\d{1,2})-(\d{1,2})\s+(.+?)\s+([\d,]+\.?\d{0,2})$/
+  ];
+  
+  const monthMap: { [key: string]: string } = {
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+    'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+  };
+  
+  for (const line of lines) {
+    for (const pattern of nzPatterns) {
+      const match = line.match(pattern);
+      if (!match) continue;
+      
+      let day: string, month: string, year: string, description: string, amountStr: string;
+      
+      if (pattern === nzPatterns[0]) { // DD MMM YYYY format
+        [, day, month, year, description, , amountStr] = match;
+        month = monthMap[month.toLowerCase()] || month;
+      } else if (pattern === nzPatterns[1]) { // DD/MM/YY format
+        [, day, month, year, description, , amountStr] = match;
+        year = `20${year}`; // Assume 2000s
+      } else { // YYYY-MM-DD format
+        [, year, month, day, description, amountStr] = match;
+      }
+      
+      if (description.toLowerCase().includes('payment') || 
+          description.toLowerCase().includes('credit') ||
+          description.toLowerCase().includes('transfer in')) {
+        continue;
+      }
+      
+      const value = parseFloat(amountStr.replace(/[,]/g, ''));
+      if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
+      
+      const date_iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      const normalizedDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year.slice(-2)}`;
+      
+      transactions.push(createTransaction(normalizedDate, description.trim(), value, date_iso));
+      break; // Found match, move to next line
+    }
+  }
+  
+  return transactions;
+}
+
+// Helper function to find closest amount for AMEX format
+function findClosestAmount(transactionIndex: number, amountsRaw: Array<{ value: number; index: number }>, usedAmounts: Set<number>) {
+  let bestIdx: number | null = null;
+  let bestDiff = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < amountsRaw.length; i++) {
+    if (usedAmounts.has(i)) continue;
+    
+    const diff = amountsRaw[i].index - transactionIndex;
+    if (diff > 0 && diff <= 5 && diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+
+  if (bestIdx === null) {
+    for (let i = 0; i < amountsRaw.length; i++) {
+      if (usedAmounts.has(i)) continue;
+      const diff = Math.abs(amountsRaw[i].index - transactionIndex);
+      if (diff === 0) {
+        bestIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (bestIdx === null) return null;
+  
+  usedAmounts.add(bestIdx);
+  return amountsRaw[bestIdx];
+}
+
+// Helper function to create a transaction object
+function createTransaction(dateStr: string, description: string, value: number, date_iso: string): Transaction {
+  const place = description;
+  const { category, subcategory } = categorizeMerchant(place);
+  const statementMetadata = computeStatementMetadata(date_iso);
+
+  return {
+    place,
+    amount: `$${value.toFixed(2)}`,
+    date: date_iso,
+    currency: 'NZD',
+    value,
+    date_iso,
+    category,
+    subcategory,
+    ...statementMetadata
+  };
+}
+
 export async function POST(request: NextRequest) {
+  console.log('=== PDF Upload Route Called ===');
   try {
+    console.log('Parsing form data...');
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
+    console.log('File received:', {
+      name: file?.name,
+      size: file?.size,
+      type: file?.type,
+    });
+
     if (!file) {
+      console.error('No file provided in form data');
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
@@ -320,10 +430,36 @@ export async function POST(request: NextRequest) {
     console.log('Transactions extracted:', transactions.length);
 
     if (transactions.length === 0) {
-      console.log('No transactions found. Showing more lines:');
-      text.split('\n').slice(0, 100).forEach((line, i) => {
-        if (line.trim()) console.log(`Line ${i}:`, line);
+      console.log('No transactions found. Analyzing PDF format...');
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      console.log(`Total non-empty lines: ${lines.length}`);
+      
+      // Show first 50 lines to help identify format
+      console.log('=== First 50 lines ===');
+      lines.slice(0, 50).forEach((line, i) => {
+        console.log(`Line ${i + 1}: ${line}`);
       });
+
+      // Look for common patterns
+      const datePatterns = [
+        /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g,
+        /\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/g,
+        /\d{4}-\d{1,2}-\d{1,2}/g
+      ];
+      
+      console.log('=== Pattern Analysis ===');
+      datePatterns.forEach((pattern, i) => {
+        const matches = text.match(pattern);
+        console.log(`Date pattern ${i + 1} matches:`, matches?.slice(0, 5) || 'None');
+      });
+
+      // Look for currency symbols
+      const currencyMatches = text.match(/[\$\£\€][\d,]+\.?\d{0,2}|NZ\$[\d,]+\.?\d{0,2}/g);
+      console.log('Currency pattern matches:', currencyMatches?.slice(0, 10) || 'None');
+      
+      // Look for amount patterns
+      const amountMatches = text.match(/\b\d{1,4}[,\.]?\d{0,3}\.\d{2}\b/g);
+      console.log('Amount pattern matches:', amountMatches?.slice(0, 10) || 'None');
     } else {
       console.log('=== Transactions JSON ===');
       console.log(JSON.stringify(transactions, null, 2));

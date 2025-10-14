@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 interface Transaction {
   place: string;
@@ -20,7 +20,9 @@ interface PdfUploaderProps {
   onTransactionsExtracted?: (transactions: Transaction[]) => void;
 }
 
-export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProps) {
+export default function PdfUploader({
+  onTransactionsExtracted,
+}: PdfUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,21 +32,27 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
+    if (selectedFile && selectedFile.type === "application/pdf") {
       setFile(selectedFile);
       setError(null);
       setSuccess(false);
     } else {
-      setError('Please select a valid PDF file');
+      setError("Please select a valid PDF file");
       setFile(null);
     }
   };
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a file first');
+      setError("Please select a file first");
       return;
     }
+
+    console.log("Starting PDF upload...", {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    });
 
     setLoading(true);
     setError(null);
@@ -52,17 +60,26 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
-      const response = await fetch('/api/upload-pdf', {
-        method: 'POST',
+      console.log("Sending request to /api/upload-pdf");
+
+      const response = await fetch("/api/upload-pdf", {
+        method: "POST",
         body: formData,
       });
 
+      console.log("Response received:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       const data = await response.json();
+      console.log("Response data:", data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload PDF');
+        throw new Error(data.error || "Failed to upload PDF");
       }
 
       setSuccess(true);
@@ -76,11 +93,13 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
 
       // Reset file input after successful upload
       setFile(null);
-      const fileInput = document.getElementById('pdf-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
+      const fileInput = document.getElementById(
+        "pdf-upload"
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error("Upload error:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -89,7 +108,8 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
   return (
     <div className="w-full">
       <p className="text-gray-600 mb-6">
-        Upload your credit card statement in PDF format. Transactions will be automatically extracted and categorized.
+        Upload your credit card statement in PDF format. Transactions will be
+        automatically extracted and categorized.
       </p>
 
       <div className="mb-6">
@@ -113,9 +133,7 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
             cursor-pointer border border-gray-300 rounded-md"
         />
         {file && (
-          <p className="mt-2 text-sm text-green-600">
-            ✓ {file.name} selected
-          </p>
+          <p className="mt-2 text-sm text-green-600">✓ {file.name} selected</p>
         )}
       </div>
 
@@ -128,10 +146,12 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
           <p className="text-sm text-green-600">
-            ✓ Successfully added {transactionCount} new transaction{transactionCount !== 1 ? 's' : ''}
+            ✓ Successfully added {transactionCount} new transaction
+            {transactionCount !== 1 ? "s" : ""}
             {duplicateCount > 0 && (
               <span className="text-yellow-600 ml-2">
-                ({duplicateCount} duplicate{duplicateCount !== 1 ? 's' : ''} skipped)
+                ({duplicateCount} duplicate{duplicateCount !== 1 ? "s" : ""}{" "}
+                skipped)
               </span>
             )}
           </p>
@@ -143,28 +163,43 @@ export default function PdfUploader({ onTransactionsExtracted }: PdfUploaderProp
           onClick={handleUpload}
           disabled={!file || loading}
           className={`flex-1 py-3 px-4 rounded-md font-semibold text-white
-            ${!file || loading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+            ${
+              !file || loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
             }
             transition-colors duration-200`}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
               Processing...
             </span>
           ) : (
-            'Upload & Extract Transactions'
+            "Upload & Extract Transactions"
           )}
         </button>
       </div>
 
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-        <p className="text-xs text-blue-700 font-medium mb-1">Supported features:</p>
+        <p className="text-xs text-blue-700 font-medium mb-1">
+          Supported features:
+        </p>
         <ul className="text-xs text-blue-600 list-disc list-inside space-y-1">
           <li>Credit card PDF statements</li>
           <li>Automatic transaction categorization</li>
