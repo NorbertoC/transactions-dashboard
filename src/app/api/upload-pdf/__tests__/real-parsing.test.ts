@@ -5,6 +5,18 @@ import { describe, it, expect } from 'vitest';
  * These tests simulate the actual PDF format and verify correct amount matching
  */
 
+// Type for transaction objects
+type Transaction = {
+  place: string;
+  amount: string;
+  date: string;
+  currency: string;
+  value: number;
+  date_iso: string;
+  category: string;
+  subcategory: string;
+};
+
 // Helper to parse date from DD.MM.YY format to YYYY-MM-DD
 function parseDate(dateStr: string): string {
   const [day, month, year] = dateStr.split('.');
@@ -34,7 +46,7 @@ function createTransaction(dateStr: string, description: string, value: number, 
 }
 
 // Copy of the parseAmexFormat function for testing
-function parseAmexFormat(lines: string[]): Array<any> {
+function parseAmexFormat(lines: string[]): Transaction[] {
   const transactionWithAmountPattern = /^(\d{2})\s*\.\s*(\d{2})\s*\.\s*(\d{2})\s+(.+?)\s+([\d,]+\.\d{2})$/;
   const transactionPattern = /^(\d{2})\s*\.\s*(\d{2})\s*\.\s*(\d{2})\s+(.+)$/;
   const amountPattern = /^([\d,]+\.\d{2})$/;
@@ -137,7 +149,7 @@ function parseAmexFormat(lines: string[]): Array<any> {
 
   // Match transactions with amounts for AMEX format
   const usedAmounts = new Set<number>();
-  const transactions: any[] = [];
+  const transactions: Transaction[] = [];
 
   // Try sequential matching first
   const countDiff = Math.abs(transactionsRaw.length - amountsRaw.length);
