@@ -126,8 +126,14 @@ function parseAmexFormat(lines: string[]): Transaction[] {
   const amountsRaw: Array<{ value: number; index: number }> = [];
   const directTransactions: Array<{ date: string; description: string; value: number }> = [];
 
-  let seenFirstTransaction = false;
+  console.log('=== parseAmexFormat: Starting ===');
+  console.log(`Total lines to process: ${lines.length}`);
+  console.log('Sample lines (first 30):');
+  lines.slice(0, 30).forEach((line, idx) => {
+    console.log(`  [${idx}] "${line}"`);
+  });
 
+  // First pass: collect all amounts and transactions
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -135,17 +141,22 @@ function parseAmexFormat(lines: string[]): Transaction[] {
     if (directMatch) {
       const [, day, month, year, descriptionRaw, amountRaw] = directMatch;
       const dateStr = `${day}.${month}.${year}`;
+      console.log(`Line ${i}: DIRECT MATCH - ${dateStr} ${descriptionRaw} ${amountRaw}`);
 
       if (descriptionRaw.includes('PAYMENT - THANK YOU') ||
           descriptionRaw.includes('Total of New Transactions')) {
+        console.log(`  -> Skipped (payment/total)`);
         continue;
       }
 
       const value = parseFloat(amountRaw.replace(/,/g, ''));
-      if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
+      if (!Number.isFinite(value) || value <= 0 || value >= 50000) {
+        console.log(`  -> Skipped (invalid amount: ${value})`);
+        continue;
+      }
 
+      console.log(`  -> Added to directTransactions`);
       directTransactions.push({ date: dateStr, description: descriptionRaw.trim(), value });
-      seenFirstTransaction = true;
       continue;
     }
 
@@ -153,28 +164,59 @@ function parseAmexFormat(lines: string[]): Transaction[] {
     if (transMatch) {
       const [, day, month, year, description] = transMatch;
       const dateStr = `${day}.${month}.${year}`;
+      console.log(`Line ${i}: TRANSACTION MATCH - ${dateStr} ${description}`);
 
       if (description.includes('PAYMENT - THANK YOU') ||
           description.includes('Total of New Transactions')) {
+        console.log(`  -> Skipped (payment/total)`);
         continue;
       }
 
+      console.log(`  -> Added to transactionsRaw`);
       transactionsRaw.push({ date: dateStr, description: description.trim(), index: i });
-      seenFirstTransaction = true;
       continue;
     }
 
+    // Collect all standalone amounts (remove seenFirstTransaction requirement)
     const amountMatch = line.match(amountPattern);
-    if (amountMatch && seenFirstTransaction) {
+    if (amountMatch) {
       const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
-      if (line.includes('CR') || line.includes('%') || nextLine === 'CR') continue;
-
+      const prevLine = i > 0 ? lines[i - 1] : '';
+      
+      // Skip credits, percentages, and amounts that are part of headers/totals
+      if (line.includes('CR') || line.includes('%') || nextLine === 'CR') {
+        console.log(`Line ${i}: AMOUNT ${line} -> Skipped (CR/percentage)`);
+        continue;
+      }
+      if (prevLine.includes('Minimum Payment') || prevLine.includes('Credit Limit') || 
+          prevLine.includes('Due by') || line.includes('Minimum Payment')) {
+        console.log(`Line ${i}: AMOUNT ${line} -> Skipped (header/total)`);
+        continue;
+      }
+      
+      // Skip if this is near header text mentioning minimum payment
+      const prev2Line = i > 1 ? lines[i - 2] : '';
+      const prev3Line = i > 2 ? lines[i - 3] : '';
+      if (prev2Line.includes('Minimum Payment') || prev3Line.includes('Minimum Payment')) {
+        console.log(`Line ${i}: AMOUNT ${line} -> Skipped (near minimum payment)`);
+        continue;
+      }
+      
       const value = parseFloat(amountMatch[1].replace(/,/g, ''));
-      if (!Number.isFinite(value) || value <= 0 || value >= 50000) continue;
+      if (!Number.isFinite(value) || value <= 0 || value >= 50000) {
+        console.log(`Line ${i}: AMOUNT ${line} -> Skipped (invalid: ${value})`);
+        continue;
+      }
 
+      console.log(`Line ${i}: AMOUNT ${line} -> Added to amountsRaw (value: ${value})`);
       amountsRaw.push({ value, index: i });
     }
   }
+
+  console.log(`=== parseAmexFormat: Collection complete ===`);
+  console.log(`Direct transactions: ${directTransactions.length}`);
+  console.log(`Transactions (no amount): ${transactionsRaw.length}`);
+  console.log(`Standalone amounts: ${amountsRaw.length}`);
 
   if (directTransactions.length > 0) {
     return directTransactions.map(({ date, description, value }) => 
@@ -186,14 +228,62 @@ function parseAmexFormat(lines: string[]): Transaction[] {
   const usedAmounts = new Set<number>();
   const transactions: Transaction[] = [];
 
+  // Try sequential matching first (for PDFs where amounts are listed separately in order)
+  // Allow for off-by-one or off-by-two mismatches (might have extra header amounts)
+  const countDiff = Math.abs(transactionsRaw.length - amountsRaw.length);
+  if (transactionsRaw.length > 0 && amountsRaw.length > 0 && countDiff <= 2) {
+    const minCount = Math.min(transactionsRaw.length, amountsRaw.length);
+    console.log(`Attempting sequential matching: ${transactionsRaw.length} transactions, ${amountsRaw.length} amounts (diff: ${countDiff})`);
+    
+    // If we have more amounts than transactions, try to find the right starting offset
+    let startOffset = 0;
+    if (amountsRaw.length > transactionsRaw.length) {
+      // Find the offset where amounts start to align with transactions
+      // Look for the first transaction date and find amounts near it
+      const firstTransIdx = transactionsRaw[0].index;
+      for (let i = 0; i < amountsRaw.length; i++) {
+        const diff = Math.abs(amountsRaw[i].index - firstTransIdx);
+        if (diff <= 30) {
+          startOffset = i;
+          break;
+        }
+      }
+      console.log(`Using offset ${startOffset} for amounts (first trans at line ${firstTransIdx}, first aligned amount at line ${amountsRaw[startOffset]?.index})`);
+    }
+    
+    for (let i = 0; i < minCount; i++) {
+      const transactionLine = transactionsRaw[i];
+      const amountIdx = startOffset + i;
+      if (amountIdx >= amountsRaw.length) break;
+      
+      const amount = amountsRaw[amountIdx];
+      const date_iso = parseDate(transactionLine.date);
+      console.log(`Sequential match ${i}: ${transactionLine.date} ${transactionLine.description} -> ${amount.value}`);
+      transactions.push(createTransaction(transactionLine.date, transactionLine.description, amount.value, date_iso));
+      usedAmounts.add(amountIdx);
+    }
+    
+    if (transactions.length > 0) {
+      console.log(`Sequential matching succeeded: ${transactions.length} transactions created`);
+      return transactions;
+    }
+  }
+
+  // Fall back to proximity-based matching
+  console.log(`Falling back to proximity-based matching...`);
   for (const transactionLine of transactionsRaw) {
     const matchedAmount = findClosestAmount(transactionLine.index, amountsRaw, usedAmounts);
-    if (!matchedAmount) continue;
+    if (!matchedAmount) {
+      console.log(`No amount found for transaction at line ${transactionLine.index}: ${transactionLine.description}`);
+      continue;
+    }
 
     const date_iso = parseDate(transactionLine.date);
+    console.log(`Proximity match: ${transactionLine.date} ${transactionLine.description} (line ${transactionLine.index}) -> ${matchedAmount.value} (line ${matchedAmount.index})`);
     transactions.push(createTransaction(transactionLine.date, transactionLine.description, matchedAmount.value, date_iso));
   }
 
+  console.log(`Proximity matching complete: ${transactions.length} transactions created`);
   return transactions;
 }
 
@@ -321,6 +411,7 @@ function findClosestAmount(transactionIndex: number, amountsRaw: Array<{ value: 
   let bestIdx: number | null = null;
   let bestDiff = Number.POSITIVE_INFINITY;
 
+  // First try: look for amounts within 5 lines after the transaction
   for (let i = 0; i < amountsRaw.length; i++) {
     if (usedAmounts.has(i)) continue;
     
@@ -331,6 +422,20 @@ function findClosestAmount(transactionIndex: number, amountsRaw: Array<{ value: 
     }
   }
 
+  // Second try: look for amounts within 30 lines before the transaction
+  if (bestIdx === null) {
+    for (let i = 0; i < amountsRaw.length; i++) {
+      if (usedAmounts.has(i)) continue;
+      
+      const diff = transactionIndex - amountsRaw[i].index;
+      if (diff > 0 && diff <= 30 && diff < bestDiff) {
+        bestDiff = diff;
+        bestIdx = i;
+      }
+    }
+  }
+
+  // Third try: same line
   if (bestIdx === null) {
     for (let i = 0; i < amountsRaw.length; i++) {
       if (usedAmounts.has(i)) continue;
