@@ -5,12 +5,13 @@ import { motion } from 'framer-motion';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
 import { lightenColor, generateColorVariants } from '@/utils/color';
-import { getCategoryBadgeStyles, getCategoryHexColor } from '@/constants/categories';
+import { CATEGORY_COLORS, getCategoryBadgeStyles, getCategoryHexColor } from '@/constants/categories';
 
 interface TransactionsTableProps {
   transactions: Transaction[];
   selectedCategory?: string | null;
   categoryColors?: Record<string, string>;
+  onUpdated?: () => void;
 }
 
 type SortField = 'date' | 'place' | 'category' | 'amount';
@@ -19,11 +20,17 @@ type SortDirection = 'asc' | 'desc';
 export default function TransactionsTable({
   transactions,
   selectedCategory,
-  categoryColors
+  categoryColors,
+  onUpdated
 }: TransactionsTableProps) {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [categoryInput, setCategoryInput] = useState('');
+  const [subcategoryInput, setSubcategoryInput] = useState('');
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -152,6 +159,73 @@ export default function TransactionsTable({
     </button>
   );
 
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>(Object.keys(CATEGORY_COLORS));
+    transactions.forEach((t) => t.category && set.add(t.category));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [transactions]);
+
+  const subcategoryOptionsByCategory = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    transactions.forEach((t) => {
+      if (t.category && t.subcategory) {
+        if (!map[t.category]) map[t.category] = new Set<string>();
+        map[t.category].add(t.subcategory);
+      }
+    });
+    return map;
+  }, [transactions]);
+
+  const startEditing = (tx: Transaction) => {
+    setEditingId(tx.id);
+    setCategoryInput(tx.category || '');
+    setSubcategoryInput(tx.subcategory || '');
+    setError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setCategoryInput('');
+    setSubcategoryInput('');
+    setError(null);
+  };
+
+  const handleSave = async (tx: Transaction) => {
+    if (!categoryInput.trim() && !subcategoryInput.trim()) {
+      setError('Please set category or subcategory.');
+      return;
+    }
+    try {
+      setSavingId(tx.id);
+      setError(null);
+      const response = await fetch(`/api/transactions/${tx.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...tx,
+          category: categoryInput.trim() || tx.category,
+          subcategory: subcategoryInput.trim() || tx.subcategory
+        })
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to update transaction');
+      }
+
+      if (onUpdated) {
+        onUpdated();
+      }
+      cancelEditing();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const renderCategoryBadge = (category: string) => {
     const colors = getCategoryBadgeStyles(category);
     return (
@@ -237,6 +311,9 @@ export default function TransactionsTable({
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
                 <SortButton field="amount">Amount</SortButton>
               </th>
+              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-background-light dark:bg-background-dark">
@@ -256,13 +333,67 @@ export default function TransactionsTable({
                   {transaction.place}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm">
-                  {renderCategoryBadge(transaction.category || 'Other')}
+                  {editingId === transaction.id ? (
+                    <select
+                      className="w-40 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                      value={categoryInput}
+                      onChange={(e) => {
+                        setCategoryInput(e.target.value);
+                        setSubcategoryInput('');
+                      }}
+                    >
+                      <option value="">Select category</option>
+                      {categoryOptions.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    renderCategoryBadge(transaction.category || 'Other')
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm">
-                  {renderSubcategory(transaction.category, transaction.subcategory)}
+                  {editingId === transaction.id ? (
+                    <input
+                      className="w-48 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                      value={subcategoryInput}
+                      onChange={(e) => setSubcategoryInput(e.target.value)}
+                      list={`subcategory-options-${transaction.id}`}
+                      placeholder="Subcategory"
+                    />
+                  ) : (
+                    renderSubcategory(transaction.category, transaction.subcategory)
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white text-right">
                   ${transaction.value.toFixed(2)}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-right">
+                  {editingId === transaction.id ? (
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleSave(transaction)}
+                        disabled={savingId === transaction.id}
+                        className="rounded-md bg-primary px-3 py-1 text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-60"
+                      >
+                        {savingId === transaction.id ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="rounded-md border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => startEditing(transaction)}
+                      className="rounded-md border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-800"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </td>
               </motion.tr>
             ))}
@@ -279,6 +410,26 @@ export default function TransactionsTable({
           </motion.div>
         )}
       </motion.div>
+
+      {error && (
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {sortedTransactions.map((transaction) => {
+        const categoryKey = editingId === transaction.id && categoryInput ? categoryInput : transaction.category || '';
+        const set = subcategoryOptionsByCategory[categoryKey];
+        const options = set ? Array.from(set).sort((a, b) => a.localeCompare(b)) : [];
+        const listId = `subcategory-options-${transaction.id}`;
+        return (
+          <datalist id={listId} key={listId}>
+            {options.map((sub) => (
+              <option key={sub} value={sub} />
+            ))}
+          </datalist>
+        );
+      })}
     </div>
   );
 }

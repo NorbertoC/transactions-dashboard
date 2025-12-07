@@ -324,6 +324,7 @@ function Dashboard() {
               transactions={displayTransactions}
               selectedCategory={selectedCategory}
               categoryColors={categoryColors}
+              onUpdated={refetch}
             />
           </motion.div>
         </div>
