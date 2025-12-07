@@ -155,7 +155,10 @@ export default function TransactionsTable({
   const renderCategoryBadge = (category: string) => {
     const colors = getCategoryBadgeStyles(category);
     return (
-      <span className={`inline-flex items-center rounded-lg ${colors.bg} px-2 py-1 text-sm font-medium ${colors.text}`}>
+      <span
+        className={`inline-flex items-center rounded-lg ${colors.bg} px-2 py-1 text-sm font-medium ${colors.text}`}
+        style={colors.style}
+      >
         {category}
       </span>
     );

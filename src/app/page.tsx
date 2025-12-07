@@ -11,6 +11,7 @@ import TransactionsTable from "@/components/TransactionsTable";
 import PeriodFilter, { FilterPeriod } from "@/components/PeriodFilter";
 import AuthGuard from "@/components/AuthGuard";
 import PdfUploader from "@/components/PdfUploader";
+import JsonUploader from "@/components/JsonUploader";
 import {
   useTransactions,
   useChartData,
@@ -25,7 +26,7 @@ function Dashboard() {
   const { transactions, loading, error, refetch } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>("");
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalType, setUploadModalType] = useState<"pdf" | "json" | null>(null);
 
   const {
     options: periodOptions,
@@ -139,7 +140,7 @@ function Dashboard() {
     extractedTransactions: unknown[]
   ) => {
     console.log("Extracted transactions:", extractedTransactions);
-    setShowUploadModal(false);
+    setUploadModalType(null);
     // Refresh transactions data without page reload
     await refetch();
   };
@@ -188,7 +189,10 @@ function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header onUploadClick={() => setShowUploadModal(true)} />
+      <Header
+        onUploadClick={() => setUploadModalType("pdf")}
+        onJsonUploadClick={() => setUploadModalType("json")}
+      />
       <main className="flex-1 px-4 py-8 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8">
@@ -212,15 +216,17 @@ function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">Spending by Category</h3>
-                  {selectedCategory && (
-                    <span
-                      className={`inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium ${
-                        getCategoryBadgeStyles(selectedCategory).bg
-                      } ${getCategoryBadgeStyles(selectedCategory).text}`}
-                    >
-                      {selectedCategory}
-                    </span>
-                  )}
+                  {selectedCategory && (() => {
+                    const badge = getCategoryBadgeStyles(selectedCategory);
+                    return (
+                      <span
+                        className={`inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium ${badge.bg} ${badge.text}`}
+                        style={badge.style}
+                      >
+                        {selectedCategory}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <button
                   onClick={handleReset}
@@ -323,14 +329,14 @@ function Dashboard() {
         </div>
       </main>
 
-      {/* Upload PDF Modal */}
-      {showUploadModal && (
+      {/* Upload Modal */}
+      {uploadModalType && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowUploadModal(false)}
+          onClick={() => setUploadModalType(null)}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -342,10 +348,10 @@ function Dashboard() {
           >
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-800">
-                Upload Statement
+                {uploadModalType === "pdf" ? "Upload Statement PDF" : "Upload JSON"}
               </h2>
               <button
-                onClick={() => setShowUploadModal(false)}
+                onClick={() => setUploadModalType(null)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
               >
                 <svg
@@ -364,9 +370,15 @@ function Dashboard() {
               </button>
             </div>
             <div className="p-6">
-              <PdfUploader
-                onTransactionsExtracted={handleTransactionsExtracted}
-              />
+              {uploadModalType === "pdf" ? (
+                <PdfUploader
+                  onTransactionsExtracted={handleTransactionsExtracted}
+                />
+              ) : (
+                <JsonUploader
+                  onTransactionsExtracted={handleTransactionsExtracted}
+                />
+              )}
             </div>
           </motion.div>
         </motion.div>

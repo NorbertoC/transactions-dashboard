@@ -1,13 +1,14 @@
 'use client';
 
-import { Upload, LogOut } from 'lucide-react';
+import { Upload, LogOut, FileJson } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
 interface HeaderProps {
   onUploadClick?: () => void;
+  onJsonUploadClick?: () => void;
 }
 
-export default function Header({ onUploadClick }: HeaderProps) {
+export default function Header({ onUploadClick, onJsonUploadClick }: HeaderProps) {
   const { data: session } = useSession();
 
   const handleLogout = async () => {
@@ -20,13 +21,22 @@ export default function Header({ onUploadClick }: HeaderProps) {
         {/* Empty left section - FinTrack removed */}
       </div>
       <div className="flex items-center gap-3">
-        <button
-          onClick={onUploadClick}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
-        >
-          <Upload className="h-4 w-4" />
-          <span>Upload PDF</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onUploadClick}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Upload PDF</span>
+          </button>
+          <button
+            onClick={onJsonUploadClick}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-primary border border-primary bg-white hover:bg-primary/10 transition-colors shadow-sm dark:bg-gray-900 dark:text-primary dark:border-primary dark:hover:bg-primary/20"
+          >
+            <FileJson className="h-4 w-4" />
+            <span>Upload JSON</span>
+          </button>
+        </div>
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
