@@ -1,6 +1,5 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
 import { PeriodFilterOption } from '@/hooks/useStatementFilters';
 
 export type FilterPeriod = string;

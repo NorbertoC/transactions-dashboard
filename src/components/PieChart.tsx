@@ -8,7 +8,6 @@ import { getCategoryHexColor } from "@/constants/categories";
 interface PieChartComponentProps {
   data: ChartDataPoint[];
   onSegmentClick?: (category: string) => void;
-  selectedCategory?: string | null;
   colorMap?: Record<string, string>;
 }
 
@@ -33,7 +32,6 @@ const CenterLabel = ({ total, title }: { total: number; title?: string }) => (
 export default function PieChartComponent({
   data,
   onSegmentClick,
-  selectedCategory,
   colorMap,
 }: PieChartComponentProps) {
   const totalAmount = data.reduce((sum, item) => sum + item.value, 0);

@@ -38,6 +38,13 @@ async function parseRequestBody(request: NextRequest): Promise<unknown> {
   return JSON.parse(cleaned);
 }
 
+function isTransactionEnvelope(value: unknown): value is { transactions: unknown[] } {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  return Array.isArray((value as { transactions?: unknown }).transactions);
+}
+
 function computeStatementMetadata(dateIso: string | null): {
   statement_id: string | null;
   statement_start: string | null;
@@ -338,7 +345,7 @@ export async function POST(request: NextRequest) {
     const body = await parseRequestBody(request);
     const payload = Array.isArray(body)
       ? body
-      : Array.isArray(body?.transactions)
+      : isTransactionEnvelope(body)
         ? body.transactions
         : null;
 

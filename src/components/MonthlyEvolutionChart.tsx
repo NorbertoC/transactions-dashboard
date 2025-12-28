@@ -1,7 +1,6 @@
 'use client';
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { motion } from 'framer-motion';
 import { Transaction } from '@/types/transaction';
 
 interface MonthlyEvolutionChartProps {

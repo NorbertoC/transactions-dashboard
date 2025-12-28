@@ -9,7 +9,6 @@ import { CATEGORY_COLORS, getCategoryBadgeStyles, getCategoryHexColor } from '@/
 
 interface TransactionsTableProps {
   transactions: Transaction[];
-  selectedCategory?: string | null;
   categoryColors?: Record<string, string>;
   onUpdated?: () => void;
 }
@@ -19,7 +18,6 @@ type SortDirection = 'asc' | 'desc';
 
 export default function TransactionsTable({
   transactions,
-  selectedCategory,
   categoryColors,
   onUpdated
 }: TransactionsTableProps) {

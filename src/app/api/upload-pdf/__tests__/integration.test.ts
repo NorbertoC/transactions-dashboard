@@ -20,6 +20,8 @@ Account Summary
 24 . 09 . 25 JETSTAR                 MASCOT 201.66
       `;
 
+      expect(samplePdfText).toContain('American Express Statement');
+
       // Expected output format
       const expectedTransactions = [
         {
@@ -314,7 +316,7 @@ Transaction Date    Description                                  Amount
         { format: 'YYYY-MM-DD', example: '2025-08-29' },
       ];
 
-      formats.forEach(({ format, example }) => {
+      formats.forEach(({ example }) => {
         expect(example).toBeTruthy();
         expect(example).toMatch(/\d/); // Contains digits
       });
@@ -333,6 +335,7 @@ Transaction Date    Description                                  Amount
 
       testDates.forEach(({ date, expected }) => {
         // All dates from Aug 27 to Sep 26 should be in the same statement period
+        expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         expect(expected.id).toBe('2025-09-26');
         expect(expected.start).toBe('2025-08-27');
         expect(expected.end).toBe('2025-09-26');
@@ -348,6 +351,7 @@ Transaction Date    Description                                  Amount
         end: '2025-10-26'
       };
 
+      expect(nextPeriodDate).toBe('2025-09-27');
       expect(expectedNextPeriod.id).toBe('2025-10-26');
     });
   });
@@ -403,4 +407,3 @@ Transaction Date    Description                                  Amount
     });
   });
 });
-

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Note: The actual classification happens in @/utils/classification
 // For these tests, we're testing the core parsing logic independently
@@ -407,4 +407,3 @@ describe('Amount Validation', () => {
     expect(isValidAmount(Infinity)).toBe(false);
   });
 });
-

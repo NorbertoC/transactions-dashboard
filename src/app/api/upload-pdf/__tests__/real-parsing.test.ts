@@ -26,7 +26,11 @@ function parseDate(dateStr: string): string {
 
 // Mock categorization (simplified for tests)
 function mockCategorizeMerchant(place: string): { category: string; subcategory: string } {
-  return { category: 'Test Category', subcategory: 'Test Subcategory' };
+  const hasPlace = place.trim().length > 0;
+  return {
+    category: 'Test Category',
+    subcategory: hasPlace ? 'Test Subcategory' : 'Test Subcategory'
+  };
 }
 
 // Simplified version of createTransaction for testing
@@ -665,4 +669,3 @@ describe('Real PDF Parsing Tests', () => {
     });
   });
 });
-

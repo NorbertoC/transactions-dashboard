@@ -20,6 +20,13 @@ interface JsonUploaderProps {
   onTransactionsExtracted?: (transactions: Transaction[]) => void;
 }
 
+interface UploadJsonResponse {
+  count?: number;
+  duplicateCount?: number;
+  transactions?: Transaction[];
+  error?: string;
+}
+
 function sanitizeJson(raw: string): string {
   // Trim, remove BOM, and strip trailing commas (including a final dangling comma)
   const trimmed = raw.trim().replace(/^\uFEFF/, '');
@@ -94,12 +101,12 @@ export default function JsonUploader({ onTransactionsExtracted }: JsonUploaderPr
         body: JSON.stringify({ transactions: payload }),
       });
 
-      let data: any;
+      let data: UploadJsonResponse;
       const isJson = response.headers.get("content-type")?.includes("application/json");
       if (isJson) {
         try {
           data = await response.json();
-        } catch (err) {
+        } catch {
           // If JSON parsing fails, fall back to text to show a meaningful error
           const text = await response.text();
           throw new Error(text || "Server returned an unreadable response.");
@@ -130,7 +137,7 @@ export default function JsonUploader({ onTransactionsExtracted }: JsonUploaderPr
   return (
     <div className="w-full">
       <p className="text-gray-600 mb-4">
-        Paste raw transaction JSON below. The payload can be an array or an object with a <span className="font-semibold">'transactions'</span> array.
+        Paste raw transaction JSON below. The payload can be an array or an object with a <span className="font-semibold">&apos;transactions&apos;</span> array.
       </p>
 
       <label htmlFor="json-upload" className="block text-sm font-medium text-gray-700 mb-2">

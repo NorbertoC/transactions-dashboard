@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw } from "lucide-react";
-import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 import PieChartComponent from "@/components/PieChart";
 import MonthlyEvolutionChart from "@/components/MonthlyEvolutionChart";
@@ -22,7 +21,6 @@ import { lightenColor, generateColorVariants } from "@/utils/color";
 import { getCategoryHexColor, getCategoryBadgeStyles } from "@/constants/categories";
 
 function Dashboard() {
-  const { data: session } = useSession();
   const { transactions, loading, error, refetch } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>("");
@@ -145,11 +143,7 @@ function Dashboard() {
     await refetch();
   };
 
-  const totalTransactions = filteredTransactions.length;
   const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.value, 0);
-  const selectedCategoryData = selectedCategory
-    ? categoryData.find((d) => d.name === selectedCategory)
-    : null;
 
   if (loading) {
     return (
@@ -252,12 +246,11 @@ function Dashboard() {
                   onSegmentClick={
                     selectedCategory ? undefined : handleCategorySelect
                   }
-                  selectedCategory={selectedCategory}
                   colorMap={categoryColors}
                 />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                {pieChartData.map((item, index) => {
+                {pieChartData.map((item) => {
                   const subcategories = categorySubcategoriesInfo[item.name] || [];
                   const showSubcategories = !selectedCategory && subcategories.length > 0;
 
@@ -322,7 +315,6 @@ function Dashboard() {
           >
             <TransactionsTable
               transactions={displayTransactions}
-              selectedCategory={selectedCategory}
               categoryColors={categoryColors}
               onUpdated={refetch}
             />

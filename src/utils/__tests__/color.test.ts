@@ -176,7 +176,7 @@ describe('Color Utilities', () => {
       testCases.forEach(({ base, count }) => {
         const variants = generateColorVariants(base, count)
         
-        variants.forEach((color, index) => {
+        variants.forEach((color) => {
           expect(color).toMatch(/^#[0-9a-f]{6}$/i)
           expect(color).not.toContain('.')
           expect(color).not.toContain('NaN')
