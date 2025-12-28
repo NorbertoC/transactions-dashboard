@@ -165,17 +165,6 @@ export default function TransactionsTable({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [transactions]);
 
-  const subcategoryOptionsByCategory = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    transactions.forEach((t) => {
-      if (t.category && t.subcategory) {
-        if (!map[t.category]) map[t.category] = new Set<string>();
-        map[t.category].add(t.subcategory);
-      }
-    });
-    return map;
-  }, [transactions]);
-
   const startEditing = (tx: Transaction) => {
     setEditingId(tx.id);
     setCategoryInput(tx.category || '');
@@ -359,7 +348,6 @@ export default function TransactionsTable({
                       className="w-48 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
                       value={subcategoryInput}
                       onChange={(e) => setSubcategoryInput(e.target.value)}
-                      list={`subcategory-options-${transaction.id}`}
                       placeholder="Subcategory"
                     />
                   ) : (
@@ -417,19 +405,6 @@ export default function TransactionsTable({
         </div>
       )}
 
-      {sortedTransactions.map((transaction) => {
-        const categoryKey = editingId === transaction.id && categoryInput ? categoryInput : transaction.category || '';
-        const set = subcategoryOptionsByCategory[categoryKey];
-        const options = set ? Array.from(set).sort((a, b) => a.localeCompare(b)) : [];
-        const listId = `subcategory-options-${transaction.id}`;
-        return (
-          <datalist id={listId} key={listId}>
-            {options.map((sub) => (
-              <option key={sub} value={sub} />
-            ))}
-          </datalist>
-        );
-      })}
     </div>
   );
 }
