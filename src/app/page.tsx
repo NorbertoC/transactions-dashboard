@@ -20,7 +20,7 @@ import { lightenColor, generateColorVariants } from "@/utils/color";
 import { getCategoryHexColor, getCategoryBadgeStyles } from "@/constants/categories";
 
 function Dashboard() {
-  const { transactions, loading, error, refetch } = useTransactions();
+  const { transactions, loading, error, refetch, updateTransaction } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>("");
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -312,7 +312,7 @@ function Dashboard() {
             <TransactionsTable
               transactions={displayTransactions}
               categoryColors={categoryColors}
-              onUpdated={refetch}
+              onTransactionUpdated={updateTransaction}
             />
           </motion.div>
         </div>

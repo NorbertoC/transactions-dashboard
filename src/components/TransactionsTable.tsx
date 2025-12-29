@@ -18,7 +18,7 @@ import {
 interface TransactionsTableProps {
   transactions: Transaction[];
   categoryColors?: Record<string, string>;
-  onUpdated?: () => void;
+  onTransactionUpdated?: (transaction: Transaction) => void;
 }
 
 type SortField = 'date' | 'place' | 'category' | 'amount';
@@ -27,7 +27,7 @@ type SortDirection = 'asc' | 'desc';
 export default function TransactionsTable({
   transactions,
   categoryColors,
-  onUpdated
+  onTransactionUpdated
 }: TransactionsTableProps) {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -143,11 +143,6 @@ export default function TransactionsTable({
     }
   };
 
-  const rowVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
-
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <button
       onClick={() => handleSort(field)}
@@ -234,8 +229,15 @@ export default function TransactionsTable({
         throw new Error(data?.error || 'Failed to update transaction');
       }
 
-      if (onUpdated) {
-        onUpdated();
+      // Update local state with the modified transaction
+      const updatedTransaction: Transaction = {
+        ...tx,
+        category: categoryInput.trim() || tx.category,
+        subcategory: subcategoryInput.trim() || tx.subcategory
+      };
+
+      if (onTransactionUpdated) {
+        onTransactionUpdated(updatedTransaction);
       }
       cancelEditing();
     } catch (err) {
@@ -343,7 +345,9 @@ export default function TransactionsTable({
             {sortedTransactions.map((transaction) => (
               <motion.tr
                 key={transaction.id}
-                variants={rowVariants}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.15 }}
               >
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                   {new Date(transaction.date_iso).toLocaleDateString('en-US', {

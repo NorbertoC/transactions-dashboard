@@ -9,9 +9,12 @@ export function useTransactions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
+      // Only show full-page spinner on initial load
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       const data = await ApiService.fetchTransactionsClient();
       setTransactions(data);
       setError(null);
@@ -22,11 +25,17 @@ export function useTransactions() {
     }
   };
 
+  const updateTransaction = (updatedTransaction: Transaction) => {
+    setTransactions(prev =>
+      prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t)
+    );
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
 
-  return { transactions, loading, error, refetch: fetchData };
+  return { transactions, loading, error, refetch: fetchData, updateTransaction };
 }
 
 export function useFilteredTransactions(
