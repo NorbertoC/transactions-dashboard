@@ -9,7 +9,6 @@ import MonthlyEvolutionChart from "@/components/MonthlyEvolutionChart";
 import TransactionsTable from "@/components/TransactionsTable";
 import PeriodFilter, { FilterPeriod } from "@/components/PeriodFilter";
 import AuthGuard from "@/components/AuthGuard";
-import PdfUploader from "@/components/PdfUploader";
 import JsonUploader from "@/components/JsonUploader";
 import {
   useTransactions,
@@ -24,7 +23,7 @@ function Dashboard() {
   const { transactions, loading, error, refetch } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>("");
-  const [uploadModalType, setUploadModalType] = useState<"pdf" | "json" | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const {
     options: periodOptions,
@@ -138,7 +137,7 @@ function Dashboard() {
     extractedTransactions: unknown[]
   ) => {
     console.log("Extracted transactions:", extractedTransactions);
-    setUploadModalType(null);
+    setShowUploadModal(false);
     // Refresh transactions data without page reload
     await refetch();
   };
@@ -183,10 +182,7 @@ function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header
-        onUploadClick={() => setUploadModalType("pdf")}
-        onJsonUploadClick={() => setUploadModalType("json")}
-      />
+      <Header onUploadClick={() => setShowUploadModal(true)} />
       <main className="flex-1 px-4 py-8 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8">
@@ -323,13 +319,13 @@ function Dashboard() {
       </main>
 
       {/* Upload Modal */}
-      {uploadModalType && (
+      {showUploadModal && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setUploadModalType(null)}
+          onClick={() => setShowUploadModal(false)}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -340,11 +336,9 @@ function Dashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">
-                {uploadModalType === "pdf" ? "Upload Statement PDF" : "Upload JSON"}
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-800">Upload JSON</h2>
               <button
-                onClick={() => setUploadModalType(null)}
+                onClick={() => setShowUploadModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
               >
                 <svg
@@ -363,15 +357,9 @@ function Dashboard() {
               </button>
             </div>
             <div className="p-6">
-              {uploadModalType === "pdf" ? (
-                <PdfUploader
-                  onTransactionsExtracted={handleTransactionsExtracted}
-                />
-              ) : (
-                <JsonUploader
-                  onTransactionsExtracted={handleTransactionsExtracted}
-                />
-              )}
+              <JsonUploader
+                onTransactionsExtracted={handleTransactionsExtracted}
+              />
             </div>
           </motion.div>
         </motion.div>

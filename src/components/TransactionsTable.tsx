@@ -5,7 +5,15 @@ import { motion } from 'framer-motion';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
 import { lightenColor, generateColorVariants } from '@/utils/color';
-import { CATEGORY_COLORS, getCategoryBadgeStyles, getCategoryHexColor } from '@/constants/categories';
+import {
+  CATEGORIES,
+  CATEGORY_COLORS,
+  getCategoryBadgeStyles,
+  getCategoryHexColor,
+  getCategoryJapaneseName,
+  getSubcategoryJapaneseName,
+  getSubcategoriesForCategory
+} from '@/constants/categories';
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -158,10 +166,34 @@ export default function TransactionsTable({
   );
 
   const categoryOptions = useMemo(() => {
-    const set = new Set<string>(Object.keys(CATEGORY_COLORS));
-    transactions.forEach((t) => t.category && set.add(t.category));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    // Primary categories from CATEGORIES come first (in order)
+    const primaryNames = CATEGORIES.map(c => c.name);
+    const otherCategories = new Set<string>();
+    transactions.forEach((t) => {
+      if (t.category && !primaryNames.includes(t.category)) {
+        otherCategories.add(t.category);
+      }
+    });
+    // Primary categories first, then other categories sorted alphabetically
+    return [...primaryNames, ...Array.from(otherCategories).sort((a, b) => a.localeCompare(b))];
   }, [transactions]);
+
+  const subcategoryOptions = useMemo(() => {
+    if (!categoryInput) return [];
+    // Get predefined subcategories for the selected category
+    const predefined = getSubcategoriesForCategory(categoryInput);
+    // Also gather any existing subcategories from transactions for this category
+    const existingSubcategories = new Set<string>();
+    transactions.forEach((t) => {
+      if (t.category === categoryInput && t.subcategory) {
+        existingSubcategories.add(t.subcategory);
+      }
+    });
+    // Merge predefined and existing, predefined first
+    const predefinedNames = predefined.map(s => s.name);
+    const otherSubcategories = Array.from(existingSubcategories).filter(s => !predefinedNames.includes(s));
+    return [...predefined.map(s => ({ name: s.name, nameJa: s.nameJa })), ...otherSubcategories.map(s => ({ name: s, nameJa: undefined }))];
+  }, [categoryInput, transactions]);
 
   const startEditing = (tx: Transaction) => {
     setEditingId(tx.id);
@@ -215,10 +247,12 @@ export default function TransactionsTable({
 
   const renderCategoryBadge = (category: string) => {
     const colors = getCategoryBadgeStyles(category);
+    const japaneseName = getCategoryJapaneseName(category);
     return (
       <span
-        className={`inline-flex items-center rounded-lg ${colors.bg} px-2 py-1 text-sm font-medium ${colors.text}`}
+        className={`inline-flex items-center rounded-lg ${colors.bg} px-2 py-1 text-sm font-medium ${colors.text} cursor-default`}
         style={colors.style}
+        title={japaneseName}
       >
         {category}
       </span>
@@ -237,14 +271,16 @@ export default function TransactionsTable({
 
     const color = getSubcategoryColor(category, subcategory);
     const bgColor = lightenColor(color, 0.85);
+    const japaneseName = getSubcategoryJapaneseName(subcategory);
 
     return (
       <span
-        className="inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium"
+        className="inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium cursor-default"
         style={{
           backgroundColor: bgColor,
           color: color
         }}
+        title={japaneseName}
       >
         {subcategory}
       </span>
@@ -322,7 +358,7 @@ export default function TransactionsTable({
                 <td className="whitespace-nowrap px-6 py-4 text-sm">
                   {editingId === transaction.id ? (
                     <select
-                      className="w-40 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                      className="w-48 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
                       value={categoryInput}
                       onChange={(e) => {
                         setCategoryInput(e.target.value);
@@ -330,24 +366,33 @@ export default function TransactionsTable({
                       }}
                     >
                       <option value="">Select category</option>
-                      {categoryOptions.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
+                      {categoryOptions.map((cat) => {
+                        const jaName = getCategoryJapaneseName(cat);
+                        return (
+                          <option key={cat} value={cat} title={jaName}>
+                            {cat}{jaName ? ` (${jaName})` : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                   ) : (
-                    renderCategoryBadge(transaction.category || 'Other')
+                    renderCategoryBadge(transaction.category || 'Others')
                   )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm">
                   {editingId === transaction.id ? (
-                    <input
-                      className="w-48 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                    <select
+                      className="w-52 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white"
                       value={subcategoryInput}
                       onChange={(e) => setSubcategoryInput(e.target.value)}
-                      placeholder="Subcategory"
-                    />
+                    >
+                      <option value="">Select subcategory</option>
+                      {subcategoryOptions.map((sub) => (
+                        <option key={sub.name} value={sub.name} title={sub.nameJa}>
+                          {sub.name}{sub.nameJa ? ` (${sub.nameJa})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     renderSubcategory(transaction.category, transaction.subcategory)
                   )}

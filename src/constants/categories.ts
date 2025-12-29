@@ -11,6 +11,18 @@ export interface CategoryColorConfig {
   text: string;
 }
 
+export interface CategoryInfo {
+  name: string;
+  nameJa: string;
+  color: CategoryColorConfig;
+  subcategories: SubcategoryInfo[];
+}
+
+export interface SubcategoryInfo {
+  name: string;
+  nameJa: string;
+}
+
 function hashHue(value: string): number {
   let hash = 0;
   const normalized = value || '';
@@ -44,83 +56,114 @@ function generateColorFromName(name: string): CategoryColorConfig {
   };
 }
 
-export const CATEGORY_COLORS: Record<string, CategoryColorConfig> = {
-  'Groceries': {
-    hex: '#22c55e',
-    bg: 'bg-emerald-500/15',
-    text: 'text-emerald-600'
+/**
+ * Primary categories defined by the user - these get priority colors
+ */
+export const CATEGORIES: CategoryInfo[] = [
+  {
+    name: 'Housing',
+    nameJa: '住まい',
+    color: { hex: '#2563eb', bg: 'bg-blue-500/15', text: 'text-blue-600' },
+    subcategories: [
+      { name: 'Rent', nameJa: '家賃' },
+      { name: 'Utilities', nameJa: '光熱費' },
+      { name: 'Internet & Phone', nameJa: 'インターネット・携帯' }
+    ]
   },
-  'Food': {
-    hex: '#22c55e',
-    bg: 'bg-emerald-500/15',
-    text: 'text-emerald-600'
+  {
+    name: 'Groceries',
+    nameJa: '食費・日用品・健康',
+    color: { hex: '#22c55e', bg: 'bg-emerald-500/15', text: 'text-emerald-600' },
+    subcategories: [
+      { name: 'Food', nameJa: '食料品' },
+      { name: 'Household items', nameJa: '日用品（洗剤・紙類）' },
+      { name: 'Medicine & Supplements', nameJa: '薬・サプリ' },
+      { name: 'Personal care', nameJa: '美容・セルフケア' }
+    ]
   },
-  'Dining': {
-    hex: '#f59e0b',
-    bg: 'bg-amber-500/15',
-    text: 'text-amber-600'
+  {
+    name: 'Transport',
+    nameJa: '交通',
+    color: { hex: '#06b6d4', bg: 'bg-cyan-500/15', text: 'text-cyan-600' },
+    subcategories: [
+      { name: 'Fuel', nameJa: 'ガソリン' },
+      { name: 'Public transport', nameJa: '公共交通' },
+      { name: 'Car maintenance', nameJa: '車関連（WOF・整備）' }
+    ]
   },
-  'Transport': {
-    hex: '#06b6d4',
-    bg: 'bg-cyan-500/15',
-    text: 'text-cyan-600'
+  {
+    name: 'Fun & Social',
+    nameJa: '娯楽・交際',
+    color: { hex: '#d946ef', bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600' },
+    subcategories: [
+      { name: 'Eating out', nameJa: '外食・カフェ' },
+      { name: 'Travel & Entertainment', nameJa: '旅行・エンタメ' },
+      { name: 'Social & Gifts', nameJa: '交際費・プレゼント' }
+    ]
   },
-  'Transportation': {
-    hex: '#06b6d4',
-    bg: 'bg-cyan-500/15',
-    text: 'text-cyan-600'
+  {
+    name: 'Personal spending',
+    nameJa: '個人費（お小遣い）',
+    color: { hex: '#8b5cf6', bg: 'bg-violet-500/15', text: 'text-violet-600' },
+    subcategories: [
+      { name: 'Personal Allowance', nameJa: 'おこづかい' },
+      { name: 'Hobbies & Shopping', nameJa: '趣味・買い物' }
+    ]
   },
-  'Car': {
-    hex: '#2563eb',
-    bg: 'bg-blue-500/15',
-    text: 'text-blue-600'
+  {
+    name: 'Savings',
+    nameJa: '貯蓄',
+    color: { hex: '#14b8a6', bg: 'bg-teal-500/15', text: 'text-teal-600' },
+    subcategories: [
+      { name: 'Savings', nameJa: '貯金' },
+      { name: 'Future funds', nameJa: '将来用' }
+    ]
   },
-  'Entertainment': {
-    hex: '#d946ef',
-    bg: 'bg-fuchsia-500/15',
-    text: 'text-fuchsia-600'
-  },
-  'Utilities': {
-    hex: '#0ea5e9',
-    bg: 'bg-sky-500/15',
-    text: 'text-sky-600'
-  },
-  'Shopping': {
-    hex: '#e11d48',
-    bg: 'bg-rose-500/15',
-    text: 'text-rose-600'
-  },
-  'Subscriptions & Services': {
-    hex: '#6366f1',
-    bg: 'bg-indigo-500/15',
-    text: 'text-indigo-600'
-  },
-  'Health': {
-    hex: '#14b8a6',
-    bg: 'bg-teal-500/15',
-    text: 'text-teal-600'
-  },
-  'Rent': {
-    hex: '#a3e635',
-    bg: 'bg-lime-500/15',
-    text: 'text-lime-600'
-  },
-  'Travel': {
-    hex: '#fb923c',
-    bg: 'bg-orange-500/15',
-    text: 'text-orange-600'
-  },
-  'Hobbies': {
-    hex: '#8b5cf6',
-    bg: 'bg-violet-500/15',
-    text: 'text-violet-600'
-  },
-  'Other': {
-    hex: '#94a3b8',
-    bg: 'bg-slate-500/15',
-    text: 'text-slate-600'
+  {
+    name: 'Others',
+    nameJa: 'その他',
+    color: { hex: '#94a3b8', bg: 'bg-slate-500/15', text: 'text-slate-600' },
+    subcategories: [
+      { name: 'Miscellaneous', nameJa: '分類に迷うもの' }
+    ]
   }
-};
+];
+
+// Build CATEGORY_COLORS from CATEGORIES (primary categories have priority)
+export const CATEGORY_COLORS: Record<string, CategoryColorConfig> = Object.fromEntries(
+  CATEGORIES.map(cat => [cat.name, cat.color])
+);
+
+// Build Japanese name lookup maps
+export const CATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map(cat => [cat.name, cat.nameJa])
+);
+
+export const SUBCATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
+  CATEGORIES.flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameJa]))
+);
+
+/**
+ * Get Japanese name for a category
+ */
+export function getCategoryJapaneseName(category: string): string | undefined {
+  return CATEGORY_JA_NAMES[category];
+}
+
+/**
+ * Get Japanese name for a subcategory
+ */
+export function getSubcategoryJapaneseName(subcategory: string): string | undefined {
+  return SUBCATEGORY_JA_NAMES[subcategory];
+}
+
+/**
+ * Get subcategories for a given category
+ */
+export function getSubcategoriesForCategory(category: string): SubcategoryInfo[] {
+  const cat = CATEGORIES.find(c => c.name === category);
+  return cat?.subcategories || [];
+}
 
 // Build a lowercase lookup to avoid issues with casing/spacing differences from external sources
 const NORMALIZED_CATEGORY_COLORS: Record<string, CategoryColorConfig> = Object.fromEntries(
