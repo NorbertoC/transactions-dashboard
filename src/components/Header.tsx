@@ -24,7 +24,7 @@ export default function Header({ onUploadClick }: HeaderProps) {
           onClick={onUploadClick}
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
         >
-          <Upload className="h-4 w-4" />
+          <Upload className="h-4 w-4 mr-1" />
           <span>Upload JSON</span>
         </button>
         <button

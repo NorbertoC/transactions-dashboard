@@ -42,7 +42,10 @@ async function handleUpdate(
 
     const upstreamMethod = request.method?.toUpperCase() === 'PUT' ? 'PUT' : 'PATCH';
 
-    const response = await fetch(`${apiUrl}/transactions/${id}`, {
+    const upstreamUrl = `${apiUrl}/transactions/${id}`;
+    console.log(`Calling upstream: ${upstreamMethod} ${upstreamUrl}`);
+
+    const response = await fetch(upstreamUrl, {
       method: upstreamMethod,
       headers: {
         'Content-Type': 'application/json',
@@ -50,6 +53,16 @@ async function handleUpdate(
       },
       body: JSON.stringify(payload)
     });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error(`Non-JSON response from upstream (${response.status}):`, text.slice(0, 500));
+      return NextResponse.json(
+        { error: `Upstream API error (${response.status}): The backend may not support this operation` },
+        { status: 502 }
+      );
+    }
 
     const data = await response.json();
 
