@@ -1,54 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --background-light: #f6f7f8;
-  --background-dark: #101922;
+  /* Native controls (select popups, scrollbars) follow the active scheme */
+  color-scheme: light dark;
+  --background: #f3f5f7;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --border-subtle: #e3e8ee;
+  --foreground: #101828;
+  --muted: #667085;
   --primary: #137fec;
+
+  /* Legacy aliases kept for components still using bg-background-light/dark */
+  --background-light: #f3f5f7;
+  --background-dark: #0b1118;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1118;
+    --surface: #121a25;
+    --surface-2: #1a2432;
+    --border-subtle: #233040;
+    --foreground: #e8ecf1;
+    --muted: #8b9aac;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border-subtle: var(--border-subtle);
+  --color-muted: var(--muted);
   --color-primary: var(--primary);
   --color-background-light: var(--background-light);
   --color-background-dark: var(--background-dark);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: Inter, var(--font-geist-sans), sans-serif;
-  --radius-default: 0.25rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-}
-
-.dark {
-  --background: #101922;
-  --foreground: #e5e7eb;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --radius-default: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
 }
 
 body {
   font-family: var(--font-display);
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-/* Remove focus outline from chart elements */
+/* Visible focus for keyboard users; charts opt out below */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .recharts-wrapper,
+.recharts-wrapper :focus,
 .recharts-surface,
-.recharts-sector,
-.recharts-pie,
-svg {
+.recharts-sector {
   outline: none !important;
 }
 
-/* Remove focus outline when clicking or focusing */
-*:focus {
-  outline: none !important;
+/* iOS safe areas (PWA standalone) */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
 
-/* Specifically target chart containers */
-[role="img"],
-[role="graphics-symbol"],
-.recharts-responsive-container,
-.recharts-responsive-container * {
-  outline: none !important;
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Horizontal chip rows on mobile */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

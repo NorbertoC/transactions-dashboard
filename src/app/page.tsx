@@ -2,25 +2,36 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { RotateCcw } from "lucide-react";
+import { X } from "lucide-react";
 import Header from "@/components/Header";
-import PieChartComponent from "@/components/PieChart";
-import MonthlyEvolutionChart from "@/components/MonthlyEvolutionChart";
-import TransactionsTable from "@/components/TransactionsTable";
-import PeriodFilter, { FilterPeriod } from "@/components/PeriodFilter";
 import AuthGuard from "@/components/AuthGuard";
-import JsonUploader from "@/components/JsonUploader";
+import PeriodFilter, { FilterPeriod } from "@/components/PeriodFilter";
+import TransactionsTable from "@/components/TransactionsTable";
+import FileUploader from "@/components/upload/FileUploader";
+import KpiCards from "@/components/charts/KpiCards";
+import CategoryDonut from "@/components/charts/CategoryDonut";
+import MonthlyTrendChart from "@/components/charts/MonthlyTrendChart";
+import TopMerchants from "@/components/charts/TopMerchants";
 import {
   useTransactions,
   useChartData,
   useFilteredTransactions,
 } from "@/hooks/useTransactions";
 import { useStatementFilters } from "@/hooks/useStatementFilters";
-import { lightenColor, generateColorVariants } from "@/utils/color";
-import { getCategoryHexColor, getCategoryBadgeStyles } from "@/constants/categories";
+import { generateColorVariants } from "@/utils/color";
+import { getCategoryHexColor } from "@/constants/categories";
+
+const DAY_MS = 86_400_000;
 
 function Dashboard() {
-  const { transactions, loading, error, refetch, updateTransaction } = useTransactions();
+  const {
+    transactions,
+    loading,
+    error,
+    refetch,
+    updateTransaction,
+    removeTransaction,
+  } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>("");
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -37,10 +48,7 @@ function Dashboard() {
     }
   }, [defaultKey, optionsMap, selectedPeriod]);
 
-  const currentPeriod = useMemo(() => {
-    return selectedPeriod ? optionsMap[selectedPeriod] : undefined;
-  }, [optionsMap, selectedPeriod]);
-
+  const currentPeriod = selectedPeriod ? optionsMap[selectedPeriod] : undefined;
   const startDate = currentPeriod?.startDate ?? null;
   const endDate = currentPeriod?.endDate ?? null;
 
@@ -48,14 +56,14 @@ function Dashboard() {
     transactions,
     startDate,
     endDate,
-    null // Don't filter by category for chart data
+    null // charts aggregate the whole period; category drill-down happens below
   );
 
   const displayTransactions = useFilteredTransactions(
     transactions,
     startDate,
     endDate,
-    selectedCategory // Filter by category for table display
+    selectedCategory
   );
 
   const { categories: categoryData, subcategories: subcategoryData } =
@@ -69,58 +77,86 @@ function Dashboard() {
     return colorMap;
   }, [categoryData]);
 
-  // Generate subcategory info for each category
-  const categorySubcategoriesInfo = useMemo(() => {
-    const info: Record<string, Array<{ name: string; color: string; initials: string }>> = {};
-
-    Object.entries(subcategoryData).forEach(([category, subcategories]) => {
-      const baseColor = categoryColors[category] || getCategoryHexColor(category);
-
-      // Sort subcategories by value (highest first)
-      const sortedSubcategories = [...subcategories].sort((a, b) => b.value - a.value);
-
-      // Generate color variants
-      const colorVariants = generateColorVariants(baseColor, sortedSubcategories.length, true);
-
-      info[category] = sortedSubcategories.map((sub, index) => ({
-        name: sub.name,
-        color: colorVariants[index],
-        initials: sub.name
-          .split(' ')
-          .map(word => word[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 3) // Max 3 characters
-      }));
-    });
-
-    return info;
-  }, [subcategoryData, categoryColors]);
-
   const pieChartData = useMemo(() => {
     if (selectedCategory) {
-      const subcategoryInfo = categorySubcategoriesInfo[selectedCategory] || [];
-      const subcategories = subcategoryData[selectedCategory] || [];
-
-      // Sort subcategories by value (highest first) to match the color assignment
-      const sortedSubcategories = [...subcategories].sort(
+      const subcategories = [...(subcategoryData[selectedCategory] ?? [])].sort(
         (a, b) => b.value - a.value
       );
-
-      return sortedSubcategories.map((subcategory, index) => ({
+      const variants = generateColorVariants(
+        getCategoryHexColor(selectedCategory),
+        subcategories.length,
+        true
+      );
+      return subcategories.map((subcategory, index) => ({
         ...subcategory,
-        color: subcategoryInfo[index]?.color || getCategoryHexColor(selectedCategory),
+        color: variants[index],
       }));
     }
 
     return categoryData.map((category) => ({
       ...category,
-      color: categoryColors[category.name] || getCategoryHexColor(category.name),
+      color: getCategoryHexColor(category.name),
     }));
-  }, [selectedCategory, subcategoryData, categoryData, categoryColors, categorySubcategoriesInfo]);
+  }, [selectedCategory, subcategoryData, categoryData]);
+
+  const totalAmount = useMemo(
+    () => filteredTransactions.reduce((sum, t) => sum + t.value, 0),
+    [filteredTransactions]
+  );
+
+  const donutTotal = useMemo(
+    () => pieChartData.reduce((sum, item) => sum + item.value, 0),
+    [pieChartData]
+  );
+
+  const previousTotal = useMemo(() => {
+    if (currentPeriod?.type !== "statement") {
+      return null;
+    }
+    const statements = periodOptions.filter(
+      (option) => option.type === "statement"
+    );
+    const index = statements.findIndex(
+      (option) => option.key === currentPeriod.key
+    );
+    const previous = index >= 0 ? statements[index + 1] : undefined;
+    const previousStart = previous?.startDate;
+    const previousEnd = previous?.endDate;
+    if (!previousStart || !previousEnd) {
+      return null;
+    }
+    return transactions
+      .filter(
+        (t) =>
+          t.date_iso && t.date_iso >= previousStart && t.date_iso <= previousEnd
+      )
+      .reduce((sum, t) => sum + t.value, 0);
+  }, [currentPeriod, periodOptions, transactions]);
+
+  const dailyAverage = useMemo(() => {
+    if (!startDate || !endDate || totalAmount === 0) {
+      return 0;
+    }
+    // Ongoing statements are averaged over elapsed days, not the full cycle.
+    // Local date, not UTC: NZ is ahead of UTC for most of the day.
+    const now = new Date();
+    const todayIso = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    const effectiveEnd = endDate < todayIso ? endDate : todayIso;
+    const start = new Date(`${startDate}T00:00:00Z`).getTime();
+    const end = new Date(`${effectiveEnd}T00:00:00Z`).getTime();
+    const days = Math.max(1, Math.round((end - start) / DAY_MS) + 1);
+    return totalAmount / days;
+  }, [startDate, endDate, totalAmount]);
+
+  const currentPeriodKey =
+    currentPeriod?.type === "statement" ? currentPeriod.endDate : null;
 
   const handleCategorySelect = (category: string) => {
-    setSelectedCategory(selectedCategory === category ? null : category);
+    setSelectedCategory(category);
   };
 
   const handleReset = () => {
@@ -132,29 +168,19 @@ function Dashboard() {
     setSelectedCategory(null);
   };
 
-
-  const handleTransactionsExtracted = async (
-    extractedTransactions: unknown[]
-  ) => {
-    console.log("Extracted transactions:", extractedTransactions);
-    setShowUploadModal(false);
-    // Refresh transactions data without page reload
-    await refetch();
-  };
-
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.value, 0);
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
           className="text-center"
+          role="status"
+          aria-live="polite"
         >
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">Loading transactions...</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <p className="text-muted">Loading transactions…</p>
         </motion.div>
       </div>
     );
@@ -162,20 +188,16 @@ function Dashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg"
-        >
-          <p className="text-red-600 dark:text-red-400 text-lg mb-4">Error: {error}</p>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6 text-center shadow-sm">
+          <p className="mb-4 text-red-600 dark:text-red-400">Error: {error}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            onClick={() => refetch()}
+            className="min-h-11 rounded-xl bg-primary px-4 font-medium text-white hover:bg-primary/90"
           >
             Retry
           </button>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -183,11 +205,13 @@ function Dashboard() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header onUploadClick={() => setShowUploadModal(true)} />
-      <main className="flex-1 px-4 py-8 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financial Overview</h1>
-            <p className="text-gray-500 dark:text-gray-400">Track your spending and manage your finances effectively.</p>
+      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-7xl space-y-5 pb-safe sm:space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold sm:text-3xl">Overview</h1>
+            <p className="text-sm text-muted">
+              Household spending at a glance.
+            </p>
           </div>
 
           <PeriodFilter
@@ -196,173 +220,102 @@ function Dashboard() {
             options={periodOptions}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-background-light dark:bg-background-dark p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Spending by Category</h3>
-                  {selectedCategory && (() => {
-                    const badge = getCategoryBadgeStyles(selectedCategory);
-                    return (
-                      <span
-                        className={`inline-flex items-center rounded-lg px-2 py-1 text-sm font-medium ${badge.bg} ${badge.text}`}
-                        style={badge.style}
-                      >
-                        {selectedCategory}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <button
-                  onClick={handleReset}
-                  disabled={!selectedCategory}
-                  className={`flex items-center gap-1 text-sm font-medium transition-colors ${
-                    selectedCategory
-                      ? 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer'
-                      : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                  }`}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>Reset</span>
-                </button>
-              </div>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">${totalAmount.toFixed(0)}</p>
-              <div className="mt-1 flex items-center gap-2 text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Last Month</span>
-                <span className="font-medium text-green-500">+12%</span>
-              </div>
-              <div className="mt-6 h-60 w-full">
-                <PieChartComponent
-                  data={pieChartData}
-                  onSegmentClick={
-                    selectedCategory ? undefined : handleCategorySelect
-                  }
-                  colorMap={categoryColors}
-                />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                {pieChartData.map((item) => {
-                  const subcategories = categorySubcategoriesInfo[item.name] || [];
-                  const showSubcategories = !selectedCategory && subcategories.length > 0;
+          <KpiCards
+            totalAmount={totalAmount}
+            previousTotal={previousTotal}
+            transactionCount={filteredTransactions.length}
+            dailyAverage={dailyAverage}
+            periodLabel={currentPeriod?.label ?? ""}
+          />
 
-                  return (
-                    <div
-                      key={item.name}
-                      className={`flex items-center gap-2 ${
-                        !selectedCategory ? 'cursor-pointer' : 'cursor-default'
-                      }`}
-                      onClick={() => !selectedCategory && handleCategorySelect(item.name)}
-                    >
-                      <span
-                        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      ></span>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          {item.name}
-                        </p>
-                        {showSubcategories && (
-                          <div className="flex items-center gap-1">
-                            {subcategories.map((sub) => (
-                              <span
-                                key={sub.name}
-                                className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
-                                style={{
-                                  backgroundColor: lightenColor(sub.color, 0.85),
-                                  color: sub.color
-                                }}
-                                title={sub.name}
-                              >
-                                {sub.initials}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-background-light dark:bg-background-dark p-6 shadow-sm"
+              transition={{ duration: 0.4 }}
+              className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm"
             >
-              <MonthlyEvolutionChart
-                transactions={filteredTransactions}
+              <CategoryDonut
+                data={pieChartData}
+                total={donutTotal}
+                selectedCategory={selectedCategory}
+                onSelect={selectedCategory ? undefined : handleCategorySelect}
+                onReset={handleReset}
+              />
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm"
+            >
+              <MonthlyTrendChart
+                transactions={transactions}
                 selectedCategory={selectedCategory}
                 categoryColors={categoryColors}
+                currentPeriodKey={currentPeriodKey}
+              />
+            </motion.section>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm lg:col-span-1"
+            >
+              <TopMerchants transactions={displayTransactions} />
+            </motion.section>
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="lg:col-span-2"
+            >
+              <TransactionsTable
+                transactions={displayTransactions}
+                categoryColors={categoryColors}
+                onTransactionUpdated={updateTransaction}
+                onTransactionDeleted={removeTransaction}
               />
             </motion.div>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <TransactionsTable
-              transactions={displayTransactions}
-              categoryColors={categoryColors}
-              onTransactionUpdated={updateTransaction}
-            />
-          </motion.div>
         </div>
       </main>
 
-      {/* Upload Modal */}
       {showUploadModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
           onClick={() => setShowUploadModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add transactions"
         >
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            transition={{ type: "spring", duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border-subtle bg-surface sm:max-w-2xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">Upload JSON</h2>
+            <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
+              <h2 className="text-lg font-semibold">Add transactions</h2>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                aria-label="Close"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6">
-              <JsonUploader
-                onTransactionsExtracted={handleTransactionsExtracted}
-              />
+            <div className="overflow-y-auto p-5 [padding-bottom:max(1.25rem,env(safe-area-inset-bottom))]">
+              <FileUploader onUploadComplete={refetch} />
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </div>
   );
