@@ -1,6 +1,8 @@
 /**
- * Category color configuration for consistent styling across the application
- * These colors are used in pie charts, badges, and other category indicators
+ * Canonical category taxonomy — single source of truth for the dashboard.
+ *
+ * The Express API (transactions-api/classification.js) must stay in sync with
+ * this taxonomy: same category/subcategory names, same legacy mapping.
  */
 
 import { lightenColor } from '@/utils/color';
@@ -23,42 +25,9 @@ export interface SubcategoryInfo {
   nameJa: string;
 }
 
-function hashHue(value: string): number {
-  let hash = 0;
-  const normalized = value || '';
-  for (let i = 0; i < normalized.length; i++) {
-    hash = (hash << 5) - hash + normalized.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
-  }
-  // Spread hues across the wheel; ensure positive and wrap at 360
-  return Math.abs(hash) % 360;
-}
+export const DEFAULT_CATEGORY = 'Others';
+export const DEFAULT_SUBCATEGORY = 'Miscellaneous';
 
-function hslToHex(h: number, s: number, l: number): string {
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-function generateColorFromName(name: string): CategoryColorConfig {
-  const hue = hashHue(name.trim().toLowerCase());
-  const hex = hslToHex(hue, 0.65, 0.55); // moderate saturation/lightness
-  return {
-    hex,
-    bg: 'bg-slate-500/15',
-    text: 'text-slate-600'
-  };
-}
-
-/**
- * Primary categories defined by the user - these get priority colors
- */
 export const CATEGORIES: CategoryInfo[] = [
   {
     name: 'Housing',
@@ -88,6 +57,7 @@ export const CATEGORIES: CategoryInfo[] = [
     subcategories: [
       { name: 'Fuel', nameJa: 'ガソリン' },
       { name: 'Public transport', nameJa: '公共交通' },
+      { name: 'Taxi & Rideshare', nameJa: 'タクシー・配車' },
       { name: 'Car maintenance', nameJa: '車関連（WOF・整備）' }
     ]
   },
@@ -98,6 +68,7 @@ export const CATEGORIES: CategoryInfo[] = [
     subcategories: [
       { name: 'Eating out', nameJa: '外食・カフェ' },
       { name: 'Travel & Entertainment', nameJa: '旅行・エンタメ' },
+      { name: 'Subscriptions', nameJa: 'サブスク' },
       { name: 'Social & Gifts', nameJa: '交際費・プレゼント' }
     ]
   },
@@ -129,12 +100,127 @@ export const CATEGORIES: CategoryInfo[] = [
   }
 ];
 
-// Build CATEGORY_COLORS from CATEGORIES (primary categories have priority)
+/**
+ * Mapping from the pre-2026 taxonomy (Dining, Entertainment, Shopping, …) to
+ * the canonical one. Keys are `category|subcategory` in lowercase; a `|*` key
+ * is the fallback for any subcategory of that legacy category.
+ */
+const LEGACY_PAIR_MAP: Record<string, { category: string; subcategory: string }> = {
+  'transport|public transport': { category: 'Transport', subcategory: 'Public transport' },
+  'transport|rideshare': { category: 'Transport', subcategory: 'Taxi & Rideshare' },
+  'transport|micromobility': { category: 'Transport', subcategory: 'Taxi & Rideshare' },
+  'car|fuel & charging': { category: 'Transport', subcategory: 'Fuel' },
+  'car|services & maintenance': { category: 'Transport', subcategory: 'Car maintenance' },
+  'car|*': { category: 'Transport', subcategory: 'Car maintenance' },
+  'groceries|supermarkets': { category: 'Groceries', subcategory: 'Food' },
+  'groceries|alcohol & beverage': { category: 'Groceries', subcategory: 'Food' },
+  'groceries|specialty food': { category: 'Groceries', subcategory: 'Food' },
+  'dining|*': { category: 'Fun & Social', subcategory: 'Eating out' },
+  'entertainment|streaming': { category: 'Fun & Social', subcategory: 'Subscriptions' },
+  'entertainment|gaming': { category: 'Personal spending', subcategory: 'Hobbies & Shopping' },
+  'entertainment|*': { category: 'Fun & Social', subcategory: 'Travel & Entertainment' },
+  'subscriptions & services|mobile phone': { category: 'Housing', subcategory: 'Internet & Phone' },
+  'subscriptions & services|*': { category: 'Fun & Social', subcategory: 'Subscriptions' },
+  'shopping|retail & home': { category: 'Groceries', subcategory: 'Household items' },
+  'shopping|*': { category: 'Personal spending', subcategory: 'Hobbies & Shopping' },
+  'health|*': { category: 'Groceries', subcategory: 'Medicine & Supplements' },
+  'travel|*': { category: 'Fun & Social', subcategory: 'Travel & Entertainment' },
+  'hobbies|*': { category: 'Personal spending', subcategory: 'Hobbies & Shopping' },
+  'other|*': { category: 'Others', subcategory: 'Miscellaneous' }
+};
+
+// lowercase pair key -> canonical-cased pair, so legacy casing differences
+// ('Public Transport') normalize to the canonical names ('Public transport')
+const CANONICAL_PAIR_LOOKUP = new Map(
+  CATEGORIES.flatMap((cat) =>
+    cat.subcategories.map(
+      (sub) =>
+        [
+          `${cat.name.toLowerCase()}|${sub.name.toLowerCase()}`,
+          { category: cat.name, subcategory: sub.name }
+        ] as const
+    )
+  )
+);
+
+const CANONICAL_CATEGORY_NAMES = new Map(
+  CATEGORIES.map((cat) => [cat.name.toLowerCase(), cat.name])
+);
+
+/**
+ * Map a possibly-legacy category/subcategory pair to the canonical taxonomy.
+ * Pairs already in the canonical taxonomy (or fully unknown ones) pass through
+ * unchanged so manual custom labels are never destroyed.
+ */
+export function normalizeCategoryPair(
+  category?: string | null,
+  subcategory?: string | null
+): { category: string; subcategory: string } {
+  const cat = (category ?? '').trim();
+  const sub = (subcategory ?? '').trim();
+
+  if (!cat) {
+    return { category: DEFAULT_CATEGORY, subcategory: sub || DEFAULT_SUBCATEGORY };
+  }
+
+  const catKey = cat.toLowerCase();
+  const subKey = sub.toLowerCase();
+
+  const canonicalPair = CANONICAL_PAIR_LOOKUP.get(`${catKey}|${subKey}`);
+  if (canonicalPair) {
+    return canonicalPair;
+  }
+
+  const mapped = LEGACY_PAIR_MAP[`${catKey}|${subKey}`] ?? LEGACY_PAIR_MAP[`${catKey}|*`];
+  if (mapped) {
+    return mapped;
+  }
+
+  // Canonical category with a custom subcategory: keep it, normalizing casing.
+  const canonicalName = CANONICAL_CATEGORY_NAMES.get(catKey);
+  if (canonicalName) {
+    return { category: canonicalName, subcategory: sub || DEFAULT_SUBCATEGORY };
+  }
+
+  return { category: cat, subcategory: sub || DEFAULT_SUBCATEGORY };
+}
+
+function hashHue(value: string): number {
+  let hash = 0;
+  const normalized = value || '';
+  for (let i = 0; i < normalized.length; i++) {
+    hash = (hash << 5) - hash + normalized.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash) % 360;
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function generateColorFromName(name: string): CategoryColorConfig {
+  const hue = hashHue(name.trim().toLowerCase());
+  const hex = hslToHex(hue, 0.65, 0.55);
+  return {
+    hex,
+    bg: 'bg-slate-500/15',
+    text: 'text-slate-600'
+  };
+}
+
 export const CATEGORY_COLORS: Record<string, CategoryColorConfig> = Object.fromEntries(
   CATEGORIES.map(cat => [cat.name, cat.color])
 );
 
-// Build Japanese name lookup maps
 export const CATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
   CATEGORIES.map(cat => [cat.name, cat.nameJa])
 );
@@ -143,66 +229,38 @@ export const SUBCATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
   CATEGORIES.flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameJa]))
 );
 
-/**
- * Get Japanese name for a category
- */
 export function getCategoryJapaneseName(category: string): string | undefined {
   return CATEGORY_JA_NAMES[category];
 }
 
-/**
- * Get Japanese name for a subcategory
- */
 export function getSubcategoryJapaneseName(subcategory: string): string | undefined {
   return SUBCATEGORY_JA_NAMES[subcategory];
 }
 
-/**
- * Get subcategories for a given category
- */
 export function getSubcategoriesForCategory(category: string): SubcategoryInfo[] {
   const cat = CATEGORIES.find(c => c.name === category);
   return cat?.subcategories || [];
 }
 
-// Build a lowercase lookup to avoid issues with casing/spacing differences from external sources
 const NORMALIZED_CATEGORY_COLORS: Record<string, CategoryColorConfig> = Object.fromEntries(
   Object.entries(CATEGORY_COLORS).map(([key, value]) => [key.toLowerCase(), value])
 );
 
-/**
- * Default color for categories not in the CATEGORY_COLORS map
- */
 export const DEFAULT_CATEGORY_COLOR: CategoryColorConfig = {
   hex: '#64748b',
   bg: 'bg-slate-500/15',
   text: 'text-slate-600'
 };
 
-/**
- * Get color configuration for a category
- * @param category - The category name
- * @returns CategoryColorConfig object with hex, bg, and text colors
- */
 export function getCategoryColor(category: string): CategoryColorConfig {
   const key = (category || '').toLowerCase().trim();
   return NORMALIZED_CATEGORY_COLORS[key] || generateColorFromName(category);
 }
 
-/**
- * Get hex color for a category (used in pie charts)
- * @param category - The category name
- * @returns Hex color string
- */
 export function getCategoryHexColor(category: string): string {
   return getCategoryColor(category).hex;
 }
 
-/**
- * Get badge styles for a category (used in tables and badges)
- * @param category - The category name
- * @returns Object with bg and text Tailwind classes
- */
 export function getCategoryBadgeStyles(category: string): { bg: string; text: string; style: { backgroundColor: string; color: string } } {
   const color = getCategoryColor(category);
   return {

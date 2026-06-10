@@ -31,11 +31,15 @@ export function useTransactions() {
     );
   };
 
+  const removeTransaction = (id: number) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
+  };
+
   useEffect(() => {
     fetchData(true);
   }, []);
 
-  return { transactions, loading, error, refetch: fetchData, updateTransaction };
+  return { transactions, loading, error, refetch: fetchData, updateTransaction, removeTransaction };
 }
 
 export function useFilteredTransactions(

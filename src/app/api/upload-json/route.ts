@@ -257,19 +257,21 @@ async function persistTransactions(transactions: Transaction[]) {
     }
 
     const valueDiffers = Math.abs(existing.value - newTx.value) > 0.01;
-    const categoryDiffers =
-      existing.category !== newTx.category || existing.subcategory !== newTx.subcategory;
 
-    if (valueDiffers || categoryDiffers) {
-      if (existing.id !== undefined) {
-        updates.push({
-          id: existing.id,
-          data: {
-            ...existing,
-            ...newTx
-          }
-        });
-      }
+    // A category difference alone is NOT an update trigger: the stored
+    // category may be a manual edit, and re-uploading a statement must
+    // never destroy it. Only a changed amount updates the row, and even
+    // then the stored category/subcategory win over the re-parsed ones.
+    if (valueDiffers && existing.id !== undefined) {
+      updates.push({
+        id: existing.id,
+        data: {
+          ...existing,
+          ...newTx,
+          category: existing.category,
+          subcategory: existing.subcategory
+        }
+      });
     }
 
     return false;

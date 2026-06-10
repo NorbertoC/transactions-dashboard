@@ -85,3 +85,50 @@ async function handleUpdate(
 
 export const PATCH = handleUpdate;
 export const PUT = handleUpdate;
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const resolvedParams = await params;
+  const id = Number(resolvedParams.id);
+  if (!Number.isFinite(id)) {
+    return NextResponse.json({ error: 'Invalid transaction id' }, { status: 400 });
+  }
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/transactions', '') || 'http://localhost:3000';
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+  }
+
+  try {
+    const response = await fetch(`${apiUrl}/transactions/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-API-Key': apiKey }
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data?.error || 'Failed to delete transaction' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete transaction error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete transaction' },
+      { status: 500 }
+    );
+  }
+}

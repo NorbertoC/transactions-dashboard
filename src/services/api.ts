@@ -1,6 +1,7 @@
 import { Transaction } from '@/types/transaction';
 import sampleData from '../../data.json';
 import { categorizeMerchant } from '@/utils/classification';
+import { normalizeCategoryPair } from '@/constants/categories';
 
 export class ApiService {
   private static readonly API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -8,21 +9,20 @@ export class ApiService {
 
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
+      // Legacy pairs (Dining, Shopping, …) are remapped on the fly so the UI
+      // always shows the canonical taxonomy even before the DB migration runs.
+      // Stored categories — including an explicit 'Others / Miscellaneous' —
+      // are preserved; the classifier only fills genuinely missing ones.
+      const storedCategory = (transaction.category ?? '').trim();
+      const pair = storedCategory
+        ? normalizeCategoryPair(storedCategory, transaction.subcategory)
+        : categorizeMerchant(transaction.place || '');
+
       const normalized: Transaction = {
         ...transaction,
-        category: transaction.category || 'Other',
-        subcategory: transaction.subcategory || 'General'
+        category: pair.category,
+        subcategory: pair.subcategory
       };
-
-      const classification = categorizeMerchant(transaction.place || '');
-
-      if (!normalized.category || normalized.category.toLowerCase() === 'other') {
-        normalized.category = classification.category;
-      }
-
-      if (!normalized.subcategory || normalized.subcategory.toLowerCase() === 'general') {
-        normalized.subcategory = classification.subcategory;
-      }
 
       if (!normalized.statement_id || !normalized.statement_start || !normalized.statement_end) {
         const metadata = ApiService.computeStatementMetadata(normalized.date_iso);
