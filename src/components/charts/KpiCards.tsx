@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatCurrencyWhole, formatPercentChange } from '@/utils/format';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { LOCALE_TAGS } from '@/i18n/types';
 
 interface KpiCardsProps {
   totalAmount: number;
@@ -46,15 +47,24 @@ function StatCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm"
+      className="flex min-h-[158px] min-w-0 flex-col rounded-2xl border border-border-subtle bg-surface p-3.5 shadow-sm sm:min-h-[172px] sm:p-5"
     >
       <div className="flex items-center gap-2 text-muted">
-        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="truncate text-sm">{label}</span>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 text-xs font-medium leading-tight sm:text-sm">{label}</span>
       </div>
-      <p className={`mt-2 text-3xl font-bold tabular-nums ${figureClassName}`}>{figure}</p>
-      {context && <p className="mt-1 text-sm text-muted">{context}</p>}
-      <p className="mt-2 text-xs leading-5 text-muted">{help}</p>
+      <p
+        className={`mt-3 truncate text-[clamp(1.35rem,5.4vw,1.875rem)] font-bold leading-none tabular-nums ${figureClassName}`}
+        title={figure}
+      >
+        {figure}
+      </p>
+      {context && <p className="mt-1.5 truncate text-xs text-muted sm:text-sm">{context}</p>}
+      <p className="mt-auto pt-3 text-[11px] leading-4 text-muted sm:text-xs sm:leading-5">
+        {help}
+      </p>
     </motion.div>
   );
 }
@@ -78,7 +88,7 @@ export default function KpiCards({
   dailyAverage,
   periodLabel
 }: KpiCardsProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const change = formatPercentChange(totalAmount, previousTotal);
   const { icon: changeIcon, className: changeClassName } = changeAppearance(change);
 
@@ -88,7 +98,7 @@ export default function KpiCards({
         index={0}
         label={t('kpi.totalSpent')}
         icon={Wallet}
-        figure={formatCurrencyWhole(totalAmount)}
+        figure={formatCurrencyWhole(totalAmount, locale)}
         context={periodLabel}
         help={t('kpi.totalSpentHelp')}
       />
@@ -101,7 +111,7 @@ export default function KpiCards({
         context={
           previousTotal === null
             ? undefined
-            : t('kpi.previousAmount', { amount: formatCurrencyWhole(previousTotal) })
+            : t('kpi.previousAmount', { amount: formatCurrencyWhole(previousTotal, locale) })
         }
         help={t(
           previousUsesElapsedDays
@@ -113,14 +123,14 @@ export default function KpiCards({
         index={2}
         label={t('kpi.transactions')}
         icon={Receipt}
-        figure={transactionCount.toLocaleString('en-NZ')}
+        figure={transactionCount.toLocaleString(LOCALE_TAGS[locale])}
         help={t('kpi.transactionsHelp')}
       />
       <StatCard
         index={3}
         label={t('kpi.dailyAverage')}
         icon={CalendarDays}
-        figure={formatCurrency(dailyAverage)}
+        figure={formatCurrency(dailyAverage, locale)}
         help={t('kpi.dailyAverageHelp')}
       />
     </div>

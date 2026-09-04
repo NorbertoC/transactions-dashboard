@@ -5,8 +5,6 @@
  * this taxonomy: same category/subcategory names, same legacy mapping.
  */
 
-import { lightenColor } from '@/utils/color';
-
 export interface CategoryColorConfig {
   hex: string;
   bg: string;
@@ -310,9 +308,9 @@ export function getCategoryBadgeStyles(category: string): { bg: string; text: st
   return {
     bg: color.bg,
     text: color.text,
-    // Inline styles ensure color fidelity even if utility classes are purged or unsupported
+    // Preserve category identity without forcing a light-only badge background.
     style: {
-      backgroundColor: lightenColor(color.hex, 0.88),
+      backgroundColor: `color-mix(in srgb, ${color.hex} 16%, transparent)`,
       color: color.hex
     }
   } as const;

@@ -1,6 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useLocale } from '@/i18n/LocaleProvider';
+import { LOCALE_TAGS } from '@/i18n/types';
 import { Transaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/format';
 
@@ -34,15 +36,16 @@ function aggregateMerchants(transactions: Transaction[], limit: number): Merchan
 }
 
 export default function TopMerchants({ transactions, limit = 5 }: TopMerchantsProps) {
+  const { t, locale } = useLocale();
   const merchants = aggregateMerchants(transactions, limit);
   const maxTotal = merchants[0]?.total ?? 0;
 
   if (merchants.length === 0) {
     return (
       <div>
-        <h3 className="text-base font-semibold text-foreground">Top merchants</h3>
+        <h3 className="text-base font-semibold text-foreground">{t('charts.merchants')}</h3>
         <p className="py-12 text-center text-sm text-muted">
-          No transactions for this period.
+          {t('charts.noTransactions')}
         </p>
       </div>
     );
@@ -54,30 +57,43 @@ export default function TopMerchants({ transactions, limit = 5 }: TopMerchantsPr
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <h3 className="text-base font-semibold text-foreground">Top merchants</h3>
-      <ol className="mt-3 space-y-3">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">{t('charts.merchants')}</h3>
+        <p className="mt-1 text-xs leading-5 text-muted">{t('charts.merchantHelp')}</p>
+      </div>
+      <ol className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
         {merchants.map((merchant, index) => {
           const barWidth =
             maxTotal > 0 ? Math.max(0, Math.min(100, (merchant.total / maxTotal) * 100)) : 0;
+          const count = merchant.count.toLocaleString(LOCALE_TAGS[locale]);
+          const purchaseLabel = t(
+            merchant.count === 1 ? 'charts.purchase' : 'charts.purchases',
+            { count }
+          );
 
           return (
-            <li key={merchant.key} className="flex items-center gap-3">
-              <span className="w-5 shrink-0 text-sm font-semibold tabular-nums text-muted">
+            <li
+              key={merchant.key}
+              className="flex min-w-0 items-start gap-3 rounded-xl border border-border-subtle bg-surface-2/45 p-3.5"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold tabular-nums text-primary">
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="truncate text-sm font-medium text-foreground">{merchant.place}</p>
+                <p className="truncate text-sm font-medium text-foreground" title={merchant.place}>
+                  {merchant.place}
+                </p>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <p className="text-xs text-muted">
+                    {purchaseLabel}
+                  </p>
                   <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                    {formatCurrency(merchant.total)}
+                    {formatCurrency(merchant.total, locale)}
                   </p>
                 </div>
-                <p className="text-xs text-muted">
-                  {merchant.count} {merchant.count === 1 ? 'purchase' : 'purchases'}
-                </p>
-                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded bg-surface-2">
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background">
                   <div
-                    className="h-full rounded bg-primary"
+                    className="h-full rounded-full bg-primary"
                     style={{ width: `${barWidth}%` }}
                   />
                 </div>

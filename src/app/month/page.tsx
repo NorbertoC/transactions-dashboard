@@ -172,7 +172,7 @@ function MonthView() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">
+      <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:pb-6">
         <div className="mx-auto max-w-7xl space-y-5 pb-safe sm:space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -252,7 +252,7 @@ function MonthView() {
                       <span className="text-sm">{card.label}</span>
                     </div>
                     <p className="mt-2 text-3xl font-bold tabular-nums">
-                      {formatCurrency(card.value)}
+                      {formatCurrency(card.value, locale)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-muted">{card.help}</p>
                   </motion.div>
@@ -271,13 +271,13 @@ function MonthView() {
                   <div className="rounded-xl bg-surface p-4">
                     <dt className="text-sm text-muted">{t('month.projectedExpenses')}</dt>
                     <dd className="mt-1 text-2xl font-bold tabular-nums">
-                      {projectionError ? '—' : formatCurrency(projection?.expense_total ?? 0)}
+                      {projectionError ? '—' : formatCurrency(projection?.expense_total ?? 0, locale)}
                     </dd>
                   </div>
                   <div className="rounded-xl bg-surface p-4">
                     <dt className="text-sm text-muted">{t('month.projectedIncome')}</dt>
                     <dd className="mt-1 text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                      {projectionError ? '—' : formatCurrency(projection?.income_total ?? 0)}
+                      {projectionError ? '—' : formatCurrency(projection?.income_total ?? 0, locale)}
                     </dd>
                   </div>
                 </dl>
@@ -304,7 +304,7 @@ function MonthView() {
                             </p>
                           </div>
                           <span className="shrink-0 tabular-nums font-semibold">
-                            {formatCurrency(item.value)}
+                            {formatCurrency(item.value, locale)}
                           </span>
                         </li>
                       ))}

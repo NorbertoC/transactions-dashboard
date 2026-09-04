@@ -240,8 +240,8 @@ function Dashboard() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header onUploadClick={() => setShowUploadModal(true)} />
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-7xl space-y-5 pb-safe sm:space-y-6">
+      <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
+        <div className="mx-auto max-w-[1480px] space-y-5 [padding-bottom:calc(6.5rem+env(safe-area-inset-bottom))] sm:space-y-6 lg:[padding-bottom:env(safe-area-inset-bottom)]">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">{t("overview.title")}</h1>
             <p className="text-sm text-muted">
@@ -264,12 +264,12 @@ function Dashboard() {
             periodLabel={currentPeriod?.label ?? ""}
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm"
+              className="min-w-0 rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5"
             >
               <CategoryDonut
                 data={pieChartData}
@@ -284,7 +284,7 @@ function Dashboard() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm"
+              className="min-w-0 rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5"
             >
               <MonthlyTrendChart
                 transactions={transactions}
@@ -295,30 +295,28 @@ function Dashboard() {
             </motion.section>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <motion.section
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.15 }}
-              className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm lg:col-span-1"
-            >
-              <TopMerchants transactions={displayTransactions} />
-            </motion.section>
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5"
+          >
+            <TopMerchants transactions={displayTransactions} />
+          </motion.section>
 
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="lg:col-span-2"
-            >
-              <TransactionsTable
-                transactions={displayTransactions}
-                categoryColors={categoryColors}
-                onTransactionUpdated={updateTransaction}
-                onTransactionDeleted={removeTransaction}
-              />
-            </motion.div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="min-w-0"
+          >
+            <TransactionsTable
+              transactions={displayTransactions}
+              categoryColors={categoryColors}
+              onTransactionUpdated={updateTransaction}
+              onTransactionDeleted={removeTransaction}
+            />
+          </motion.div>
         </div>
       </main>
 

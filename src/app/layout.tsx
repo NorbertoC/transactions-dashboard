@@ -26,11 +26,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3f5f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1118" },
-  ],
+  themeColor: "#0b1118",
 };
+
+const themeInitializationScript = `
+  try {
+    var theme = localStorage.getItem('gastos.theme') === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    var themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.setAttribute('content', theme === 'light' ? '#f3f5f7' : '#0b1118');
+  } catch (_) {
+    document.documentElement.dataset.theme = 'dark';
+    document.documentElement.style.colorScheme = 'dark';
+  }
+`;
 
 export default function RootLayout({
   children,
@@ -39,6 +49,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
+      </head>
       <body
         className={`${inter.variable} font-display bg-background text-foreground antialiased`}
         suppressHydrationWarning

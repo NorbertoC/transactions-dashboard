@@ -13,7 +13,7 @@ import {
   fetchRecurringRules
 } from '@/services/recurring';
 import type { RecurringProjection, RecurringRule } from '@/types/recurring';
-import { formatCurrency, formatCurrencyWhole } from '@/utils/format';
+import { formatCurrency, formatCurrencyWhole, formatDateFull } from '@/utils/format';
 
 const HISTORY_PERIODS = 3;
 const EMPTY_PROJECTION: RecurringProjection = {
@@ -264,7 +264,7 @@ function ForecastView() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">
+      <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:pb-6">
         <div className="mx-auto max-w-7xl space-y-5 pb-safe sm:space-y-6">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">{t('forecast.title')}</h1>
@@ -297,16 +297,16 @@ function ForecastView() {
                 {t('forecast.estimatedSpend')}
               </p>
               <p className="mt-1 text-4xl font-bold tabular-nums">
-                {nextProjectionAvailable ? formatCurrencyWhole(nextEstimate) : '—'}
+                {nextProjectionAvailable ? formatCurrencyWhole(nextEstimate, locale) : '—'}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {forecastWindow.start} → {forecastWindow.end}
+                {formatDateFull(forecastWindow.start, locale)} → {formatDateFull(forecastWindow.end, locale)}
               </p>
               <dl className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-surface/70 p-3">
                   <dt className="text-xs text-muted">{t('forecast.flexible')}</dt>
                   <dd className="mt-1 font-semibold tabular-nums">
-                    {formatCurrency(historical.flexibleAverage)}
+                    {formatCurrency(historical.flexibleAverage, locale)}
                   </dd>
                 </div>
                 <div className="rounded-xl border border-dashed border-primary/40 bg-surface/70 p-3">
@@ -314,13 +314,13 @@ function ForecastView() {
                   <dd className="mt-1 font-semibold tabular-nums">
                     {projectionLoading || !nextProjectionAvailable
                       ? '—'
-                      : formatCurrency(nextProjection.expense_total)}
+                      : formatCurrency(nextProjection.expense_total, locale)}
                   </dd>
                 </div>
               </dl>
               {nextProjectionAvailable && (
                 <p className="mt-4 text-xs text-muted">
-                  {t('forecast.range')}: {formatCurrencyWhole(rangeLow)}–{formatCurrencyWhole(rangeHigh)}
+                  {t('forecast.range')}: {formatCurrencyWhole(rangeLow, locale)}–{formatCurrencyWhole(rangeHigh, locale)}
                 </p>
               )}
               {nextProjectionAvailable && nextProjection.income_total > 0 && (
@@ -329,7 +329,7 @@ function ForecastView() {
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {t('forecast.afterIncome', { amount: formatCurrencyWhole(nextBalance) })}
+                  {t('forecast.afterIncome', { amount: formatCurrencyWhole(nextBalance, locale) })}
                 </p>
               )}
             </section>
@@ -343,10 +343,10 @@ function ForecastView() {
                 {t('forecast.estimatedSpend')}
               </p>
               <p className="mt-1 text-4xl font-bold tabular-nums">
-                {yearProjectionAvailable ? formatCurrencyWhole(yearEstimate) : '—'}
+                {yearProjectionAvailable ? formatCurrencyWhole(yearEstimate, locale) : '—'}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {forecastWindow.start} → {yearEnd}
+                {formatDateFull(forecastWindow.start, locale)} → {formatDateFull(yearEnd, locale)}
               </p>
               <dl className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-surface-2/70 p-3">
@@ -354,7 +354,7 @@ function ForecastView() {
                   <dd className="mt-1 font-semibold tabular-nums">
                     {projectionLoading || !yearProjectionAvailable
                       ? '—'
-                      : formatCurrency(yearProjection.expense_total)}
+                      : formatCurrency(yearProjection.expense_total, locale)}
                   </dd>
                 </div>
                 <div className="rounded-xl bg-surface-2/70 p-3">
@@ -362,7 +362,7 @@ function ForecastView() {
                   <dd className="mt-1 font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {projectionLoading || !yearProjectionAvailable
                       ? '—'
-                      : formatCurrency(yearProjection.income_total)}
+                      : formatCurrency(yearProjection.income_total, locale)}
                   </dd>
                 </div>
               </dl>
@@ -372,7 +372,7 @@ function ForecastView() {
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {t('forecast.afterIncome', { amount: formatCurrencyWhole(yearBalance) })}
+                  {t('forecast.afterIncome', { amount: formatCurrencyWhole(yearBalance, locale) })}
                 </p>
               )}
             </section>
@@ -421,7 +421,7 @@ function ForecastView() {
                           {getLocalizedCategoryName(item.category, locale)}
                         </span>
                         <span className="tabular-nums">
-                          {formatCurrency(item.monthlyAverage)} · {percentage.toFixed(0)}%
+                          {formatCurrency(item.monthlyAverage, locale)} · {percentage.toFixed(0)}%
                         </span>
                       </div>
                       <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2">

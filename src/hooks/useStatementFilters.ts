@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useLocale } from '@/i18n/LocaleProvider';
+import { LOCALE_TAGS } from '@/i18n/types';
 import { Transaction } from '@/types/transaction';
 
 export interface PeriodFilterOption {
@@ -70,6 +72,8 @@ function computeStatementMetadata(dateIso?: string | null): StatementMetadata {
 }
 
 export function useStatementFilters(transactions: Transaction[]) {
+  const { locale, t } = useLocale();
+
   return useMemo(() => {
     if (!transactions || transactions.length === 0) {
       return {
@@ -116,8 +120,15 @@ export function useStatementFilters(transactions: Transaction[]) {
     }
 
     const latestYear = new Date(`${statements[0].endDate}T00:00:00Z`).getUTCFullYear();
-    const monthFormatter = new Intl.DateTimeFormat('en-NZ', { month: 'long' });
-    const monthYearFormatter = new Intl.DateTimeFormat('en-NZ', { month: 'long', year: 'numeric' });
+    const monthFormatter = new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+      month: 'long',
+      timeZone: 'UTC'
+    });
+    const monthYearFormatter = new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC'
+    });
 
     const options: PeriodFilterOption[] = statements.map((statement, index) => {
       const endDate = new Date(`${statement.endDate}T00:00:00Z`);
@@ -127,7 +138,7 @@ export function useStatementFilters(transactions: Transaction[]) {
 
       return {
         key: `statement:${statement.id}`,
-        label: index === 0 ? `Last Statement (${monthName})` : labelBase,
+        label: index === 0 ? t('period.lastStatement', { month: monthName }) : labelBase,
         startDate: statement.startDate,
         endDate: statement.endDate,
         type: 'statement',
@@ -136,9 +147,9 @@ export function useStatementFilters(transactions: Transaction[]) {
     });
 
     const accumulativeRanges = [
-      { months: 3, label: 'Last 3 Months' },
-      { months: 6, label: 'Last 6 Months' },
-      { months: 12, label: 'Last 12 Months' }
+      { months: 3, label: t('period.last3') },
+      { months: 6, label: t('period.last6') },
+      { months: 12, label: t('period.last12') }
     ];
 
     for (const range of accumulativeRanges) {
@@ -161,7 +172,7 @@ export function useStatementFilters(transactions: Transaction[]) {
     const latestStatement = statements[0];
     options.push({
       key: 'accumulative:all',
-      label: 'All time',
+      label: t('period.allTime'),
       startDate: oldestStatement.startDate,
       endDate: latestStatement.endDate,
       type: 'accumulative',
@@ -178,5 +189,5 @@ export function useStatementFilters(transactions: Transaction[]) {
       optionsMap,
       defaultKey: options[0]?.key || ''
     };
-  }, [transactions]);
+  }, [locale, t, transactions]);
 }
