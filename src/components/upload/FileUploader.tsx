@@ -17,6 +17,7 @@ import {
   type DetectedColumns,
   type ParsedTransactionRow
 } from '@/utils/file-parsing';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface FileUploaderProps {
   onUploadComplete?: () => void;
@@ -95,6 +96,7 @@ function columnLabel(rows: string[][], col: number): string {
 }
 
 export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
+  const { t } = useLocale();
   const inputId = useId();
   const [tab, setTab] = useState<'file' | 'json'>('file');
 
@@ -358,7 +360,7 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
         >
           <UploadCloud className="h-8 w-8 text-muted" aria-hidden="true" />
           <div>
-            <p className="text-sm font-medium text-foreground">Drag and drop a bank statement</p>
+            <p className="text-sm font-medium text-foreground">{t('upload.hint')} — Drag and drop a bank statement</p>
             <p className="mt-1 text-sm text-muted">CSV or Excel (.csv, .xlsx, .xls)</p>
           </div>
           <label

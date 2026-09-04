@@ -8,6 +8,7 @@
 
 import Papa from 'papaparse';
 import { categorizeMerchant } from '@/utils/classification';
+import { normalizeCategoryPair } from '@/constants/categories';
 
 export interface DetectedColumns {
   /** Index of the header row, or -1 when columns were inferred from content. */
@@ -15,6 +16,8 @@ export interface DetectedColumns {
   dateColumn: number;
   descriptionColumn: number;
   amountColumn: number;
+  /** Optional bank Category column (Amex NZ). */
+  categoryColumn?: number;
 }
 
 export interface ParsedTransactionRow {
@@ -80,6 +83,9 @@ function parseCsvFile(file: File): Promise<string[][]> {
     Papa.parse<string[]>(file, {
       header: false,
       skipEmptyLines: 'greedy',
+      // Amex NZ CSVs wrap multi-line address fields in quotes.
+      quoteChar: '"',
+      escapeChar: '"',
       complete: (results) => {
         resolve(dropEmptyRows(results.data.map((row) => row.map(normalizeCell))));
       },
@@ -197,10 +203,14 @@ const DATE_HEADER_NAMES = [
 ];
 const DESCRIPTION_HEADER_NAMES = [
   'details', 'particulars', 'description', 'narrative', 'merchant', 'payee',
-  'transaction details', 'merchant name', 'name', 'place'
+  'transaction details', 'merchant name', 'name', 'place',
+  'appears on your statement as'
 ];
 const AMOUNT_HEADER_NAMES = [
   'amount', 'debit', 'value', 'amount (nzd)', 'debit amount', 'amount nzd', 'total'
+];
+const CATEGORY_HEADER_NAMES = [
+  'category', 'transaction category', 'amex category', 'merchant category'
 ];
 
 const HEADER_SEARCH_DEPTH = 5;
@@ -235,7 +245,17 @@ function detectByHeader(rows: string[][]): DetectedColumns | null {
       continue;
     }
 
-    return { headerRowIndex: rowIndex, dateColumn, descriptionColumn, amountColumn };
+    const categoryColumn = findHeaderColumn(cells, CATEGORY_HEADER_NAMES);
+    const detected: DetectedColumns = {
+      headerRowIndex: rowIndex,
+      dateColumn,
+      descriptionColumn,
+      amountColumn
+    };
+    if (categoryColumn !== -1) {
+      detected.categoryColumn = categoryColumn;
+    }
+    return detected;
   }
 
   return null;
@@ -345,9 +365,110 @@ export function detectColumns(rows: string[][]): DetectedColumns | null {
   return detectByHeader(rows) ?? detectByContent(rows);
 }
 
+/**
+ * Map Amex NZ / bank Category labels onto the kakeibo taxonomy when possible.
+ * Returns null when the label is empty or unrecognised.
+ */
+export function mapBankCategoryToTaxonomy(
+  bankCategory: string
+): { category: string; subcategory: string } | null {
+  const raw = bankCategory.trim();
+  if (!raw) {
+    return null;
+  }
+
+  const key = raw.toLowerCase();
+
+  const exact: Record<string, { category: string; subcategory: string }> = {
+    'merchandise & supplies-groceries': { category: 'Groceries', subcategory: 'Food' },
+    'merchandise & supplies-clothing stores': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'merchandise & supplies-computer supplies': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'merchandise & supplies-wholesale stores': {
+      category: 'Groceries',
+      subcategory: 'Household items'
+    },
+    'restaurant-restaurant': { category: 'Fun & Social', subcategory: 'Eating out' },
+    'restaurant-bar & cafe': { category: 'Fun & Social', subcategory: 'Eating out' },
+    'transportation-fuel': { category: 'Transport', subcategory: 'Fuel' },
+    'transportation-taxis & coach': { category: 'Transport', subcategory: 'Taxi & Rideshare' },
+    'transportation-rail services': { category: 'Transport', subcategory: 'Public transport' },
+    'transportation-airlines': { category: 'Fun & Social', subcategory: 'Travel & Entertainment' },
+    'business services-internet services': {
+      category: 'Housing',
+      subcategory: 'Internet & Phone'
+    },
+    'business services-professional services': {
+      category: 'Others',
+      subcategory: 'Miscellaneous'
+    },
+    'entertainment-theatrical events': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'entertainment-general entertainment': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'communications-telephone telecom': {
+      category: 'Housing',
+      subcategory: 'Internet & Phone'
+    },
+    'fees & adjustments-fees & charges': { category: 'Others', subcategory: 'Miscellaneous' },
+    'other-other': { category: 'Others', subcategory: 'Miscellaneous' }
+  };
+
+  if (exact[key]) {
+    return exact[key];
+  }
+
+  // Loose keyword fallbacks for variant Amex labels.
+  if (/grocer|supermarket|food store/.test(key)) {
+    return { category: 'Groceries', subcategory: 'Food' };
+  }
+  if (/restaurant|dining|cafe|bar &/.test(key)) {
+    return { category: 'Fun & Social', subcategory: 'Eating out' };
+  }
+  if (/fuel|petrol|gas station/.test(key)) {
+    return { category: 'Transport', subcategory: 'Fuel' };
+  }
+  if (/taxi|rideshare|uber|coach/.test(key)) {
+    return { category: 'Transport', subcategory: 'Taxi & Rideshare' };
+  }
+  if (/rail|bus|public transport|transit/.test(key)) {
+    return { category: 'Transport', subcategory: 'Public transport' };
+  }
+  if (/airline|hotel|travel|lodging/.test(key)) {
+    return { category: 'Fun & Social', subcategory: 'Travel & Entertainment' };
+  }
+  if (/internet|phone|telecom|mobile/.test(key)) {
+    return { category: 'Housing', subcategory: 'Internet & Phone' };
+  }
+  if (/streaming|entertainment|theatre|theater|cinema/.test(key)) {
+    return { category: 'Fun & Social', subcategory: 'Travel & Entertainment' };
+  }
+  if (/pharmacy|health|medical|drug/.test(key)) {
+    return { category: 'Groceries', subcategory: 'Medicine & Supplements' };
+  }
+  if (/clothing|department|wholesale|retail|shopping/.test(key)) {
+    return { category: 'Personal spending', subcategory: 'Hobbies & Shopping' };
+  }
+  if (/utilit|electric|gas|water|rent|housing/.test(key)) {
+    return { category: 'Housing', subcategory: 'Utilities' };
+  }
+
+  return null;
+}
+
 // Only actual card-payment phrasings; a bare /payment/ would wrongly
 // exclude legitimate spending like 'RENT PAYMENT'.
-const CARD_PAYMENT_PATTERN = /payment\s+received|thank\s+you|direct\s+debit\s+received/i;
+const CARD_PAYMENT_PATTERN =
+  /payment\s*[-–—]?\s*thank\s+you|payment\s+received|thank\s+you|direct\s+debit\s+received/i;
 
 export function extractTransactions(
   rows: string[][],
@@ -366,6 +487,7 @@ export function extractTransactions(
     dateIso: string;
     amount: number;
     place: string;
+    bankCategory: string;
   }> = [];
   const skipped: SkippedRow[] = [];
 
@@ -388,7 +510,12 @@ export function extractTransactions(
       return;
     }
 
-    candidates.push({ index, dateIso, amount, place });
+    const bankCategory =
+      columns.categoryColumn !== undefined
+        ? (row[columns.categoryColumn] ?? '').trim()
+        : '';
+
+    candidates.push({ index, dateIso, amount, place, bankCategory });
   });
 
   // Sign convention varies by bank: card statements list purchases as
@@ -397,10 +524,15 @@ export function extractTransactions(
   const negativeCount = candidates.filter((candidate) => candidate.amount < 0).length;
   const debitsNegative = negativeCount > candidates.length / 2;
 
-  const parsed = candidates.map(({ index, dateIso, amount, place }) => {
+  const parsed = candidates.map(({ index, dateIso, amount, place, bankCategory }) => {
     const signSaysCredit = debitsNegative ? amount > 0 : amount < 0;
     const isCredit = signSaysCredit || CARD_PAYMENT_PATTERN.test(place);
-    const { category, subcategory } = categorizeMerchant(place);
+
+    const fromBank = mapBankCategoryToTaxonomy(bankCategory);
+    const fromMerchant = categorizeMerchant(place);
+    const pair = fromBank
+      ? normalizeCategoryPair(fromBank.category, fromBank.subcategory)
+      : fromMerchant;
 
     return {
       id: `row-${index}-${dateIso}-${Math.abs(amount)}`,
@@ -408,8 +540,8 @@ export function extractTransactions(
       dateIso,
       value: Math.abs(amount),
       isCredit,
-      category,
-      subcategory,
+      category: pair.category,
+      subcategory: pair.subcategory,
       include: !isCredit
     };
   });
