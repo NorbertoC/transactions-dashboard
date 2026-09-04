@@ -41,11 +41,16 @@ function LegendRowContent({ entry, color, displayName }: LegendRowContentProps) 
           style={{ backgroundColor: color }}
           aria-hidden="true"
         />
-        <span
-          className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-          title={entry.name}
-        >
-          {displayName}
+        <span className="min-w-0 flex-1">
+          <span
+            className="block truncate text-sm font-medium text-foreground"
+            title={entry.name}
+          >
+            {displayName}
+          </span>
+          <span className="block text-xs text-muted">
+            {entry.count} {entry.count === 1 ? 'transaction' : 'transactions'}
+          </span>
         </span>
         <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
           {formatCurrency(entry.value)}
@@ -115,6 +120,13 @@ export default function CategoryDonut({
       transition={{ duration: 0.3 }}
     >
       {header}
+      <p className="mt-1 text-xs leading-5 text-muted">
+        {selectedCategory
+          ? t('charts.subcategoriesHelp', {
+              category: getLocalizedCategoryName(selectedCategory, locale)
+            })
+          : t('charts.categoriesHelp')}
+      </p>
 
       <div className="relative mt-3 h-[220px] sm:h-[240px]">
         <ResponsiveContainer width="100%" height="100%">

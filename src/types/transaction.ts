@@ -8,6 +8,7 @@ export interface Transaction {
   date_iso: string;
   category: string;
   subcategory?: string;
+  category_source?: 'manual' | 'imported' | 'merchant' | null;
   statement_id?: string | null;
   statement_start?: string | null;
   statement_end?: string | null;

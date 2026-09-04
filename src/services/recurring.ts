@@ -1,4 +1,8 @@
-import type { RecurringRule, RecurringRuleInput } from '@/types/recurring';
+import type {
+  RecurringProjection,
+  RecurringRule,
+  RecurringRuleInput
+} from '@/types/recurring';
 
 async function readJson(response: Response) {
   return response.json().catch(() => ({ error: 'Invalid response' }));
@@ -11,6 +15,19 @@ export async function fetchRecurringRules(): Promise<RecurringRule[]> {
     throw new Error(data.error || 'Failed to fetch recurring rules');
   }
   return data as RecurringRule[];
+}
+
+export async function fetchRecurringProjection(
+  start: string,
+  end: string
+): Promise<RecurringProjection> {
+  const params = new URLSearchParams({ start, end });
+  const response = await fetch(`/api/recurring-rules/project?${params}`);
+  const data = await readJson(response);
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to project recurring rules');
+  }
+  return data as RecurringProjection;
 }
 
 export async function createRecurringRule(input: RecurringRuleInput): Promise<void> {

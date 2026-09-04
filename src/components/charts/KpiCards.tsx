@@ -16,6 +16,7 @@ import { useLocale } from '@/i18n/LocaleProvider';
 interface KpiCardsProps {
   totalAmount: number;
   previousTotal: number | null;
+  previousUsesElapsedDays: boolean;
   transactionCount: number;
   dailyAverage: number;
   periodLabel: string;
@@ -27,6 +28,7 @@ interface StatCardProps {
   figure: string;
   figureClassName?: string;
   context?: string;
+  help: string;
   index: number;
 }
 
@@ -36,6 +38,7 @@ function StatCard({
   figure,
   figureClassName = 'text-foreground',
   context,
+  help,
   index
 }: StatCardProps) {
   return (
@@ -51,6 +54,7 @@ function StatCard({
       </div>
       <p className={`mt-2 text-3xl font-bold tabular-nums ${figureClassName}`}>{figure}</p>
       {context && <p className="mt-1 text-sm text-muted">{context}</p>}
+      <p className="mt-2 text-xs leading-5 text-muted">{help}</p>
     </motion.div>
   );
 }
@@ -69,6 +73,7 @@ function changeAppearance(change: string | null): { icon: LucideIcon; className:
 export default function KpiCards({
   totalAmount,
   previousTotal,
+  previousUsesElapsedDays,
   transactionCount,
   dailyAverage,
   periodLabel
@@ -85,6 +90,7 @@ export default function KpiCards({
         icon={Wallet}
         figure={formatCurrencyWhole(totalAmount)}
         context={periodLabel}
+        help={t('kpi.totalSpentHelp')}
       />
       <StatCard
         index={1}
@@ -92,18 +98,30 @@ export default function KpiCards({
         icon={changeIcon}
         figure={change ?? '—'}
         figureClassName={change ? changeClassName : 'text-muted'}
+        context={
+          previousTotal === null
+            ? undefined
+            : t('kpi.previousAmount', { amount: formatCurrencyWhole(previousTotal) })
+        }
+        help={t(
+          previousUsesElapsedDays
+            ? 'kpi.vsPreviousElapsedHelp'
+            : 'kpi.vsPreviousHelp'
+        )}
       />
       <StatCard
         index={2}
         label={t('kpi.transactions')}
         icon={Receipt}
         figure={transactionCount.toLocaleString('en-NZ')}
+        help={t('kpi.transactionsHelp')}
       />
       <StatCard
         index={3}
         label={t('kpi.dailyAverage')}
         icon={CalendarDays}
         figure={formatCurrency(dailyAverage)}
+        help={t('kpi.dailyAverageHelp')}
       />
     </div>
   );

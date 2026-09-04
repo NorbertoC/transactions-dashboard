@@ -24,6 +24,21 @@ import { useLocale } from "@/i18n/LocaleProvider";
 
 const DAY_MS = 86_400_000;
 
+function getLocalTodayIso(): string {
+  const now = new Date();
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function addUtcDays(dateIso: string, days: number): string {
+  const date = new Date(`${dateIso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function Dashboard() {
   const { t } = useLocale();
   const {
@@ -111,9 +126,9 @@ function Dashboard() {
     [pieChartData]
   );
 
-  const previousTotal = useMemo(() => {
+  const previousComparison = useMemo(() => {
     if (currentPeriod?.type !== "statement") {
-      return null;
+      return { total: null, usesElapsedDays: false };
     }
     const statements = periodOptions.filter(
       (option) => option.type === "statement"
@@ -125,14 +140,37 @@ function Dashboard() {
     const previousStart = previous?.startDate;
     const previousEnd = previous?.endDate;
     if (!previousStart || !previousEnd) {
-      return null;
+      return { total: null, usesElapsedDays: false };
     }
-    return transactions
+
+    const todayIso = getLocalTodayIso();
+    const usesElapsedDays = Boolean(
+      currentPeriod.startDate && currentPeriod.endDate && currentPeriod.endDate > todayIso
+    );
+    const currentEffectiveEnd = currentPeriod.endDate && currentPeriod.endDate < todayIso
+      ? currentPeriod.endDate
+      : todayIso;
+    const elapsedDays = currentPeriod.startDate
+      ? Math.max(
+          1,
+          Math.round(
+            (new Date(`${currentEffectiveEnd}T00:00:00Z`).getTime() -
+              new Date(`${currentPeriod.startDate}T00:00:00Z`).getTime()) /
+              DAY_MS
+          ) + 1
+        )
+      : 1;
+    const comparisonEnd = usesElapsedDays
+      ? [previousEnd, addUtcDays(previousStart, elapsedDays - 1)].sort()[0]
+      : previousEnd;
+    const total = transactions
       .filter(
         (t) =>
-          t.date_iso && t.date_iso >= previousStart && t.date_iso <= previousEnd
+          t.date_iso && t.date_iso >= previousStart && t.date_iso <= comparisonEnd
       )
       .reduce((sum, t) => sum + t.value, 0);
+
+    return { total, usesElapsedDays };
   }, [currentPeriod, periodOptions, transactions]);
 
   const dailyAverage = useMemo(() => {
@@ -141,12 +179,7 @@ function Dashboard() {
     }
     // Ongoing statements are averaged over elapsed days, not the full cycle.
     // Local date, not UTC: NZ is ahead of UTC for most of the day.
-    const now = new Date();
-    const todayIso = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, "0"),
-      String(now.getDate()).padStart(2, "0"),
-    ].join("-");
+    const todayIso = getLocalTodayIso();
     const effectiveEnd = endDate < todayIso ? endDate : todayIso;
     const start = new Date(`${startDate}T00:00:00Z`).getTime();
     const end = new Date(`${effectiveEnd}T00:00:00Z`).getTime();
@@ -224,7 +257,8 @@ function Dashboard() {
 
           <KpiCards
             totalAmount={totalAmount}
-            previousTotal={previousTotal}
+            previousTotal={previousComparison.total}
+            previousUsesElapsedDays={previousComparison.usesElapsedDays}
             transactionCount={filteredTransactions.length}
             dailyAverage={dailyAverage}
             periodLabel={currentPeriod?.label ?? ""}

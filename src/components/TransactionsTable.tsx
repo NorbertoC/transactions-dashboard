@@ -2,7 +2,7 @@
 
 import { Fragment, type ReactNode, useId, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, ChevronUp, Pencil, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
 import { formatCurrency, formatDateFull, formatDateShort } from '@/utils/format';
 import { generateColorVariants, lightenColor } from '@/utils/color';
@@ -11,10 +11,12 @@ import {
   DEFAULT_CATEGORY,
   getCategoryBadgeStyles,
   getCategoryHexColor,
-  getCategoryJapaneseName,
+  getLocalizedCategoryName,
+  getLocalizedSubcategoryName,
   getSubcategoriesForCategory,
-  getSubcategoryJapaneseName
 } from '@/constants/categories';
+import { useLocale } from '@/i18n/LocaleProvider';
+import { suggestCategoryForMerchant, type Classification } from '@/utils/classification';
 
 const PAGE_SIZE = 50;
 
@@ -39,9 +41,11 @@ export default function TransactionsTable({
   onTransactionUpdated,
   onTransactionDeleted
 }: TransactionsTableProps) {
+  const { t, locale } = useLocale();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [reviewSuggestionsOnly, setReviewSuggestionsOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [categoryInput, setCategoryInput] = useState('');
@@ -50,6 +54,24 @@ export default function TransactionsTable({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<ActionError | null>(null);
   const editorId = useId();
+
+  const categorySuggestions = useMemo(() => {
+    const suggestions = new Map<number, Classification>();
+
+    transactions.forEach((transaction) => {
+      if (transaction.category_source === 'manual') return;
+      const suggestion = suggestCategoryForMerchant(transaction.place);
+      if (!suggestion) return;
+
+      const categoryMatches = suggestion.category === transaction.category;
+      const subcategoryMatches = suggestion.subcategory === transaction.subcategory;
+      if (!categoryMatches || !subcategoryMatches) {
+        suggestions.set(transaction.id, suggestion);
+      }
+    });
+
+    return suggestions;
+  }, [transactions]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -66,6 +88,7 @@ export default function TransactionsTable({
   };
 
   const filteredTransactions = transactions.filter((transaction) => {
+    if (reviewSuggestionsOnly && !categorySuggestions.has(transaction.id)) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -175,16 +198,14 @@ export default function TransactionsTable({
     startEditing(transaction);
   };
 
-  const handleSave = async (transaction: Transaction) => {
-    if (!categoryInput.trim() && !subcategoryInput.trim()) {
-      setActionError({ id: transaction.id, message: 'Please set category or subcategory.' });
-      return;
-    }
+  const persistCategory = async (
+    transaction: Transaction,
+    category: string,
+    subcategory: string | undefined
+  ) => {
     try {
       setSavingId(transaction.id);
       setActionError(null);
-      const category = categoryInput.trim() || transaction.category;
-      const subcategory = subcategoryInput.trim() || transaction.subcategory;
       const response = await fetch(`/api/transactions/${transaction.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -196,8 +217,13 @@ export default function TransactionsTable({
         throw new Error(data?.error ?? 'Failed to update transaction');
       }
 
-      onTransactionUpdated?.({ ...transaction, category, subcategory });
-      cancelEditing();
+      onTransactionUpdated?.({
+        ...transaction,
+        category,
+        subcategory,
+        category_source: 'manual'
+      });
+      if (editingId === transaction.id) cancelEditing();
     } catch (err) {
       setActionError({
         id: transaction.id,
@@ -206,6 +232,32 @@ export default function TransactionsTable({
     } finally {
       setSavingId(null);
     }
+  };
+
+  const handleSave = async (transaction: Transaction) => {
+    if (!categoryInput.trim() && !subcategoryInput.trim()) {
+      setActionError({ id: transaction.id, message: 'Please set category or subcategory.' });
+      return;
+    }
+
+    const category = categoryInput.trim() || transaction.category;
+    const predefinedSubcategories = getSubcategoriesForCategory(category);
+    const requestedSubcategory = subcategoryInput.trim() || transaction.subcategory;
+    const requestedIsValid = predefinedSubcategories.some(
+      (subcategory) => subcategory.name === requestedSubcategory
+    );
+    const subcategory =
+      predefinedSubcategories.length > 0 && !requestedIsValid
+        ? predefinedSubcategories[0].name
+        : requestedSubcategory;
+
+    await persistCategory(transaction, category, subcategory);
+  };
+
+  const applySuggestion = async (transaction: Transaction) => {
+    const suggestion = categorySuggestions.get(transaction.id);
+    if (!suggestion) return;
+    await persistCategory(transaction, suggestion.category, suggestion.subcategory);
   };
 
   const handleDelete = async (transaction: Transaction) => {
@@ -236,9 +288,9 @@ export default function TransactionsTable({
       <span
         className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
         style={colors.style}
-        title={getCategoryJapaneseName(category)}
+        title={category}
       >
-        {category}
+        {getLocalizedCategoryName(category, locale)}
       </span>
     );
   };
@@ -253,9 +305,9 @@ export default function TransactionsTable({
       <span
         className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
         style={{ backgroundColor: lightenColor(color, 0.85), color }}
-        title={getSubcategoryJapaneseName(subcategory)}
+        title={subcategory}
       >
-        {subcategory}
+        {getLocalizedSubcategoryName(subcategory, locale)}
       </span>
     );
   };
@@ -276,18 +328,17 @@ export default function TransactionsTable({
               id={`${editorId}-category`}
               value={categoryInput}
               onChange={(e) => {
-                setCategoryInput(e.target.value);
-                setSubcategoryInput('');
+                const category = e.target.value;
+                setCategoryInput(category);
+                setSubcategoryInput(getSubcategoriesForCategory(category)[0]?.name ?? '');
               }}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-base sm:text-sm"
             >
               <option value="">Select category</option>
               {categoryOptions.map((cat) => {
-                const jaName = getCategoryJapaneseName(cat);
                 return (
-                  <option key={cat} value={cat} title={jaName}>
-                    {cat}
-                    {jaName ? ` (${jaName})` : ''}
+                  <option key={cat} value={cat}>
+                    {getLocalizedCategoryName(cat, locale)}
                   </option>
                 );
               })}
@@ -305,9 +356,8 @@ export default function TransactionsTable({
             >
               <option value="">Select subcategory</option>
               {subcategoryOptions.map((sub) => (
-                <option key={sub.name} value={sub.name} title={sub.nameJa}>
-                  {sub.name}
-                  {sub.nameJa ? ` (${sub.nameJa})` : ''}
+                <option key={sub.name} value={sub.name}>
+                  {getLocalizedSubcategoryName(sub.name, locale)}
                 </option>
               ))}
             </select>
@@ -370,6 +420,12 @@ export default function TransactionsTable({
     sortedTransactions.length === 1
       ? '1 transaction'
       : `${sortedTransactions.length} transactions`;
+  let emptyMessage = 'No transactions yet.';
+  if (reviewSuggestionsOnly) {
+    emptyMessage = t('table.noSuggestions');
+  } else if (searchQuery) {
+    emptyMessage = 'No transactions match your search.';
+  }
 
   return (
     <motion.section
@@ -379,7 +435,7 @@ export default function TransactionsTable({
     >
       <h2 className="mb-3 text-base font-semibold">All Transactions</h2>
 
-      <div className="mb-2">
+      <div className="mb-2 space-y-2">
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted"
@@ -397,12 +453,30 @@ export default function TransactionsTable({
         <p className="mt-2 text-sm text-muted" role="status" aria-live="polite">
           {searchQuery ? `${resultCountLabel} matching "${searchQuery}"` : resultCountLabel}
         </p>
+        {categorySuggestions.size > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setReviewSuggestionsOnly((current) => !current);
+              setVisibleCount(PAGE_SIZE);
+            }}
+            aria-pressed={reviewSuggestionsOnly}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+              reviewSuggestionsOnly
+                ? 'border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-200'
+                : 'border-border-subtle bg-surface text-muted hover:text-foreground'
+            }`}
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {t('table.reviewSuggestions', { count: categorySuggestions.size })}
+          </button>
+        )}
       </div>
 
       {sortedTransactions.length === 0 ? (
         <div className="rounded-2xl border border-border-subtle bg-surface p-10 text-center">
           <p className="text-sm text-muted">
-            {searchQuery ? 'No transactions match your search.' : 'No transactions yet.'}
+            {emptyMessage}
           </p>
         </div>
       ) : (
@@ -447,6 +521,32 @@ export default function TransactionsTable({
                             {renderCategoryBadge(transaction.category || DEFAULT_CATEGORY)}
                             {renderSubcategoryBadge(transaction.category, transaction.subcategory)}
                           </span>
+                          {categorySuggestions.has(transaction.id) && (
+                            <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                              <span>
+                                {t('table.suggested', {
+                                  category: getLocalizedCategoryName(
+                                    categorySuggestions.get(transaction.id)?.category ?? '',
+                                    locale
+                                  ),
+                                  subcategory: getLocalizedSubcategoryName(
+                                    categorySuggestions.get(transaction.id)?.subcategory ?? '',
+                                    locale
+                                  )
+                                })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => applySuggestion(transaction)}
+                                disabled={savingId === transaction.id}
+                                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-semibold transition-colors hover:bg-amber-500/20 disabled:opacity-60"
+                              >
+                                {savingId === transaction.id
+                                  ? t('table.applyingSuggestion')
+                                  : t('table.applySuggestion')}
+                              </button>
+                            </span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-5 py-3 text-right text-sm font-medium tabular-nums">
                           {formatCurrency(transaction.value)}
@@ -519,6 +619,35 @@ export default function TransactionsTable({
                     {renderSubcategoryBadge(transaction.category, transaction.subcategory)}
                   </span>
                 </button>
+                {categorySuggestions.has(transaction.id) && editingId !== transaction.id && (
+                  <div className="mx-4 mb-3 flex min-h-11 w-[calc(100%-2rem)] items-center justify-between gap-3 rounded-xl bg-amber-500/10 px-3 text-xs font-medium text-amber-700 dark:text-amber-300">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span>
+                        {t('table.suggested', {
+                          category: getLocalizedCategoryName(
+                            categorySuggestions.get(transaction.id)?.category ?? '',
+                            locale
+                          ),
+                          subcategory: getLocalizedSubcategoryName(
+                            categorySuggestions.get(transaction.id)?.subcategory ?? '',
+                            locale
+                          )
+                        })}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => applySuggestion(transaction)}
+                      disabled={savingId === transaction.id}
+                      className="shrink-0 rounded-lg border border-amber-500/40 bg-surface px-3 py-1.5 font-semibold transition-colors hover:bg-amber-500/20 disabled:opacity-60"
+                    >
+                      {savingId === transaction.id
+                        ? t('table.applyingSuggestion')
+                        : t('table.applySuggestion')}
+                    </button>
+                  </div>
+                )}
                 {editingId === transaction.id && (
                   <div className="border-t border-border-subtle p-4">{renderEditor(transaction)}</div>
                 )}

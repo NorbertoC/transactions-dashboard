@@ -14,6 +14,7 @@ interface HeaderProps {
 const NAV = [
   { href: '/', key: 'nav.overview' as const },
   { href: '/month', key: 'nav.month' as const },
+  { href: '/forecast', key: 'nav.forecast' as const },
   { href: '/recurring', key: 'nav.recurring' as const }
 ];
 

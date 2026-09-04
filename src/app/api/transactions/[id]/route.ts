@@ -39,6 +39,7 @@ async function handleUpdate(
     const payload: Record<string, string> = {};
     if (category) payload.category = category;
     if (subcategory) payload.subcategory = subcategory;
+    payload.category_source = 'manual';
 
     const upstreamMethod = request.method?.toUpperCase() === 'PUT' ? 'PUT' : 'PATCH';
 
