@@ -323,6 +323,35 @@ describe('Amex NZ CSV', () => {
     expect(fuel?.category).toBe('Transport')
     expect(fuel?.subcategory).toBe('Fuel')
   })
+
+  it('prefers a specific merchant match over a coarse bank category', () => {
+    const rows = [
+      amexRows[0],
+      [
+        '15/03/2026',
+        'OPENAI *CHATGPT SUBSCR SAN FRANCISCO',
+        'NORBERTO C',
+        'XXXX-1234',
+        '35.00',
+        '',
+        'OPENAI *CHATGPT SUBSCR SAN FRANCISCO',
+        '',
+        'San Francisco',
+        '',
+        '',
+        'United States',
+        'REF3',
+        'Merchandise & Supplies-Groceries'
+      ]
+    ]
+
+    const { rows: parsed } = extractTransactions(rows, detectColumns(rows))
+
+    expect(parsed[0]).toMatchObject({
+      category: 'Fun & Social',
+      subcategory: 'Subscriptions'
+    })
+  })
 })
 
 describe('mapBankCategoryToTaxonomy', () => {
@@ -336,5 +365,71 @@ describe('mapBankCategoryToTaxonomy', () => {
   it('returns null for blank or unknown labels', () => {
     expect(mapBankCategoryToTaxonomy('')).toBeNull()
     expect(mapBankCategoryToTaxonomy('Completely Unknown Label XYZ')).toBeNull()
+  })
+
+  it.each([
+    ['Retail & Grocery-Pharmacies', 'Groceries', 'Medicine & Supplements'],
+    ['Retail & Grocery-Groceries', 'Groceries', 'Food'],
+    ['Retail & Grocery-Clothing Stores', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-Computer Supplies', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-Electronics Stores', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-Sporting Goods Stores', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-General Retail', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-Online Purchases', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-Department Stores', 'Personal spending', 'Hobbies & Shopping'],
+    ['Retail & Grocery-Furnishing', 'Groceries', 'Household items'],
+    ['Entertainment-Restaurants', 'Fun & Social', 'Eating out'],
+    ['Entertainment-Bars & Cafés', 'Fun & Social', 'Eating out'],
+    ['Entertainment-Other Entertainment', 'Fun & Social', 'Travel & Entertainment'],
+    ['Travel & Transport-Fuel', 'Transport', 'Fuel'],
+    ['Travel & Transport-Taxis & Coach', 'Transport', 'Taxi & Rideshare'],
+    ['Travel & Transport-Parking Charges', 'Transport', 'Parking & Tolls'],
+    ['Travel & Transport-Airline', 'Fun & Social', 'Travel & Entertainment'],
+    ['Travel & Transport-Travel Agencies', 'Fun & Social', 'Travel & Entertainment'],
+    ['Travel & Transport-Accommodation', 'Fun & Social', 'Travel & Entertainment'],
+    ['Travel & Transport-Other Travel', 'Fun & Social', 'Travel & Entertainment'],
+    ['Communications-Internet Communication', 'Housing', 'Internet & Phone'],
+    ['Finance-Government Services', 'Others', 'Miscellaneous'],
+    ['Business Services-Other Services', 'Others', 'Miscellaneous'],
+    ['Miscellaneous-Education', 'Personal spending', 'Hobbies & Shopping'],
+    ['Miscellaneous-Other', 'Others', 'Miscellaneous']
+  ])(
+    'maps the current Amex label %s without being confused by its family prefix',
+    (label, category, subcategory) => {
+      expect(mapBankCategoryToTaxonomy(label)).toEqual({ category, subcategory })
+    }
+  )
+
+  it('lets a SUICA merchant override Amex incorrect internet metadata', () => {
+    const rows = [
+      ['Date', 'Description', 'Amount', 'Category'],
+      [
+        '22/06/2026',
+        'SUICA KEITAIKESSAI TOKYO',
+        '22.33',
+        'Communications-Internet Communication'
+      ]
+    ]
+
+    const { rows: parsed } = extractTransactions(rows, detectColumns(rows))
+
+    expect(parsed[0]).toMatchObject({
+      category: 'Transport',
+      subcategory: 'Public transport'
+    })
+  })
+
+  it('keeps a review-only Apple suggestion behind the specific Amex subtype', () => {
+    const rows = [
+      ['Date', 'Description', 'Amount', 'Category'],
+      ['22/06/2026', 'APPLE.COM/BILL SYDNEY', '129.99', 'Retail & Grocery-Online Purchases']
+    ]
+
+    const { rows: parsed } = extractTransactions(rows, detectColumns(rows))
+
+    expect(parsed[0]).toMatchObject({
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    })
   })
 })

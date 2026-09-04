@@ -6,6 +6,7 @@ import { normalizeCategoryPair } from '@/constants/categories';
 export class ApiService {
   private static readonly API_URL = process.env.NEXT_PUBLIC_API_URL;
   private static readonly API_KEY = process.env.API_KEY;
+  private static readonly CAN_USE_SAMPLE_DATA = process.env.NODE_ENV !== 'production';
 
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
@@ -88,8 +89,11 @@ export class ApiService {
 
   static async fetchTransactions(): Promise<Transaction[]> {
     if (!this.API_URL || !this.API_KEY) {
-      console.warn('API credentials not found, using sample data');
-      return ApiService.normalizeTransactions(sampleData as Transaction[]);
+      if (this.CAN_USE_SAMPLE_DATA) {
+        console.warn('API credentials not found, using development sample data');
+        return ApiService.normalizeTransactions(sampleData as Transaction[]);
+      }
+      throw new Error('Transactions API is not configured');
     }
 
     try {
@@ -107,8 +111,11 @@ export class ApiService {
       const data = await response.json();
       return ApiService.normalizeTransactions(data as Transaction[]);
     } catch (error) {
-      console.error('Failed to fetch transactions from API, using sample data:', error);
-      return ApiService.normalizeTransactions(sampleData as Transaction[]);
+      if (this.CAN_USE_SAMPLE_DATA) {
+        console.warn('Transactions API unavailable, using development sample data:', error);
+        return ApiService.normalizeTransactions(sampleData as Transaction[]);
+      }
+      throw error;
     }
   }
 
@@ -123,8 +130,11 @@ export class ApiService {
       const data = await response.json();
       return ApiService.normalizeTransactions(data as Transaction[]);
     } catch (error) {
-      console.error('Failed to fetch transactions:', error);
-      return ApiService.normalizeTransactions(sampleData as Transaction[]);
+      if (this.CAN_USE_SAMPLE_DATA) {
+        console.warn('Transactions API unavailable, using development sample data:', error);
+        return ApiService.normalizeTransactions(sampleData as Transaction[]);
+      }
+      throw error;
     }
   }
 }

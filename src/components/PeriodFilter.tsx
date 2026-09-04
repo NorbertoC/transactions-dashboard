@@ -14,6 +14,13 @@ interface PeriodFilterProps {
 
 export default function PeriodFilter({ selectedPeriod, onPeriodChange, options }: PeriodFilterProps) {
   const { t } = useLocale();
+  const getOptionLabel = (option: PeriodFilterOption) => {
+    if (option.key === 'accumulative:3') return t('period.last3');
+    if (option.key === 'accumulative:6') return t('period.last6');
+    if (option.key === 'accumulative:12') return t('period.last12');
+    if (option.key === 'accumulative:all') return t('period.allTime');
+    return option.label;
+  };
   return (
     <div
       role="group"
@@ -38,7 +45,7 @@ export default function PeriodFilter({ selectedPeriod, onPeriodChange, options }
                   : 'border border-border-subtle bg-surface text-muted hover:text-foreground'
               }`}
             >
-              {option.label}
+              {getOptionLabel(option)}
             </button>
           </Fragment>
         );

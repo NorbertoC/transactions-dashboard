@@ -7,7 +7,7 @@
  */
 
 import Papa from 'papaparse';
-import { categorizeMerchant } from '@/utils/classification';
+import { suggestCategoryForMerchant } from '@/utils/classification';
 import { normalizeCategoryPair } from '@/constants/categories';
 
 export interface DetectedColumns {
@@ -380,6 +380,85 @@ export function mapBankCategoryToTaxonomy(
   const key = raw.toLowerCase();
 
   const exact: Record<string, { category: string; subcategory: string }> = {
+    'retail & grocery-groceries': { category: 'Groceries', subcategory: 'Food' },
+    'retail & grocery-pharmacies': {
+      category: 'Groceries',
+      subcategory: 'Medicine & Supplements'
+    },
+    'retail & grocery-furnishing': {
+      category: 'Groceries',
+      subcategory: 'Household items'
+    },
+    'retail & grocery-clothing stores': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'retail & grocery-computer supplies': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'retail & grocery-electronics stores': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'retail & grocery-sporting goods stores': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'retail & grocery-general retail': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'retail & grocery-online purchases': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'retail & grocery-department stores': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'entertainment-restaurants': { category: 'Fun & Social', subcategory: 'Eating out' },
+    'entertainment-bars & cafés': { category: 'Fun & Social', subcategory: 'Eating out' },
+    'entertainment-other entertainment': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'travel & transport-fuel': { category: 'Transport', subcategory: 'Fuel' },
+    'travel & transport-taxis & coach': {
+      category: 'Transport',
+      subcategory: 'Taxi & Rideshare'
+    },
+    'travel & transport-other travel': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'travel & transport-parking charges': {
+      category: 'Transport',
+      subcategory: 'Parking & Tolls'
+    },
+    'travel & transport-airline': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'travel & transport-travel agencies': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'travel & transport-accommodation': {
+      category: 'Fun & Social',
+      subcategory: 'Travel & Entertainment'
+    },
+    'communications-internet communication': {
+      category: 'Housing',
+      subcategory: 'Internet & Phone'
+    },
+    'finance-government services': { category: 'Others', subcategory: 'Miscellaneous' },
+    'business services-other services': { category: 'Others', subcategory: 'Miscellaneous' },
+    'miscellaneous-education': {
+      category: 'Personal spending',
+      subcategory: 'Hobbies & Shopping'
+    },
+    'miscellaneous-other': { category: 'Others', subcategory: 'Miscellaneous' },
     'merchandise & supplies-groceries': { category: 'Groceries', subcategory: 'Food' },
     'merchandise & supplies-clothing stores': {
       category: 'Personal spending',
@@ -427,38 +506,49 @@ export function mapBankCategoryToTaxonomy(
     return exact[key];
   }
 
-  // Loose keyword fallbacks for variant Amex labels.
-  if (/grocer|supermarket|food store/.test(key)) {
-    return { category: 'Groceries', subcategory: 'Food' };
-  }
-  if (/restaurant|dining|cafe|bar &/.test(key)) {
-    return { category: 'Fun & Social', subcategory: 'Eating out' };
-  }
-  if (/fuel|petrol|gas station/.test(key)) {
-    return { category: 'Transport', subcategory: 'Fuel' };
-  }
-  if (/taxi|rideshare|uber|coach/.test(key)) {
-    return { category: 'Transport', subcategory: 'Taxi & Rideshare' };
-  }
-  if (/rail|bus|public transport|transit/.test(key)) {
-    return { category: 'Transport', subcategory: 'Public transport' };
-  }
-  if (/airline|hotel|travel|lodging/.test(key)) {
-    return { category: 'Fun & Social', subcategory: 'Travel & Entertainment' };
-  }
-  if (/internet|phone|telecom|mobile/.test(key)) {
-    return { category: 'Housing', subcategory: 'Internet & Phone' };
-  }
-  if (/streaming|entertainment|theatre|theater|cinema/.test(key)) {
-    return { category: 'Fun & Social', subcategory: 'Travel & Entertainment' };
-  }
-  if (/pharmacy|health|medical|drug/.test(key)) {
+  // Amex prefixes broad families such as "Retail & Grocery" before the
+  // meaningful subtype. Match the subtype so "Pharmacies" cannot be
+  // mistaken for groceries merely because of that prefix.
+  const subtype = key.includes('-') ? key.slice(key.indexOf('-') + 1) : key;
+
+  // Loose keyword fallbacks for variant bank labels.
+  if (/pharmacy|health|medical|drug/.test(subtype)) {
     return { category: 'Groceries', subcategory: 'Medicine & Supplements' };
   }
-  if (/clothing|department|wholesale|retail|shopping/.test(key)) {
+  if (/restaurant|dining|caf[eé]s?|bars?/.test(subtype)) {
+    return { category: 'Fun & Social', subcategory: 'Eating out' };
+  }
+  if (/fuel|petrol|gas station/.test(subtype)) {
+    return { category: 'Transport', subcategory: 'Fuel' };
+  }
+  if (/taxi|rideshare|uber|coach/.test(subtype)) {
+    return { category: 'Transport', subcategory: 'Taxi & Rideshare' };
+  }
+  if (/rail|bus|public transport|transit/.test(subtype)) {
+    return { category: 'Transport', subcategory: 'Public transport' };
+  }
+  if (/parking|car park|carpark|toll/.test(subtype)) {
+    return { category: 'Transport', subcategory: 'Parking & Tolls' };
+  }
+  if (/airline|hotel|travel|lodging/.test(subtype)) {
+    return { category: 'Fun & Social', subcategory: 'Travel & Entertainment' };
+  }
+  if (/internet|phone|telecom|mobile/.test(subtype)) {
+    return { category: 'Housing', subcategory: 'Internet & Phone' };
+  }
+  if (/streaming|entertainment|theatre|theater|cinema/.test(subtype)) {
+    return { category: 'Fun & Social', subcategory: 'Travel & Entertainment' };
+  }
+  if (/grocer|supermarket|food store/.test(subtype)) {
+    return { category: 'Groceries', subcategory: 'Food' };
+  }
+  if (/clothing|department|wholesale|retail|shopping|computer|electronic|sporting/.test(subtype)) {
     return { category: 'Personal spending', subcategory: 'Hobbies & Shopping' };
   }
-  if (/utilit|electric|gas|water|rent|housing/.test(key)) {
+  if (/furnishing|household|home supplies/.test(subtype)) {
+    return { category: 'Groceries', subcategory: 'Household items' };
+  }
+  if (/utilit|electric|gas|water|rent|housing/.test(subtype)) {
     return { category: 'Housing', subcategory: 'Utilities' };
   }
 
@@ -529,10 +619,12 @@ export function extractTransactions(
     const isCredit = signSaysCredit || CARD_PAYMENT_PATTERN.test(place);
 
     const fromBank = mapBankCategoryToTaxonomy(bankCategory);
-    const fromMerchant = categorizeMerchant(place);
-    const pair = fromBank
-      ? normalizeCategoryPair(fromBank.category, fromBank.subcategory)
-      : fromMerchant;
+    const fromMerchant = suggestCategoryForMerchant(place);
+    const pair =
+      (fromMerchant?.confidence !== 'review' ? fromMerchant : null) ??
+      (fromBank
+        ? normalizeCategoryPair(fromBank.category, fromBank.subcategory)
+        : fromMerchant ?? normalizeCategoryPair());
 
     return {
       id: `row-${index}-${dateIso}-${Math.abs(amount)}`,

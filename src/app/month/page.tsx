@@ -9,10 +9,10 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useStatementFilters } from '@/hooks/useStatementFilters';
 import { useLocale } from '@/i18n/LocaleProvider';
 import {
-  computePeriodSummary,
-  fetchPeriodSummary
+  computePeriodSummary
 } from '@/services/period-summaries';
-import type { PeriodSummary } from '@/types/recurring';
+import { fetchRecurringProjection } from '@/services/recurring';
+import type { PeriodSummary, RecurringProjection } from '@/types/recurring';
 import { buildClientPeriodSummary } from '@/utils/period-summary-fallback';
 import { formatCurrency } from '@/utils/format';
 import {
@@ -33,6 +33,8 @@ function MonthView() {
   const [source, setSource] = useState<'api' | 'fallback' | null>(null);
   const [busy, setBusy] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [projection, setProjection] = useState<RecurringProjection | null>(null);
+  const [projectionError, setProjectionError] = useState(false);
 
   useEffect(() => {
     if (defaultKey && (!selectedKey || !optionsMap[selectedKey])) {
@@ -56,22 +58,14 @@ function MonthView() {
       setBusy(true);
       setStatusError(null);
       try {
-        const fromApi = await fetchPeriodSummary(current.endDate);
+        const fromApi = await computePeriodSummary({
+          statement_id: current.endDate,
+          start: current.startDate,
+          end: current.endDate
+        });
         if (cancelled) return;
-        if (fromApi) {
-          setSummary(fromApi);
-          setSource('api');
-        } else {
-          setSummary(
-            buildClientPeriodSummary(
-              transactions,
-              current.endDate,
-              current.startDate,
-              current.endDate
-            )
-          );
-          setSource('fallback');
-        }
+        setSummary(fromApi);
+        setSource('api');
       } catch (err) {
         if (cancelled) return;
         setSummary(
@@ -94,6 +88,33 @@ function MonthView() {
       cancelled = true;
     };
   }, [current, transactions]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProjection() {
+      if (!current?.startDate || !current.endDate) {
+        setProjection(null);
+        setProjectionError(false);
+        return;
+      }
+      setProjectionError(false);
+      try {
+        const projected = await fetchRecurringProjection(current.startDate, current.endDate);
+        if (!cancelled) setProjection(projected);
+      } catch {
+        if (!cancelled) {
+          setProjection(null);
+          setProjectionError(true);
+        }
+      }
+    }
+
+    void loadProjection();
+    return () => {
+      cancelled = true;
+    };
+  }, [current]);
 
   const handleRecompute = async () => {
     if (!current?.endDate || !current.startDate) return;
@@ -203,9 +224,21 @@ function MonthView() {
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
-                  { label: t('month.fixed'), value: summary.fixed_total },
-                  { label: t('month.variable'), value: summary.variable_total },
-                  { label: t('month.income'), value: summary.income_total }
+                  {
+                    label: t('month.actual'),
+                    value: summary.fixed_total + summary.variable_total,
+                    help: t('month.actualHelp')
+                  },
+                  {
+                    label: t('month.fixed'),
+                    value: summary.fixed_total,
+                    help: t('month.fixedHelp')
+                  },
+                  {
+                    label: t('month.variable'),
+                    value: summary.variable_total,
+                    help: t('month.variableHelp')
+                  }
                 ].map((card, index) => (
                   <motion.div
                     key={card.label}
@@ -221,9 +254,34 @@ function MonthView() {
                     <p className="mt-2 text-3xl font-bold tabular-nums">
                       {formatCurrency(card.value)}
                     </p>
+                    <p className="mt-2 text-xs leading-5 text-muted">{card.help}</p>
                   </motion.div>
                 ))}
               </div>
+
+              <section className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-5">
+                <h2 className="text-lg font-semibold">{t('month.projectionTitle')}</h2>
+                <p className="mt-1 text-sm text-muted">{t('month.projectionHelp')}</p>
+                {projectionError && (
+                  <p role="alert" className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                    {t('month.projectionUnavailable')}
+                  </p>
+                )}
+                <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-surface p-4">
+                    <dt className="text-sm text-muted">{t('month.projectedExpenses')}</dt>
+                    <dd className="mt-1 text-2xl font-bold tabular-nums">
+                      {projectionError ? '—' : formatCurrency(projection?.expense_total ?? 0)}
+                    </dd>
+                  </div>
+                  <div className="rounded-xl bg-surface p-4">
+                    <dt className="text-sm text-muted">{t('month.projectedIncome')}</dt>
+                    <dd className="mt-1 text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      {projectionError ? '—' : formatCurrency(projection?.income_total ?? 0)}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <section className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm">

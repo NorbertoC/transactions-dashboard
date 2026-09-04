@@ -157,6 +157,17 @@ export function useStatementFilters(transactions: Transaction[]) {
       }
     }
 
+    const oldestStatement = statements[statements.length - 1];
+    const latestStatement = statements[0];
+    options.push({
+      key: 'accumulative:all',
+      label: 'All time',
+      startDate: oldestStatement.startDate,
+      endDate: latestStatement.endDate,
+      type: 'accumulative',
+      monthsIncluded: statements.length
+    });
+
     const optionsMap = options.reduce((acc, option) => {
       acc[option.key] = option;
       return acc;

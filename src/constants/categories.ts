@@ -63,6 +63,7 @@ export const CATEGORIES: CategoryInfo[] = [
       { name: 'Fuel', nameJa: 'ガソリン', nameEs: 'Combustible' },
       { name: 'Public transport', nameJa: '公共交通', nameEs: 'Transporte público' },
       { name: 'Taxi & Rideshare', nameJa: 'タクシー・配車', nameEs: 'Taxi y rideshare' },
+      { name: 'Parking & Tolls', nameJa: '駐車場・有料道路', nameEs: 'Estacionamiento y peajes' },
       { name: 'Car maintenance', nameJa: '車関連（WOF・整備）', nameEs: 'Mantenimiento del auto' }
     ]
   },

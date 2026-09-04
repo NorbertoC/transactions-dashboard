@@ -11,6 +11,7 @@ export interface RecurringRule {
   end_date: string | null;
   category: string | null;
   subcategory: string | null;
+  merchant_pattern: string | null;
   enabled: boolean | number;
   created_at?: string;
   updated_at?: string;
@@ -25,7 +26,30 @@ export interface RecurringRuleInput {
   end_date?: string | null;
   category?: string | null;
   subcategory?: string | null;
+  merchant_pattern?: string | null;
   enabled?: boolean;
+}
+
+export interface RecurringProjectionItem {
+  id: number;
+  kind: RecurringKind;
+  label: string;
+  cadence: RecurringCadence;
+  amount: number;
+  days_in_overlap: number;
+  occurrences: number;
+  projected_amount: number;
+  category: string | null;
+  subcategory: string | null;
+  merchant_pattern: string | null;
+}
+
+export interface RecurringProjection {
+  start: string;
+  end: string;
+  income_total: number;
+  expense_total: number;
+  items: RecurringProjectionItem[];
 }
 
 export interface PeriodTopExpense {

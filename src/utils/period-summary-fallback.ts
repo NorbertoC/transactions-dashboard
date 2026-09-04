@@ -1,5 +1,6 @@
 import type { Transaction } from '@/types/transaction';
 import type { PeriodSummary, PeriodTopExpense } from '@/types/recurring';
+import { formatCurrency } from '@/utils/format';
 
 const FIXED_CATEGORIES = new Set(['Housing']);
 
@@ -53,7 +54,7 @@ export function buildClientPeriodSummary(
     }
     const top = [...merchantTotals.entries()].sort((a, b) => b[1] - a[1])[0];
     if (top) {
-      insights.push(`Largest merchant this period: ${top[0]} (${top[1].toFixed(2)}).`);
+      insights.push(`Largest merchant this period: ${top[0]} (${formatCurrency(top[1])}).`);
     }
   }
 
