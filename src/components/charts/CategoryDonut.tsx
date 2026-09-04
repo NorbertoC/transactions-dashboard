@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { ChartNoAxesCombined } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import {
   getCategoryBadgeStyles,
@@ -9,6 +10,7 @@ import {
   getLocalizedSubcategoryName
 } from '@/constants/categories';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { LOCALE_TAGS } from '@/i18n/types';
 import { ChartDataPoint } from '@/types/transaction';
 import { formatCurrency, formatCurrencyWhole } from '@/utils/format';
 
@@ -18,6 +20,10 @@ interface CategoryDonutProps {
   selectedCategory: string | null;
   onSelect?: (name: string) => void;
   onReset?: () => void;
+  comparisonOpen?: boolean;
+  onComparisonToggle?: () => void;
+  comparisonSubcategory?: string | null;
+  onSubcategoryCompare?: (subcategory: string) => void;
 }
 
 function resolveColor(entry: ChartDataPoint): string {
@@ -28,9 +34,19 @@ interface LegendRowContentProps {
   entry: ChartDataPoint;
   color: string;
   displayName: string;
+  countLabel: string;
+  formattedValue: string;
+  formattedPercentage: string;
 }
 
-function LegendRowContent({ entry, color, displayName }: LegendRowContentProps) {
+function LegendRowContent({
+  entry,
+  color,
+  displayName,
+  countLabel,
+  formattedValue,
+  formattedPercentage
+}: LegendRowContentProps) {
   const percentage = Math.max(0, Math.min(100, entry.percentage));
 
   return (
@@ -44,19 +60,19 @@ function LegendRowContent({ entry, color, displayName }: LegendRowContentProps) 
         <span className="min-w-0 flex-1">
           <span
             className="block truncate text-sm font-medium text-foreground"
-            title={entry.name}
+            title={displayName}
           >
             {displayName}
           </span>
           <span className="block text-xs text-muted">
-            {entry.count} {entry.count === 1 ? 'transaction' : 'transactions'}
+            {countLabel}
           </span>
         </span>
         <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-          {formatCurrency(entry.value)}
+          {formattedValue}
         </span>
         <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">
-          {percentage.toFixed(1)}%
+          {formattedPercentage}
         </span>
       </div>
       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
@@ -74,7 +90,11 @@ export default function CategoryDonut({
   total,
   selectedCategory,
   onSelect,
-  onReset
+  onReset,
+  comparisonOpen = false,
+  onComparisonToggle,
+  comparisonSubcategory = null,
+  onSubcategoryCompare
 }: CategoryDonutProps) {
   const { t, locale } = useLocale();
 
@@ -82,7 +102,7 @@ export default function CategoryDonut({
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
       <h3 className="text-base font-semibold text-foreground">{t('charts.categories')}</h3>
       {selectedCategory && (
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           <span
             className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
             style={getCategoryBadgeStyles(selectedCategory).style}
@@ -90,6 +110,21 @@ export default function CategoryDonut({
           >
             {getLocalizedCategoryName(selectedCategory, locale)}
           </span>
+          {onComparisonToggle && (
+            <button
+              type="button"
+              onClick={onComparisonToggle}
+              aria-pressed={comparisonOpen}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                comparisonOpen
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border-subtle text-muted hover:bg-surface-2 hover:text-foreground'
+              }`}
+            >
+              <ChartNoAxesCombined className="h-4 w-4" aria-hidden="true" />
+              {t(comparisonOpen ? 'comparison.hide' : 'comparison.show')}
+            </button>
+          )}
           <button
             type="button"
             onClick={onReset}
@@ -107,7 +142,7 @@ export default function CategoryDonut({
       <div>
         {header}
         <p className="py-12 text-center text-sm text-muted">
-          No spending data for this period.
+          {t('charts.noSpending')}
         </p>
       </div>
     );
@@ -128,74 +163,99 @@ export default function CategoryDonut({
           : t('charts.categoriesHelp')}
       </p>
 
-      <div className="relative mt-3 h-[220px] sm:h-[240px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart style={{ outline: 'none' }}>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius="70%"
-              outerRadius="100%"
-              paddingAngle={3}
-              cornerRadius={6}
-              startAngle={90}
-              endAngle={450}
-            >
-              {data.map((entry) => (
-                <Cell
-                  key={entry.name}
-                  fill={resolveColor(entry)}
-                  stroke="var(--surface)"
-                  strokeWidth={4}
-                  className={onSelect ? 'cursor-pointer' : undefined}
-                  onClick={onSelect ? () => onSelect(entry.name) : undefined}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="max-w-[60%] truncate text-xs text-muted">
-            {selectedCategory
-              ? getLocalizedCategoryName(selectedCategory, locale)
-              : 'Total'}
-          </span>
-          <span className="text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {formatCurrencyWhole(total)}
-          </span>
+      <div className="mt-3 grid min-w-0 items-center gap-3 xl:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.2fr)] xl:gap-5">
+        <div className="relative mx-auto h-[210px] w-full max-w-[300px] sm:h-[230px] xl:h-[240px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart style={{ outline: 'none' }}>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius="70%"
+                outerRadius="100%"
+                paddingAngle={3}
+                cornerRadius={6}
+                startAngle={90}
+                endAngle={450}
+              >
+                {data.map((entry) => (
+                  <Cell
+                    key={entry.name}
+                    fill={resolveColor(entry)}
+                    stroke="var(--surface)"
+                    strokeWidth={4}
+                    className={onSelect ? 'cursor-pointer' : undefined}
+                    onClick={onSelect ? () => onSelect(entry.name) : undefined}
+                  />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="max-w-[60%] truncate text-xs text-muted">
+              {selectedCategory
+                ? getLocalizedCategoryName(selectedCategory, locale)
+                : t('charts.total')}
+            </span>
+            <span className="text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
+              {formatCurrencyWhole(total, locale)}
+            </span>
+          </div>
         </div>
+
+        <ul className="min-w-0 space-y-1">
+          {data.map((entry) => {
+            const color = resolveColor(entry);
+            const displayName = selectedCategory
+              ? getLocalizedSubcategoryName(entry.name, locale)
+              : getLocalizedCategoryName(entry.name, locale);
+            const count = entry.count.toLocaleString(LOCALE_TAGS[locale]);
+            const content = (
+              <LegendRowContent
+                entry={entry}
+                color={color}
+                displayName={displayName}
+                countLabel={t(
+                  entry.count === 1 ? 'charts.transaction' : 'charts.transactions',
+                  { count }
+                )}
+                formattedValue={formatCurrency(entry.value, locale)}
+                formattedPercentage={new Intl.NumberFormat(LOCALE_TAGS[locale], {
+                  style: 'percent',
+                  maximumFractionDigits: 1
+                }).format(Math.max(0, Math.min(100, entry.percentage)) / 100)}
+              />
+            );
+            const entryAction = selectedCategory ? onSubcategoryCompare : onSelect;
+            const comparisonSelected = Boolean(
+              selectedCategory &&
+              comparisonOpen &&
+              comparisonSubcategory === entry.name
+            );
+
+            return (
+              <li key={entry.name}>
+                {entryAction ? (
+                  <button
+                    type="button"
+                    onClick={() => entryAction(entry.name)}
+                    aria-pressed={comparisonSelected || undefined}
+                    className={`block min-h-11 w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2 ${
+                      comparisonSelected ? 'bg-primary/10 ring-1 ring-inset ring-primary/30' : ''
+                    }`}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div className="px-2 py-2">{content}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </div>
-
-      <ul className="mt-4 space-y-1">
-        {data.map((entry) => {
-          const color = resolveColor(entry);
-          const displayName = selectedCategory
-            ? getLocalizedSubcategoryName(entry.name, locale)
-            : getLocalizedCategoryName(entry.name, locale);
-          const content = (
-            <LegendRowContent entry={entry} color={color} displayName={displayName} />
-          );
-
-          return (
-            <li key={entry.name}>
-              {onSelect ? (
-                <button
-                  type="button"
-                  onClick={() => onSelect(entry.name)}
-                  className="block min-h-11 w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2"
-                >
-                  {content}
-                </button>
-              ) : (
-                <div className="px-2 py-2">{content}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
     </motion.div>
   );
 }

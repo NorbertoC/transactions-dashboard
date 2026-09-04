@@ -12,7 +12,14 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { DEFAULT_SUBCATEGORY, getCategoryHexColor } from '@/constants/categories';
+import {
+  DEFAULT_SUBCATEGORY,
+  getCategoryHexColor,
+  getLocalizedCategoryName,
+  getLocalizedSubcategoryName
+} from '@/constants/categories';
+import { useLocale } from '@/i18n/LocaleProvider';
+import { LOCALE_TAGS, type Locale } from '@/i18n/types';
 import { Transaction } from '@/types/transaction';
 import { generateColorVariants } from '@/utils/color';
 import { formatCurrency } from '@/utils/format';
@@ -46,37 +53,35 @@ function fieldFor(name: string): string {
   return `seg_${name.replace(/[.[\]]/g, '_')}`;
 }
 
-function periodMonthLabel(statementEnd: string | null, key: string): string {
+function periodMonthLabel(statementEnd: string | null, key: string, locale: Locale): string {
   const iso = statementEnd?.slice(0, 10) ?? (/^\d{4}-\d{2}$/.test(key) ? `${key}-01` : null);
   if (!iso) {
     return key;
   }
-  const date = new Date(`${iso}T00:00:00`);
+  const date = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(date.getTime())) {
     return key;
   }
-  return date.toLocaleDateString('en-NZ', { month: 'short' });
+  return date.toLocaleDateString(LOCALE_TAGS[locale], { month: 'short', timeZone: 'UTC' });
 }
 
-function formatCompactCurrency(value: number): string {
-  if (Math.abs(value) >= 1000) {
-    const thousands = value / 1000;
-    const text =
-      Math.abs(thousands) >= 10
-        ? Math.round(thousands).toString()
-        : thousands.toFixed(1).replace(/\.0$/, '');
-    return `$${text}k`;
-  }
-  return `$${Math.round(value)}`;
+function formatCompactCurrency(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(LOCALE_TAGS[locale], {
+    style: 'currency',
+    currency: 'NZD',
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(value);
 }
 
 interface TrendTooltipProps {
   active?: boolean;
   label?: string | number;
   payload?: { name?: string; value?: number; color?: string; payload?: PeriodRow }[];
+  locale: Locale;
 }
 
-function TrendTooltip({ active, label, payload }: TrendTooltipProps) {
+function TrendTooltip({ active, label, payload, locale }: TrendTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -91,7 +96,7 @@ function TrendTooltip({ active, label, payload }: TrendTooltipProps) {
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-sm font-semibold text-foreground">{label}</p>
         {row && (
-          <p className="text-xs tabular-nums text-muted">{formatCurrency(row.total)}</p>
+          <p className="text-xs tabular-nums text-muted">{formatCurrency(row.total, locale)}</p>
         )}
       </div>
       <ul className="mt-2 space-y-1">
@@ -104,7 +109,7 @@ function TrendTooltip({ active, label, payload }: TrendTooltipProps) {
             />
             <span className="text-muted">{entry.name}</span>
             <span className="ml-auto pl-4 font-medium tabular-nums text-foreground">
-              {formatCurrency(entry.value ?? 0)}
+              {formatCurrency(entry.value ?? 0, locale)}
             </span>
           </li>
         ))}
@@ -116,7 +121,8 @@ function TrendTooltip({ active, label, payload }: TrendTooltipProps) {
 function buildChartData(
   transactions: Transaction[],
   selectedCategory: string | null,
-  categoryColors: Record<string, string>
+  categoryColors: Record<string, string>,
+  locale: Locale
 ): { rows: PeriodRow[]; segments: Segment[] } {
   const source = selectedCategory
     ? transactions.filter((tx) => tx.category === selectedCategory)
@@ -190,7 +196,7 @@ function buildChartData(
     }
     return {
       key: group.key,
-      label: periodMonthLabel(group.statementEnd, group.key),
+      label: periodMonthLabel(group.statementEnd, group.key, locale),
       total,
       ...values
     } satisfies PeriodRow;
@@ -205,10 +211,20 @@ export default function MonthlyTrendChart({
   categoryColors,
   currentPeriodKey
 }: MonthlyTrendChartProps) {
+  const { t, locale } = useLocale();
   const { rows, segments } = useMemo(
-    () => buildChartData(transactions, selectedCategory, categoryColors),
-    [transactions, selectedCategory, categoryColors]
+    () => buildChartData(transactions, selectedCategory, categoryColors, locale),
+    [transactions, selectedCategory, categoryColors, locale]
   );
+
+  const displayNameFor = (name: string) => {
+    if (name === OTHER_SEGMENT) {
+      return t('charts.remaining');
+    }
+    return selectedCategory
+      ? getLocalizedSubcategoryName(name, locale)
+      : getLocalizedCategoryName(name, locale);
+  };
 
   const opacityFor = (rowKey: string) => {
     if (!currentPeriodKey) {
@@ -222,54 +238,77 @@ export default function MonthlyTrendChart({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      className="min-w-0"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <h3 className="text-base font-semibold text-foreground">Monthly trend</h3>
-        <p className="text-sm text-muted">Last 6 statements</p>
+        <h3 className="text-base font-semibold text-foreground">{t('charts.trend')}</h3>
+        <p className="text-sm text-muted">
+          {t('charts.lastStatements', { count: MAX_PERIODS })}
+        </p>
       </div>
 
       {rows.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted">
-          No spending history to chart yet.
+          {t('charts.noSpending')}
         </p>
       ) : (
-        <div className="mt-3 h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} barCategoryGap="24%" margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="var(--border-subtle)" />
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: 'var(--muted)', fontSize: 12 }}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                width={44}
-                tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                tickFormatter={formatCompactCurrency}
-              />
-              <Tooltip
-                content={<TrendTooltip />}
-                cursor={{ fill: 'var(--surface-2)', fillOpacity: 0.6 }}
-              />
-              {segments.map((segment) => (
-                <Bar
-                  key={segment.field}
-                  name={segment.name}
-                  dataKey={segment.field}
-                  stackId="spend"
-                  fill={segment.color}
-                >
-                  {rows.map((row) => (
-                    <Cell key={row.key} fillOpacity={opacityFor(row.key)} />
-                  ))}
-                </Bar>
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <>
+          <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5" aria-label={t('charts.categories')}>
+            {segments.map((segment) => (
+              <li key={segment.field} className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: segment.color }}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{displayNameFor(segment.name)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 h-[275px] sm:h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={rows}
+                barCategoryGap="32%"
+                margin={{ top: 8, right: 20, left: 4, bottom: 0 }}
+              >
+                <CartesianGrid vertical={false} stroke="var(--border-subtle)" />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  padding={{ left: 14, right: 14 }}
+                  tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  width={52}
+                  tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                  tickFormatter={(value: number) => formatCompactCurrency(value, locale)}
+                />
+                <Tooltip
+                  content={<TrendTooltip locale={locale} />}
+                  cursor={{ fill: 'var(--surface-2)', fillOpacity: 0.6 }}
+                />
+                {segments.map((segment) => (
+                  <Bar
+                    key={segment.field}
+                    name={displayNameFor(segment.name)}
+                    dataKey={segment.field}
+                    stackId="spend"
+                    fill={segment.color}
+                    maxBarSize={52}
+                  >
+                    {rows.map((row) => (
+                      <Cell key={row.key} fillOpacity={opacityFor(row.key)} />
+                    ))}
+                  </Bar>
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
       )}
     </motion.div>
   );

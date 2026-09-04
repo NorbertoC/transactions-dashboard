@@ -332,7 +332,7 @@ function RecurringView() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">
+      <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:pb-6">
         <div className="mx-auto max-w-3xl space-y-5 pb-safe">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -415,13 +415,13 @@ function RecurringView() {
               <div className="rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm">
                 <dt className="text-sm text-muted">{t('recurring.monthlyExpenses')}</dt>
                 <dd className="mt-2 text-2xl font-bold tabular-nums">
-                  {formatCurrency(monthlyTotals.expenses)}
+                  {formatCurrency(monthlyTotals.expenses, locale)}
                 </dd>
               </div>
               <div className="rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm">
                 <dt className="text-sm text-muted">{t('recurring.monthlyIncome')}</dt>
                 <dd className="mt-2 text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(monthlyTotals.income)}
+                  {formatCurrency(monthlyTotals.income, locale)}
                 </dd>
               </div>
               <div className="rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm">
@@ -616,7 +616,7 @@ function RecurringView() {
                       <p className="text-sm text-muted">
                         {t(`recurring.kind.${rule.kind}` as 'recurring.kind.income')} ·{' '}
                         {t(`recurring.cadence.${rule.cadence}` as 'recurring.cadence.monthly')} ·{' '}
-                        {formatCurrency(Number(rule.amount))}
+                        {formatCurrency(Number(rule.amount), locale)}
                       </p>
                       <p className="text-xs text-muted">
                         {rule.start_date.slice(0, 10)} →{' '}
