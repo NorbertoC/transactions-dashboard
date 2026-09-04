@@ -2,6 +2,7 @@
 
 import { Fragment } from 'react';
 import { PeriodFilterOption } from '@/hooks/useStatementFilters';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export type FilterPeriod = string;
 
@@ -12,10 +13,11 @@ interface PeriodFilterProps {
 }
 
 export default function PeriodFilter({ selectedPeriod, onPeriodChange, options }: PeriodFilterProps) {
+  const { t } = useLocale();
   return (
     <div
       role="group"
-      aria-label="Filter by period"
+      aria-label={t('period.filterAria')}
       className="flex snap-x gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 pb-1"
     >
       {options.map((option, index) => {

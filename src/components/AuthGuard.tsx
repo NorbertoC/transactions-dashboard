@@ -4,10 +4,12 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const router = useRouter();
+  const { t } = useLocale();
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -30,7 +32,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent"
             aria-hidden="true"
           />
-          <p className="text-sm text-muted">Loading...</p>
+          <p className="text-sm text-muted">{t('auth.loading')}</p>
         </motion.div>
       </div>
     );

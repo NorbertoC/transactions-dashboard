@@ -16,6 +16,7 @@ export interface CategoryColorConfig {
 export interface CategoryInfo {
   name: string;
   nameJa: string;
+  nameEs: string;
   color: CategoryColorConfig;
   subcategories: SubcategoryInfo[];
 }
@@ -23,6 +24,7 @@ export interface CategoryInfo {
 export interface SubcategoryInfo {
   name: string;
   nameJa: string;
+  nameEs: string;
 }
 
 export const DEFAULT_CATEGORY = 'Others';
@@ -32,70 +34,77 @@ export const CATEGORIES: CategoryInfo[] = [
   {
     name: 'Housing',
     nameJa: '住まい',
+    nameEs: 'Vivienda',
     color: { hex: '#2563eb', bg: 'bg-blue-500/15', text: 'text-blue-600' },
     subcategories: [
-      { name: 'Rent', nameJa: '家賃' },
-      { name: 'Utilities', nameJa: '光熱費' },
-      { name: 'Internet & Phone', nameJa: 'インターネット・携帯' }
+      { name: 'Rent', nameJa: '家賃', nameEs: 'Alquiler' },
+      { name: 'Utilities', nameJa: '光熱費', nameEs: 'Servicios' },
+      { name: 'Internet & Phone', nameJa: 'インターネット・携帯', nameEs: 'Internet y teléfono' }
     ]
   },
   {
     name: 'Groceries',
     nameJa: '食費・日用品・健康',
+    nameEs: 'Compras y salud',
     color: { hex: '#22c55e', bg: 'bg-emerald-500/15', text: 'text-emerald-600' },
     subcategories: [
-      { name: 'Food', nameJa: '食料品' },
-      { name: 'Household items', nameJa: '日用品（洗剤・紙類）' },
-      { name: 'Medicine & Supplements', nameJa: '薬・サプリ' },
-      { name: 'Personal care', nameJa: '美容・セルフケア' }
+      { name: 'Food', nameJa: '食料品', nameEs: 'Alimentos' },
+      { name: 'Household items', nameJa: '日用品（洗剤・紙類）', nameEs: 'Artículos del hogar' },
+      { name: 'Medicine & Supplements', nameJa: '薬・サプリ', nameEs: 'Medicinas y suplementos' },
+      { name: 'Personal care', nameJa: '美容・セルフケア', nameEs: 'Cuidado personal' }
     ]
   },
   {
     name: 'Transport',
     nameJa: '交通',
+    nameEs: 'Transporte',
     color: { hex: '#06b6d4', bg: 'bg-cyan-500/15', text: 'text-cyan-600' },
     subcategories: [
-      { name: 'Fuel', nameJa: 'ガソリン' },
-      { name: 'Public transport', nameJa: '公共交通' },
-      { name: 'Taxi & Rideshare', nameJa: 'タクシー・配車' },
-      { name: 'Car maintenance', nameJa: '車関連（WOF・整備）' }
+      { name: 'Fuel', nameJa: 'ガソリン', nameEs: 'Combustible' },
+      { name: 'Public transport', nameJa: '公共交通', nameEs: 'Transporte público' },
+      { name: 'Taxi & Rideshare', nameJa: 'タクシー・配車', nameEs: 'Taxi y rideshare' },
+      { name: 'Car maintenance', nameJa: '車関連（WOF・整備）', nameEs: 'Mantenimiento del auto' }
     ]
   },
   {
     name: 'Fun & Social',
     nameJa: '娯楽・交際',
+    nameEs: 'Ocio y social',
     color: { hex: '#d946ef', bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600' },
     subcategories: [
-      { name: 'Eating out', nameJa: '外食・カフェ' },
-      { name: 'Travel & Entertainment', nameJa: '旅行・エンタメ' },
-      { name: 'Subscriptions', nameJa: 'サブスク' },
-      { name: 'Social & Gifts', nameJa: '交際費・プレゼント' }
+      { name: 'Eating out', nameJa: '外食・カフェ', nameEs: 'Comer fuera' },
+      { name: 'Travel & Entertainment', nameJa: '旅行・エンタメ', nameEs: 'Viajes y entretenimiento' },
+      { name: 'Subscriptions', nameJa: 'サブスク', nameEs: 'Suscripciones' },
+      { name: 'Social & Gifts', nameJa: '交際費・プレゼント', nameEs: 'Social y regalos' }
     ]
   },
   {
     name: 'Personal spending',
     nameJa: '個人費（お小遣い）',
+    nameEs: 'Gastos personales',
     color: { hex: '#8b5cf6', bg: 'bg-violet-500/15', text: 'text-violet-600' },
     subcategories: [
-      { name: 'Personal Allowance', nameJa: 'おこづかい' },
-      { name: 'Hobbies & Shopping', nameJa: '趣味・買い物' }
+      { name: 'Personal Allowance', nameJa: 'おこづかい', nameEs: 'Mesada personal' },
+      { name: 'Hobbies & Shopping', nameJa: '趣味・買い物', nameEs: 'Hobbies y compras' }
     ]
   },
   {
     name: 'Savings',
     nameJa: '貯蓄',
+    nameEs: 'Ahorros',
     color: { hex: '#14b8a6', bg: 'bg-teal-500/15', text: 'text-teal-600' },
     subcategories: [
-      { name: 'Savings', nameJa: '貯金' },
-      { name: 'Future funds', nameJa: '将来用' }
+      { name: 'Savings', nameJa: '貯金', nameEs: 'Ahorro' },
+      { name: 'Future funds', nameJa: '将来用', nameEs: 'Fondos futuros' }
     ]
   },
   {
     name: 'Others',
     nameJa: 'その他',
+    nameEs: 'Otros',
     color: { hex: '#94a3b8', bg: 'bg-slate-500/15', text: 'text-slate-600' },
     subcategories: [
-      { name: 'Miscellaneous', nameJa: '分類に迷うもの' }
+      { name: 'Miscellaneous', nameJa: '分類に迷うもの', nameEs: 'Varios' }
     ]
   }
 ];
@@ -229,12 +238,46 @@ export const SUBCATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
   CATEGORIES.flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameJa]))
 );
 
+export const CATEGORY_ES_NAMES: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map(cat => [cat.name, cat.nameEs])
+);
+
+export const SUBCATEGORY_ES_NAMES: Record<string, string> = Object.fromEntries(
+  CATEGORIES.flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameEs]))
+);
+
 export function getCategoryJapaneseName(category: string): string | undefined {
   return CATEGORY_JA_NAMES[category];
 }
 
 export function getSubcategoryJapaneseName(subcategory: string): string | undefined {
   return SUBCATEGORY_JA_NAMES[subcategory];
+}
+
+export function getCategorySpanishName(category: string): string | undefined {
+  return CATEGORY_ES_NAMES[category];
+}
+
+export function getSubcategorySpanishName(subcategory: string): string | undefined {
+  return SUBCATEGORY_ES_NAMES[subcategory];
+}
+
+export function getLocalizedCategoryName(
+  category: string,
+  locale: 'en' | 'ja' | 'es' = 'en'
+): string {
+  if (locale === 'ja') return getCategoryJapaneseName(category) || category;
+  if (locale === 'es') return getCategorySpanishName(category) || category;
+  return category;
+}
+
+export function getLocalizedSubcategoryName(
+  subcategory: string,
+  locale: 'en' | 'ja' | 'es' = 'en'
+): string {
+  if (locale === 'ja') return getSubcategoryJapaneseName(subcategory) || subcategory;
+  if (locale === 'es') return getSubcategorySpanishName(subcategory) || subcategory;
+  return subcategory;
 }
 
 export function getSubcategoriesForCategory(category: string): SubcategoryInfo[] {

@@ -20,10 +20,12 @@ import {
 import { useStatementFilters } from "@/hooks/useStatementFilters";
 import { generateColorVariants } from "@/utils/color";
 import { getCategoryHexColor } from "@/constants/categories";
+import { useLocale } from "@/i18n/LocaleProvider";
 
 const DAY_MS = 86_400_000;
 
 function Dashboard() {
+  const { t } = useLocale();
   const {
     transactions,
     loading,
@@ -180,7 +182,7 @@ function Dashboard() {
           aria-live="polite"
         >
           <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-          <p className="text-muted">Loading transactions…</p>
+          <p className="text-muted">{t('overview.loading')}</p>
         </motion.div>
       </div>
     );
@@ -195,7 +197,7 @@ function Dashboard() {
             onClick={() => refetch()}
             className="min-h-11 rounded-xl bg-primary px-4 font-medium text-white hover:bg-primary/90"
           >
-            Retry
+            {t('overview.retry')}
           </button>
         </div>
       </div>
@@ -208,9 +210,9 @@ function Dashboard() {
       <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl space-y-5 pb-safe sm:space-y-6">
           <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">Overview</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">{t("overview.title")}</h1>
             <p className="text-sm text-muted">
-              Household spending at a glance.
+              {t("overview.subtitle")}
             </p>
           </div>
 
@@ -292,7 +294,7 @@ function Dashboard() {
           onClick={() => setShowUploadModal(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Add transactions"
+          aria-label={t("overview.addTransactions")}
         >
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -302,10 +304,10 @@ function Dashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
-              <h2 className="text-lg font-semibold">Add transactions</h2>
+              <h2 className="text-lg font-semibold">{t("overview.addTransactions")}</h2>
               <button
                 onClick={() => setShowUploadModal(false)}
-                aria-label="Close"
+                aria-label={t("overview.close")}
                 className="flex h-11 w-11 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
               >
                 <X className="h-5 w-5" />

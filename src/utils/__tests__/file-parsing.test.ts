@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   detectColumns,
   extractTransactions,
+  mapBankCategoryToTaxonomy,
   parseAmount,
   parseDateToIso
 } from '@/utils/file-parsing'
@@ -222,5 +223,118 @@ describe('extractTransactions', () => {
     expect(rows).toHaveLength(0)
     expect(skipped).toHaveLength(1)
     expect(skipped[0].reason).toBe('Columns not detected')
+  })
+})
+
+
+describe('Amex NZ CSV', () => {
+  const amexRows = [
+    [
+      'Date',
+      'Description',
+      'Card Member',
+      'Account #',
+      'Amount',
+      'Extended Details',
+      'Appears On Your Statement As',
+      'Address',
+      'Town/City',
+      'State/Province',
+      'Postcode',
+      'Country',
+      'Reference',
+      'Category'
+    ],
+    [
+      '12/03/2026',
+      'COUNTDOWN AUCKLAND',
+      'NORBERTO C',
+      'XXXX-1234',
+      '45.60',
+      '',
+      'COUNTDOWN AUCKLAND',
+      '"1 Queen St\nAuckland"',
+      'Auckland',
+      '',
+      '1010',
+      'New Zealand',
+      'REF1',
+      'Merchandise & Supplies-Groceries'
+    ],
+    [
+      '13/03/2026',
+      'PAYMENT - THANK YOU',
+      'NORBERTO C',
+      'XXXX-1234',
+      '-500.00',
+      '',
+      'PAYMENT - THANK YOU',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      'Other-Other'
+    ],
+    [
+      '14/03/2026',
+      'BP CONNECT GREENLANE',
+      'NORBERTO C',
+      'XXXX-1234',
+      '80.00',
+      '',
+      'BP CONNECT GREENLANE',
+      '',
+      'Auckland',
+      '',
+      '',
+      'New Zealand',
+      'REF2',
+      'Transportation-Fuel'
+    ]
+  ]
+
+  it('detects Amex headers including Category', () => {
+    const columns = detectColumns(amexRows)
+    expect(columns).toMatchObject({
+      headerRowIndex: 0,
+      dateColumn: 0,
+      descriptionColumn: 1,
+      amountColumn: 4,
+      categoryColumn: 13
+    })
+  })
+
+  it('excludes PAYMENT - THANK YOU and maps bank categories', () => {
+    const { rows } = extractTransactions(amexRows, detectColumns(amexRows))
+    expect(rows).toHaveLength(3)
+
+    const payment = rows.find((row) => row.place === 'PAYMENT - THANK YOU')
+    expect(payment?.include).toBe(false)
+    expect(payment?.isCredit).toBe(true)
+
+    const groceries = rows.find((row) => row.place === 'COUNTDOWN AUCKLAND')
+    expect(groceries?.include).toBe(true)
+    expect(groceries?.category).toBe('Groceries')
+    expect(groceries?.subcategory).toBe('Food')
+
+    const fuel = rows.find((row) => row.place === 'BP CONNECT GREENLANE')
+    expect(fuel?.category).toBe('Transport')
+    expect(fuel?.subcategory).toBe('Fuel')
+  })
+})
+
+describe('mapBankCategoryToTaxonomy', () => {
+  it('maps known Amex labels', () => {
+    expect(mapBankCategoryToTaxonomy('Restaurant-Restaurant')).toEqual({
+      category: 'Fun & Social',
+      subcategory: 'Eating out'
+    })
+  })
+
+  it('returns null for blank or unknown labels', () => {
+    expect(mapBankCategoryToTaxonomy('')).toBeNull()
+    expect(mapBankCategoryToTaxonomy('Completely Unknown Label XYZ')).toBeNull()
   })
 })

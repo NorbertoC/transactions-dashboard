@@ -11,6 +11,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { formatCurrency, formatCurrencyWhole, formatPercentChange } from '@/utils/format';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface KpiCardsProps {
   totalAmount: number;
@@ -72,6 +73,7 @@ export default function KpiCards({
   dailyAverage,
   periodLabel
 }: KpiCardsProps) {
+  const { t } = useLocale();
   const change = formatPercentChange(totalAmount, previousTotal);
   const { icon: changeIcon, className: changeClassName } = changeAppearance(change);
 
@@ -79,27 +81,27 @@ export default function KpiCards({
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <StatCard
         index={0}
-        label="Total spent"
+        label={t('kpi.totalSpent')}
         icon={Wallet}
         figure={formatCurrencyWhole(totalAmount)}
         context={periodLabel}
       />
       <StatCard
         index={1}
-        label="vs previous period"
+        label={t('kpi.vsPrevious')}
         icon={changeIcon}
         figure={change ?? '—'}
         figureClassName={change ? changeClassName : 'text-muted'}
       />
       <StatCard
         index={2}
-        label="Transactions"
+        label={t('kpi.transactions')}
         icon={Receipt}
         figure={transactionCount.toLocaleString('en-NZ')}
       />
       <StatCard
         index={3}
-        label="Daily average"
+        label={t('kpi.dailyAverage')}
         icon={CalendarDays}
         figure={formatCurrency(dailyAverage)}
       />

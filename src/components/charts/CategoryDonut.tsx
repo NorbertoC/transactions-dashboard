@@ -5,9 +5,10 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import {
   getCategoryBadgeStyles,
   getCategoryHexColor,
-  getCategoryJapaneseName,
-  getSubcategoryJapaneseName
+  getLocalizedCategoryName,
+  getLocalizedSubcategoryName
 } from '@/constants/categories';
+import { useLocale } from '@/i18n/LocaleProvider';
 import { ChartDataPoint } from '@/types/transaction';
 import { formatCurrency, formatCurrencyWhole } from '@/utils/format';
 
@@ -26,10 +27,10 @@ function resolveColor(entry: ChartDataPoint): string {
 interface LegendRowContentProps {
   entry: ChartDataPoint;
   color: string;
-  japaneseName?: string;
+  displayName: string;
 }
 
-function LegendRowContent({ entry, color, japaneseName }: LegendRowContentProps) {
+function LegendRowContent({ entry, color, displayName }: LegendRowContentProps) {
   const percentage = Math.max(0, Math.min(100, entry.percentage));
 
   return (
@@ -42,9 +43,9 @@ function LegendRowContent({ entry, color, japaneseName }: LegendRowContentProps)
         />
         <span
           className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-          title={japaneseName}
+          title={entry.name}
         >
-          {entry.name}
+          {displayName}
         </span>
         <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
           {formatCurrency(entry.value)}
@@ -70,24 +71,26 @@ export default function CategoryDonut({
   onSelect,
   onReset
 }: CategoryDonutProps) {
+  const { t, locale } = useLocale();
+
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-      <h3 className="text-base font-semibold text-foreground">Spending by category</h3>
+      <h3 className="text-base font-semibold text-foreground">{t('charts.categories')}</h3>
       {selectedCategory && (
         <div className="flex items-center gap-1">
           <span
             className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
             style={getCategoryBadgeStyles(selectedCategory).style}
-            title={getCategoryJapaneseName(selectedCategory)}
+            title={selectedCategory}
           >
-            {selectedCategory}
+            {getLocalizedCategoryName(selectedCategory, locale)}
           </span>
           <button
             type="button"
             onClick={onReset}
             className="min-h-11 rounded-xl px-3 text-sm font-medium text-primary transition-colors hover:bg-surface-2"
           >
-            All categories
+            {t('charts.allCategories')}
           </button>
         </div>
       )}
@@ -144,7 +147,9 @@ export default function CategoryDonut({
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="max-w-[60%] truncate text-xs text-muted">
-            {selectedCategory ?? 'Total'}
+            {selectedCategory
+              ? getLocalizedCategoryName(selectedCategory, locale)
+              : 'Total'}
           </span>
           <span className="text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {formatCurrencyWhole(total)}
@@ -155,11 +160,11 @@ export default function CategoryDonut({
       <ul className="mt-4 space-y-1">
         {data.map((entry) => {
           const color = resolveColor(entry);
-          const japaneseName = selectedCategory
-            ? getSubcategoryJapaneseName(entry.name)
-            : getCategoryJapaneseName(entry.name);
+          const displayName = selectedCategory
+            ? getLocalizedSubcategoryName(entry.name, locale)
+            : getLocalizedCategoryName(entry.name, locale);
           const content = (
-            <LegendRowContent entry={entry} color={color} japaneseName={japaneseName} />
+            <LegendRowContent entry={entry} color={color} displayName={displayName} />
           );
 
           return (
