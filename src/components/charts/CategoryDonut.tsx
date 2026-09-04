@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { ChartNoAxesCombined } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import {
   getCategoryBadgeStyles,
@@ -19,6 +20,10 @@ interface CategoryDonutProps {
   selectedCategory: string | null;
   onSelect?: (name: string) => void;
   onReset?: () => void;
+  comparisonOpen?: boolean;
+  onComparisonToggle?: () => void;
+  comparisonSubcategory?: string | null;
+  onSubcategoryCompare?: (subcategory: string) => void;
 }
 
 function resolveColor(entry: ChartDataPoint): string {
@@ -85,7 +90,11 @@ export default function CategoryDonut({
   total,
   selectedCategory,
   onSelect,
-  onReset
+  onReset,
+  comparisonOpen = false,
+  onComparisonToggle,
+  comparisonSubcategory = null,
+  onSubcategoryCompare
 }: CategoryDonutProps) {
   const { t, locale } = useLocale();
 
@@ -93,7 +102,7 @@ export default function CategoryDonut({
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
       <h3 className="text-base font-semibold text-foreground">{t('charts.categories')}</h3>
       {selectedCategory && (
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           <span
             className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
             style={getCategoryBadgeStyles(selectedCategory).style}
@@ -101,6 +110,21 @@ export default function CategoryDonut({
           >
             {getLocalizedCategoryName(selectedCategory, locale)}
           </span>
+          {onComparisonToggle && (
+            <button
+              type="button"
+              onClick={onComparisonToggle}
+              aria-pressed={comparisonOpen}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                comparisonOpen
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border-subtle text-muted hover:bg-surface-2 hover:text-foreground'
+              }`}
+            >
+              <ChartNoAxesCombined className="h-4 w-4" aria-hidden="true" />
+              {t(comparisonOpen ? 'comparison.hide' : 'comparison.show')}
+            </button>
+          )}
           <button
             type="button"
             onClick={onReset}
@@ -204,14 +228,23 @@ export default function CategoryDonut({
                 }).format(Math.max(0, Math.min(100, entry.percentage)) / 100)}
               />
             );
+            const entryAction = selectedCategory ? onSubcategoryCompare : onSelect;
+            const comparisonSelected = Boolean(
+              selectedCategory &&
+              comparisonOpen &&
+              comparisonSubcategory === entry.name
+            );
 
             return (
               <li key={entry.name}>
-                {onSelect ? (
+                {entryAction ? (
                   <button
                     type="button"
-                    onClick={() => onSelect(entry.name)}
-                    className="block min-h-11 w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2"
+                    onClick={() => entryAction(entry.name)}
+                    aria-pressed={comparisonSelected || undefined}
+                    className={`block min-h-11 w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2 ${
+                      comparisonSelected ? 'bg-primary/10 ring-1 ring-inset ring-primary/30' : ''
+                    }`}
                   >
                     {content}
                   </button>

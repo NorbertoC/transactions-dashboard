@@ -10,6 +10,7 @@ import TransactionsTable from "@/components/TransactionsTable";
 import FileUploader from "@/components/upload/FileUploader";
 import KpiCards from "@/components/charts/KpiCards";
 import CategoryDonut from "@/components/charts/CategoryDonut";
+import CategoryComparison from "@/components/charts/CategoryComparison";
 import MonthlyTrendChart from "@/components/charts/MonthlyTrendChart";
 import TopMerchants from "@/components/charts/TopMerchants";
 import {
@@ -50,6 +51,8 @@ function Dashboard() {
     removeTransaction,
   } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showCategoryComparison, setShowCategoryComparison] = useState(false);
+  const [comparisonSubcategory, setComparisonSubcategory] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>("");
   const [showUploadModal, setShowUploadModal] = useState(false);
 
@@ -192,15 +195,21 @@ function Dashboard() {
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
+    setShowCategoryComparison(false);
+    setComparisonSubcategory(null);
   };
 
   const handleReset = () => {
     setSelectedCategory(null);
+    setShowCategoryComparison(false);
+    setComparisonSubcategory(null);
   };
 
   const handlePeriodChange = (period: FilterPeriod) => {
     setSelectedPeriod(period);
     setSelectedCategory(null);
+    setShowCategoryComparison(false);
+    setComparisonSubcategory(null);
   };
 
   if (loading) {
@@ -269,7 +278,7 @@ function Dashboard() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="min-w-0 rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5"
+              className="min-w-0 rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5 lg:order-1"
             >
               <CategoryDonut
                 data={pieChartData}
@@ -277,14 +286,38 @@ function Dashboard() {
                 selectedCategory={selectedCategory}
                 onSelect={selectedCategory ? undefined : handleCategorySelect}
                 onReset={handleReset}
+                comparisonOpen={showCategoryComparison}
+                onComparisonToggle={() => setShowCategoryComparison((open) => !open)}
+                comparisonSubcategory={comparisonSubcategory}
+                onSubcategoryCompare={(subcategory) => {
+                  setComparisonSubcategory(subcategory);
+                  setShowCategoryComparison(true);
+                }}
               />
             </motion.section>
+
+            {selectedCategory && showCategoryComparison && (
+              <motion.section
+                key={selectedCategory}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="min-w-0 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-surface to-surface p-4 shadow-sm sm:p-5 lg:order-3 lg:col-span-2"
+              >
+                <CategoryComparison
+                  transactions={transactions}
+                  category={selectedCategory}
+                  subcategory={comparisonSubcategory}
+                  onSubcategoryChange={setComparisonSubcategory}
+                />
+              </motion.section>
+            )}
 
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="min-w-0 rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5"
+              className="min-w-0 rounded-2xl border border-border-subtle bg-surface p-4 shadow-sm sm:p-5 lg:order-2"
             >
               <MonthlyTrendChart
                 transactions={transactions}
