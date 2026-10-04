@@ -7,15 +7,16 @@ import { motion } from 'framer-motion';
 import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
+  const { status, data } = useSession();
+  const unauthorized = status === 'unauthenticated' || status === 'authenticated' && data?.user.authorized !== true;
   const router = useRouter();
   const { t } = useLocale();
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (unauthorized) {
       router.push('/auth/signin');
     }
-  }, [status, router]);
+  }, [unauthorized, router]);
 
   if (status === 'loading') {
     return (
@@ -38,7 +39,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (status === 'unauthenticated') {
+  if (unauthorized) {
     return null;
   }
 

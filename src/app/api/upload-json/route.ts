@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { categorizeMerchant } from '@/utils/classification';
+import { NextRequest } from 'next/server';
+import { requireSession, privateJson, requestError } from '@/lib/api-upstream';
+import { readBoundedText, isIsoDate, validId } from '@/lib/api-validation';
+import { resolveImportedClassification } from '@/utils/classification';
 
 interface Transaction {
   id?: number;
@@ -30,7 +30,7 @@ function sanitizeJson(raw: string): string {
 }
 
 async function parseRequestBody(request: NextRequest): Promise<unknown> {
-  const rawText = await request.text();
+  const rawText = await readBoundedText(request, 5 * 1024 * 1024);
   const cleaned = sanitizeJson(rawText);
   if (cleaned.startsWith('<')) {
     throw new SyntaxError('Body appears to be HTML instead of JSON.');
@@ -107,25 +107,22 @@ function parseDateIso(input?: string | null): string | null {
   const trimmed = input.trim();
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+    return isIsoDate(trimmed) ? trimmed : null;
   }
 
   const slashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (slashMatch) {
     const [, day, month, year] = slashMatch;
-    return `${year}-${month}-${day}`;
+    const iso = `${year}-${month}-${day}`;
+    return isIsoDate(iso) ? iso : null;
   }
 
   const dotMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{2,4})$/);
   if (dotMatch) {
     const [, day, month, year] = dotMatch;
     const fullYear = year.length === 2 ? `20${year}` : year;
-    return `${fullYear}-${month}-${day}`;
-  }
-
-  const parsed = new Date(trimmed);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+    const iso = `${fullYear}-${month}-${day}`;
+    return isIsoDate(iso) ? iso : null;
   }
 
   return null;
@@ -156,6 +153,8 @@ function parseValue(value: unknown, amount: unknown): number | null {
 }
 
 function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+  if (entry.id !== undefined && !validId(String(entry.id))) return null;
   const place = typeof entry.place === 'string' ? entry.place.trim() : '';
   const dateIso =
     parseDateIso(typeof entry.date_iso === 'string' ? entry.date_iso : null) ||
@@ -164,11 +163,11 @@ function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
     parseValue(entry.value, entry.amount) ??
     (typeof entry.value === 'string' ? parseValue(entry.value, null) : null);
 
-  if (!place || !dateIso || value === null) {
+  if (!place || place.length > 500 || !dateIso || value === null || value < 0 || value > 1e9) {
     return null;
   }
 
-  const classification = categorizeMerchant(place);
+  const classification = resolveImportedClassification(entry.category, entry.subcategory, place);
   const statementMetadata = computeStatementMetadata(dateIso);
 
   const currency =
@@ -176,20 +175,14 @@ function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
       ? entry.currency.trim()
       : 'NZ$';
 
+  if (currency.length > 10 || (typeof entry.amount === 'string' && entry.amount.length > 100) || (typeof entry.date === 'string' && entry.date.length > 100)) return null;
+  for (const key of ['statement_id','statement_start','statement_end']) if (entry[key] != null && entry[key] !== '' && !isIsoDate(entry[key])) return null;
   const amountDisplay =
     typeof entry.amount === 'string' && entry.amount.trim()
       ? entry.amount.trim()
       : `${currency}${value.toFixed(2)}`;
 
-  const category =
-    typeof entry.category === 'string' && entry.category.trim()
-      ? entry.category.trim()
-      : classification.category;
-
-  const subcategory =
-    typeof entry.subcategory === 'string' && entry.subcategory.trim()
-      ? entry.subcategory.trim()
-      : classification.subcategory;
+  const { category, subcategory } = classification;
 
   return {
     id: typeof entry.id === 'number' ? entry.id : undefined,
@@ -228,6 +221,7 @@ async function persistTransactions(transactions: Transaction[]) {
   }
 
   const existingResponse = await fetch(process.env.NEXT_PUBLIC_API_URL || `${apiUrl}/transactions`, {
+    cache: 'no-store',
     headers: {
       'X-API-Key': apiKey
     }
@@ -282,7 +276,8 @@ async function persistTransactions(transactions: Transaction[]) {
   for (const update of updates) {
     const response = await fetch(`${apiUrl}/transactions/${update.id}`, {
       method: 'PATCH',
-      headers: {
+      cache: 'no-store',
+    headers: {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey
       },
@@ -312,6 +307,7 @@ async function persistTransactions(transactions: Transaction[]) {
 
   const response = await fetch(`${apiUrl}/transactions/bulk`, {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': apiKey
@@ -338,10 +334,8 @@ async function persistTransactions(transactions: Transaction[]) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const { error } = await requireSession(request);
+  if (error) return error;
 
   try {
     const body = await parseRequestBody(request);
@@ -351,8 +345,8 @@ export async function POST(request: NextRequest) {
         ? body.transactions
         : null;
 
-    if (!payload || payload.length === 0) {
-      return NextResponse.json(
+    if (!payload || payload.length === 0 || payload.length > 5000) {
+      return privateJson(
         { error: 'No transactions provided in request body' },
         { status: 400 }
       );
@@ -362,21 +356,16 @@ export async function POST(request: NextRequest) {
       .map((entry) => normalizeTransaction(entry as IncomingTransaction))
       .filter((entry): entry is Transaction => Boolean(entry));
 
-    if (normalized.length === 0) {
-      return NextResponse.json(
+    if (normalized.length !== payload.length) {
+      return privateJson(
         { error: 'No valid transactions found in payload' },
         { status: 400 }
       );
     }
 
     const result = await persistTransactions(normalized);
-    return NextResponse.json(result);
+    return privateJson(result);
   } catch (error) {
-    console.error('JSON upload error:', error);
-    const isSyntaxError = error instanceof SyntaxError;
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process JSON payload' },
-      { status: isSyntaxError ? 400 : 500 }
-    );
+    return requestError(error);
   }
 }

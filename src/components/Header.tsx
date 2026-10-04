@@ -98,7 +98,7 @@ export default function Header({ onUploadClick }: HeaderProps) {
                 className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
               />
             </div>
-            <ThemeToggle />
+
             {onUploadClick && (
               <button
                 type="button"
@@ -128,6 +128,7 @@ export default function Header({ onUploadClick }: HeaderProps) {
             )}
           </div>
         </div>
+        <div className="appearance-controls"><ThemeToggle /></div>
       </header>
       <nav
         aria-label={t('nav.brand')}

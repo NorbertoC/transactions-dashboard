@@ -1,3 +1,4 @@
+import { isAuthorizedIdentity } from '@/lib/auth-policy';
 import { withAuth } from 'next-auth/middleware';
 
 export default withAuth(
@@ -6,7 +7,7 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => isAuthorizedIdentity(token),
     },
     pages: {
       signIn: '/auth/signin',

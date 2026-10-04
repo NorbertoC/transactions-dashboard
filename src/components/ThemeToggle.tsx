@@ -1,58 +1,52 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Palette, Sun } from 'lucide-react';
 import { useLocale } from '@/i18n/LocaleProvider';
 
+const PALETTES = ['green', 'blue', 'orange', 'pink', 'purple'] as const;
+type PaletteName = typeof PALETTES[number];
 type Theme = 'dark' | 'light';
 
-const THEME_STORAGE_KEY = 'gastos.theme';
-
-function applyTheme(theme: Theme) {
+function applyAppearance(theme: Theme, palette: PaletteName) {
   document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.palette = palette;
   document.documentElement.style.colorScheme = theme;
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', theme === 'light' ? '#f3f5f7' : '#0b1118');
+  requestAnimationFrame(() => document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--background').trim()));
+  try {
+    localStorage.setItem('gastos.theme', theme);
+    localStorage.setItem('gastos.palette', palette);
+  } catch { /* Appearance remains usable when storage is unavailable. */ }
 }
 
 export default function ThemeToggle() {
   const { t } = useLocale();
   const [theme, setTheme] = useState<Theme>('dark');
-
+  const [palette, setPalette] = useState<PaletteName>('green');
   useEffect(() => {
-    const activeTheme =
-      document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    const activeTheme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    const storedPalette = document.documentElement.dataset.palette;
+    const activePalette = PALETTES.find(value => value === storedPalette) ?? 'green';
     setTheme(activeTheme);
+    setPalette(activePalette);
+    applyAppearance(activeTheme, activePalette);
   }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    } catch {
-      // The selected theme still applies for this page view.
-    }
-  };
-
+  const nextPalette = PALETTES[(PALETTES.indexOf(palette) + 1) % PALETTES.length];
   const label = theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark');
-
-  return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      aria-label={label}
-      title={label}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
-    >
-      {theme === 'dark' ? (
-        <Sun className="h-5 w-5" aria-hidden="true" />
-      ) : (
-        <Moon className="h-5 w-5" aria-hidden="true" />
-      )}
+  const paletteLabel = t('theme.cycle', { current: t(`theme.${palette}`), next: t(`theme.${nextPalette}`) });
+  return <>
+    <button type="button" aria-label={label} title={label} aria-pressed={theme === 'dark'} onClick={() => {
+      const nextTheme = theme === 'dark' ? 'light' : 'dark';
+      setTheme(nextTheme);
+      applyAppearance(nextTheme, palette);
+    }}>
+      {theme === 'dark' ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}
     </button>
-  );
+    <button type="button" aria-label={paletteLabel} title={paletteLabel} onClick={() => {
+      setPalette(nextPalette);
+      applyAppearance(theme, nextPalette);
+    }}>
+      <Palette className="h-5 w-5" aria-hidden="true" /><span>{t(`theme.${palette}`)}</span>
+    </button>
+  </>;
 }

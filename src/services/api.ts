@@ -1,12 +1,10 @@
 import { Transaction } from '@/types/transaction';
-import sampleData from '../../data.json';
 import { categorizeMerchant } from '@/utils/classification';
 import { normalizeCategoryPair } from '@/constants/categories';
 
 export class ApiService {
   private static readonly API_URL = process.env.NEXT_PUBLIC_API_URL;
   private static readonly API_KEY = process.env.API_KEY;
-  private static readonly CAN_USE_SAMPLE_DATA = process.env.NODE_ENV !== 'production';
 
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
@@ -22,7 +20,7 @@ export class ApiService {
       const normalized: Transaction = {
         ...transaction,
         category: pair.category,
-        subcategory: pair.subcategory
+        subcategory: storedCategory && !transaction.subcategory?.trim() ? '' : pair.subcategory
       };
 
       if (!normalized.statement_id || !normalized.statement_start || !normalized.statement_end) {
@@ -89,52 +87,19 @@ export class ApiService {
 
   static async fetchTransactions(): Promise<Transaction[]> {
     if (!this.API_URL || !this.API_KEY) {
-      if (this.CAN_USE_SAMPLE_DATA) {
-        console.warn('API credentials not found, using development sample data');
-        return ApiService.normalizeTransactions(sampleData as Transaction[]);
-      }
-      throw new Error('Transactions API is not configured');
+      throw new Error('Transaction API is not configured');
     }
-
-    try {
-      const response = await fetch(this.API_URL, {
-        headers: {
-          'X-API-Key': this.API_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return ApiService.normalizeTransactions(data as Transaction[]);
-    } catch (error) {
-      if (this.CAN_USE_SAMPLE_DATA) {
-        console.warn('Transactions API unavailable, using development sample data:', error);
-        return ApiService.normalizeTransactions(sampleData as Transaction[]);
-      }
-      throw error;
-    }
+    const response = await fetch(this.API_URL, {
+      cache: 'no-store',
+      headers: { 'X-API-Key': this.API_KEY, 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return ApiService.normalizeTransactions(await response.json() as Transaction[]);
   }
 
   static async fetchTransactionsClient(): Promise<Transaction[]> {
-    try {
-      const response = await fetch('/api/transactions');
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return ApiService.normalizeTransactions(data as Transaction[]);
-    } catch (error) {
-      if (this.CAN_USE_SAMPLE_DATA) {
-        console.warn('Transactions API unavailable, using development sample data:', error);
-        return ApiService.normalizeTransactions(sampleData as Transaction[]);
-      }
-      throw error;
-    }
+    const response = await fetch('/api/transactions', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return ApiService.normalizeTransactions(await response.json() as Transaction[]);
   }
 }

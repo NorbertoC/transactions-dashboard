@@ -7,7 +7,7 @@
  */
 
 import Papa from 'papaparse';
-import { suggestCategoryForMerchant } from '@/utils/classification';
+import { categorizeMerchant, suggestCategoryForMerchant } from '@/utils/classification';
 import { normalizeCategoryPair } from '@/constants/categories';
 
 export interface DetectedColumns {
@@ -548,7 +548,10 @@ export function mapBankCategoryToTaxonomy(
   if (/furnishing|household|home supplies/.test(subtype)) {
     return { category: 'Groceries', subcategory: 'Household items' };
   }
-  if (/utilit|electric|gas|water|rent|housing/.test(subtype)) {
+  if (/rent/.test(subtype)) {
+    return { category: 'Housing', subcategory: 'Rent' };
+  }
+  if (/utilit|electric|gas|water|housing/.test(subtype)) {
     return { category: 'Housing', subcategory: 'Utilities' };
   }
 
@@ -622,9 +625,9 @@ export function extractTransactions(
     const fromMerchant = suggestCategoryForMerchant(place);
     const pair =
       (fromMerchant?.confidence !== 'review' ? fromMerchant : null) ??
-      (fromBank
+      (fromBank && fromBank.category !== 'Others'
         ? normalizeCategoryPair(fromBank.category, fromBank.subcategory)
-        : fromMerchant ?? normalizeCategoryPair());
+        : categorizeMerchant(place));
 
     return {
       id: `row-${index}-${dateIso}-${Math.abs(amount)}`,

@@ -1,40 +1,60 @@
-/**
- * Merchant classification — emits the canonical taxonomy defined in
- * @/constants/categories. The Express API (transactions-api/classification.js)
- * holds an identical copy of these rules; keep both in sync.
- */
+import { DEFAULT_CATEGORY, DEFAULT_SUBCATEGORY, normalizeCategoryPair } from '@/constants/categories';
 
-import { DEFAULT_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants/categories';
+export interface Classification { category: string; subcategory: string; confidence?: 'review'; }
+export interface ClassificationSuggestion extends Classification { confidence?: 'review'; }
 
-export interface Classification {
-  category: string;
-  subcategory: string;
-  confidence?: 'review';
-}
-
-interface CategoryRule {
-  category: string;
-  subcategory: string;
-  keywords: string[];
-}
-
-interface PaypalOverride {
-  match: string;
-  category: string;
-  subcategory: string;
-}
-
-const CATEGORY_RULES: CategoryRule[] = [
-  { category: 'Transport', subcategory: 'Public transport', keywords: ['public transport', 'at hop', 'athop', 'ax bus fare', 'suica', 'pasmo', 'bus ', 'train', 'ferry'] },
-  { category: 'Transport', subcategory: 'Parking & Tolls', keywords: ['carpark', 'car park', 'parking', 'parkmate', 'wilson parking', 'toll road'] },
-  { category: 'Fun & Social', subcategory: 'Subscriptions', keywords: ['uber one membership', 'uber one'] },
-  { category: 'Fun & Social', subcategory: 'Eating out', keywords: ['uber eats', 'burgerfuel', 'deli bros', 'mc donalds', 'sals pizza', 'kura sushi', 'itchiku an air', 'sawamura harunire', 'gong cha', 'the shucker brothers', 'stonyridge vin', 'needo mount ed'] },
-  { category: 'Housing', subcategory: 'Internet & Phone', keywords: ['skinny mobile', 'vodafone', 'spark mobile', 'mobile top up', 'one nz', '2degrees'] },
-  { category: 'Housing', subcategory: 'Utilities', keywords: ['mercury energy', 'genesis energy', 'contact energy', 'meridian', 'electric kiwi', 'powershop', 'watercare'] },
-  { category: 'Housing', subcategory: 'Rent', keywords: ['rent payment', 'landlord', 'property management'] },
-  { category: 'Transport', subcategory: 'Taxi & Rideshare', keywords: ['uber', 'ola', 'didi', 'lyft', 'lime', 'beam', 'neuron'] },
-  { category: 'Transport', subcategory: 'Fuel', keywords: ['petrol', 'gasoline', 'gas station', 'u-go triangle', 'tasman epsom', 'bp', 'z energy', 'caltex', 'mobil', 'gull', 'fuel '] },
-  { category: 'Transport', subcategory: 'Car maintenance', keywords: ['aa battery', 'aa service', 'aa centre', 'aa smartfuel', 'aa roadside', 'aa nz', 'aa mount wellington', 'vtnz', 'wof'] },
+// Keep merchant rules aligned with transactions-api/classification.js.
+const CATEGORY_RULES = [
+  {
+    category: 'Transport',
+    subcategory: 'Public transport',
+    keywords: ['public transport', 'at hop', 'athop', 'ax bus fare', 'suica', 'pasmo', 'bus ', 'train', 'ferry']
+  },
+  {
+    category: 'Transport',
+    subcategory: 'Parking & Tolls',
+    keywords: ['carpark', 'car park', 'parking', 'parkmate', 'wilson parking', 'toll road']
+  },
+  {
+    category: 'Fun & Social',
+    subcategory: 'Subscriptions',
+    keywords: ['uber one membership', 'uber one']
+  },
+  {
+    category: 'Fun & Social',
+    subcategory: 'Eating out',
+    keywords: ['uber eats', 'burgerfuel', 'deli bros', 'mc donalds', 'sals pizza', 'kura sushi', 'itchiku an air', 'sawamura harunire', 'gong cha', 'the shucker brothers', 'stonyridge vin', 'needo mount ed']
+  },
+  {
+    category: 'Housing',
+    subcategory: 'Internet & Phone',
+    keywords: ['skinny mobile', 'vodafone', 'spark mobile', 'mobile top up', 'one nz', '2degrees']
+  },
+  {
+    category: 'Housing',
+    subcategory: 'Utilities',
+    keywords: ['mercury energy', 'genesis energy', 'contact energy', 'meridian', 'electric kiwi', 'powershop', 'watercare']
+  },
+  {
+    category: 'Housing',
+    subcategory: 'Rent',
+    keywords: ['rent payment', 'landlord', 'property management']
+  },
+  {
+    category: 'Transport',
+    subcategory: 'Taxi & Rideshare',
+    keywords: ['uber', 'ola', 'didi', 'lyft', 'lime', 'beam', 'neuron']
+  },
+  {
+    category: 'Transport',
+    subcategory: 'Fuel',
+    keywords: ['petrol', 'gasoline', 'gas station', 'u-go triangle', 'tasman epsom', 'bp', 'z energy', 'caltex', 'mobil', 'gull', 'fuel ']
+  },
+  {
+    category: 'Transport',
+    subcategory: 'Car maintenance',
+    keywords: ['aa battery', 'aa service', 'aa centre', 'aa smartfuel', 'aa roadside', 'aa nz', 'aa mount wellington', 'vtnz', 'wof']
+  },
   {
     category: 'Groceries',
     subcategory: 'Food',
@@ -61,12 +81,36 @@ const CATEGORY_RULES: CategoryRule[] = [
       'openai', 'claude', 'cursor', 'expressvpn', 'cloudflare', 'icloud', 'itunes', 'microsoft', 'google', 'adobe', 'github', 'x corp. paid features'
     ]
   },
-  { category: 'Personal spending', subcategory: 'Hobbies & Shopping', keywords: ['playstation', 'steam', 'nintendo', 'xbox', 'game pass', 'gaming', 'instantgami'] },
-  { category: 'Fun & Social', subcategory: 'Travel & Entertainment', keywords: ['event cinema', 'cinemas', 'movies', 'theatre', 'tvnz event pass', 'kubotaitchiku museum'] },
-  { category: 'Groceries', subcategory: 'Medicine & Supplements', keywords: ['chemist', 'pharmacy', 'unimeds', 'medical', 'clinic', 'cocokarafine', 'nz muscle'] },
-  { category: 'Groceries', subcategory: 'Household items', keywords: ['kmart', 'the warehouse', 'warehouse', 'briscoes', 'bunnings', 'mitre 10', 'ikea', 'noel leeming', 'harvey norman'] },
-  { category: 'Personal spending', subcategory: 'Hobbies & Shopping', keywords: ['farmers', 'farmer', 'fashion', 'adidas', 'puma', 'nike', 'seed heritage', 'tommy hilfiger', 'hallenstein', 'hallensteins', 'glassons', 'trezor company', 'tnf onehunga', 'bic camera', 'h&m', 'bonds onehunga', 'temu.com', 'jb hi fi', 'mighty ape'] },
-  { category: 'Groceries', subcategory: 'Personal care', keywords: ['barber', 'hairdresser', 'hair salon', 'nails', 'lash co'] },
+  {
+    category: 'Personal spending',
+    subcategory: 'Hobbies & Shopping',
+    keywords: ['playstation', 'steam', 'nintendo', 'xbox', 'game pass', 'gaming', 'instantgami']
+  },
+  {
+    category: 'Fun & Social',
+    subcategory: 'Travel & Entertainment',
+    keywords: ['event cinema', 'cinemas', 'movies', 'theatre', 'tvnz event pass', 'kubotaitchiku museum']
+  },
+  {
+    category: 'Groceries',
+    subcategory: 'Medicine & Supplements',
+    keywords: ['chemist', 'pharmacy', 'unimeds', 'medical', 'clinic', 'cocokarafine', 'nz muscle']
+  },
+  {
+    category: 'Groceries',
+    subcategory: 'Household items',
+    keywords: ['kmart', 'the warehouse', 'warehouse', 'briscoes', 'bunnings', 'mitre 10', 'ikea', 'noel leeming', 'harvey norman']
+  },
+  {
+    category: 'Personal spending',
+    subcategory: 'Hobbies & Shopping',
+    keywords: ['farmers', 'farmer', 'fashion', 'adidas', 'puma', 'nike', 'seed heritage', 'tommy hilfiger', 'hallenstein', 'hallensteins', 'glassons', 'trezor company', 'tnf onehunga', 'bic camera', 'h&m', 'bonds onehunga', 'temu.com', 'jb hi fi', 'mighty ape']
+  },
+  {
+    category: 'Groceries',
+    subcategory: 'Personal care',
+    keywords: ['barber', 'hairdresser', 'hair salon', 'nails', 'lash co']
+  },
   {
     category: 'Fun & Social',
     subcategory: 'Travel & Entertainment',
@@ -75,10 +119,14 @@ const CATEGORY_RULES: CategoryRule[] = [
       'air new zealand', 'jetstar', 'qantas', 'airline', 'flight'
     ]
   },
-  { category: 'Personal spending', subcategory: 'Hobbies & Shopping', keywords: ['language lesson', 'music lesson', 'art class'] }
+  {
+    category: 'Personal spending',
+    subcategory: 'Hobbies & Shopping',
+    keywords: ['language lesson', 'music lesson', 'art class']
+  }
 ];
 
-const REVIEW_ONLY_RULES: CategoryRule[] = [
+const REVIEW_ONLY_RULES = [
   {
     category: 'Fun & Social',
     subcategory: 'Subscriptions',
@@ -96,16 +144,41 @@ const REVIEW_ONLY_RULES: CategoryRule[] = [
   }
 ];
 
-const PAYPAL_OVERRIDES: PaypalOverride[] = [
-  { match: 'laucolla', category: 'Others', subcategory: 'Miscellaneous' },
-  { match: 'mariano', category: 'Personal spending', subcategory: 'Hobbies & Shopping' },
-  { match: 'mighty ape', category: 'Personal spending', subcategory: 'Hobbies & Shopping' },
-  { match: 'booking', category: 'Fun & Social', subcategory: 'Travel & Entertainment' },
-  { match: 'cloudflare', category: 'Fun & Social', subcategory: 'Subscriptions' }
+const PAYPAL_OVERRIDES = [
+  {
+    match: 'laucolla',
+    category: 'Others',
+    subcategory: 'Miscellaneous'
+  },
+  {
+    match: 'mariano',
+    category: 'Personal spending',
+    subcategory: 'Hobbies & Shopping'
+  },
+  {
+    match: 'mighty ape',
+    category: 'Personal spending',
+    subcategory: 'Hobbies & Shopping'
+  },
+  {
+    match: 'booking',
+    category: 'Fun & Social',
+    subcategory: 'Travel & Entertainment'
+  },
+  {
+    match: 'cloudflare',
+    category: 'Fun & Social',
+    subcategory: 'Subscriptions'
+  }
 ];
 
-const normalize = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').trim();
-const collapse = (value = '') => value.replace(/[^a-z0-9]/g, '');
+function normalize(value = '') {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function collapse(value = '') {
+  return value.replace(/[^a-z0-9]/g, '');
+}
 
 function matchesKeyword(value: string, keyword: string): boolean {
   if (!keyword) return false;
@@ -133,19 +206,15 @@ const PROCESSED_REVIEW_ONLY_RULES = REVIEW_ONLY_RULES.map((rule) => ({
     .map((keyword) => collapse(keyword))
 }));
 
-function matchRules(
-  normalizedValue: string,
-  collapsedValue: string,
-  rules = PROCESSED_RULES
-): Classification | null {
+function matchRules(normalizedValue: string, collapsedValue: string, rules = PROCESSED_RULES): Classification | null {
   for (const rule of rules) {
     const keywordMatch = rule.normalizedKeywords.some((keyword) =>
       matchesKeyword(normalizedValue, keyword)
     );
 
-    const collapsedMatch =
-      !keywordMatch &&
-      rule.collapsedKeywords.some((keyword) => keyword && collapsedValue.includes(keyword));
+    const collapsedMatch = !keywordMatch && rule.collapsedKeywords.some((keyword) =>
+      keyword && collapsedValue.includes(keyword)
+    );
 
     if (keywordMatch || collapsedMatch) {
       return {
@@ -158,7 +227,7 @@ function matchRules(
   return null;
 }
 
-export function suggestCategoryForMerchant(place = ''): Classification | null {
+export function suggestCategoryForMerchant(place = ''): ClassificationSuggestion | null {
   const normalizedPlace = normalize(place);
   const collapsedPlace = collapse(normalizedPlace);
 
@@ -166,9 +235,7 @@ export function suggestCategoryForMerchant(place = ''): Classification | null {
     const paypalName = normalize(place.replace(/^paypal\s*\*/i, ''));
     const collapsedPaypalName = collapse(paypalName);
 
-    const override = PAYPAL_OVERRIDES.find((entry) =>
-      collapsedPaypalName.includes(collapse(entry.match))
-    );
+    const override = PAYPAL_OVERRIDES.find((entry) => collapsedPaypalName.includes(collapse(entry.match)));
     if (override) {
       return {
         category: override.category,
@@ -181,11 +248,7 @@ export function suggestCategoryForMerchant(place = ''): Classification | null {
       return paypalMatch;
     }
 
-    const reviewMatch = matchRules(
-      paypalName,
-      collapsedPaypalName,
-      PROCESSED_REVIEW_ONLY_RULES
-    );
+    const reviewMatch = matchRules(paypalName, collapsedPaypalName, PROCESSED_REVIEW_ONLY_RULES);
     if (reviewMatch) {
       return { ...reviewMatch, confidence: 'review' };
     }
@@ -198,17 +261,13 @@ export function suggestCategoryForMerchant(place = ''): Classification | null {
     return merchantMatch;
   }
 
-  const reviewMatch = matchRules(
-    normalizedPlace,
-    collapsedPlace,
-    PROCESSED_REVIEW_ONLY_RULES
-  );
+  const reviewMatch = matchRules(normalizedPlace, collapsedPlace, PROCESSED_REVIEW_ONLY_RULES);
   return reviewMatch ? { ...reviewMatch, confidence: 'review' } : null;
 }
 
 export function categorizeMerchant(place = ''): Classification {
   const suggestion = suggestCategoryForMerchant(place);
-  if (suggestion) {
+  if (suggestion && suggestion.confidence !== 'review') {
     return {
       category: suggestion.category,
       subcategory: suggestion.subcategory
@@ -218,5 +277,19 @@ export function categorizeMerchant(place = ''): Classification {
   return {
     category: DEFAULT_CATEGORY,
     subcategory: DEFAULT_SUBCATEGORY
+  };
+}
+
+
+export function resolveImportedClassification(category: unknown, subcategory: unknown, place = ''): Classification {
+  const cat = typeof category === 'string' ? category.trim() : '';
+  const sub = typeof subcategory === 'string' ? subcategory.trim() : '';
+  const merchant = categorizeMerchant(place);
+  if (!cat) return merchant;
+  const pair = normalizeCategoryPair(cat, sub);
+  if (sub || pair.subcategory !== DEFAULT_SUBCATEGORY) return pair;
+  return {
+    category: pair.category,
+    subcategory: merchant.category === pair.category ? merchant.subcategory : ''
   };
 }

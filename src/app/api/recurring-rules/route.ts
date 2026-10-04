@@ -1,44 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  missingApiKeyResponse,
-  proxyUpstream,
-  requireSession
-} from '@/lib/api-upstream';
-
+import { NextRequest } from 'next/server';
+import { requireSession, upstreamJson, requestError } from '@/lib/api-upstream';
+import { readJson, validateRule } from '@/lib/api-validation';
 export async function GET() {
-  const { error } = await requireSession();
-  if (error) return error;
-
-  try {
-    const response = await proxyUpstream('/recurring-rules');
-    const data = await response.json().catch(() => ({ error: 'Invalid upstream response' }));
-    return NextResponse.json(data, { status: response.status });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'API_KEY_MISSING') {
-      return missingApiKeyResponse();
-    }
-    console.error('Error fetching recurring rules:', err);
-    return NextResponse.json({ error: 'Failed to fetch recurring rules' }, { status: 500 });
-  }
+  const { error } = await requireSession(); if (error) return error;
+  try { return await upstreamJson('/recurring-rules'); } catch (error) { return requestError(error); }
 }
-
 export async function POST(request: NextRequest) {
-  const { error } = await requireSession();
-  if (error) return error;
-
-  try {
-    const body = await request.json();
-    const response = await proxyUpstream('/recurring-rules', {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    const data = await response.json().catch(() => ({ error: 'Invalid upstream response' }));
-    return NextResponse.json(data, { status: response.status });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'API_KEY_MISSING') {
-      return missingApiKeyResponse();
-    }
-    console.error('Error creating recurring rule:', err);
-    return NextResponse.json({ error: 'Failed to create recurring rule' }, { status: 500 });
-  }
+  const { error } = await requireSession(request); if (error) return error;
+  try { const body = await readJson(request); validateRule(body); return await upstreamJson('/recurring-rules', { method: 'POST', body: JSON.stringify(body) }); } catch (error) { return requestError(error); }
 }

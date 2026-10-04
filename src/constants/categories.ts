@@ -25,6 +25,12 @@ export interface SubcategoryInfo {
   nameEs: string;
 }
 
+export const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
+  Housing: 'Home', Groceries: 'Daily essentials', Transport: 'Transport',
+  'Fun & Social': 'Leisure & social', 'Personal spending': 'Personal',
+  Others: 'Other / Needs review', Savings: 'Savings'
+};
+
 export const DEFAULT_CATEGORY = 'Others';
 export const DEFAULT_SUBCATEGORY = 'Miscellaneous';
 
@@ -32,7 +38,7 @@ export const CATEGORIES: CategoryInfo[] = [
   {
     name: 'Housing',
     nameJa: '住まい',
-    nameEs: 'Vivienda',
+    nameEs: 'Hogar',
     color: { hex: '#2563eb', bg: 'bg-blue-500/15', text: 'text-blue-600' },
     subcategories: [
       { name: 'Rent', nameJa: '家賃', nameEs: 'Alquiler' },
@@ -43,7 +49,7 @@ export const CATEGORIES: CategoryInfo[] = [
   {
     name: 'Groceries',
     nameJa: '食費・日用品・健康',
-    nameEs: 'Compras y salud',
+    nameEs: 'Necesidades diarias',
     color: { hex: '#22c55e', bg: 'bg-emerald-500/15', text: 'text-emerald-600' },
     subcategories: [
       { name: 'Food', nameJa: '食料品', nameEs: 'Alimentos' },
@@ -68,7 +74,7 @@ export const CATEGORIES: CategoryInfo[] = [
   {
     name: 'Fun & Social',
     nameJa: '娯楽・交際',
-    nameEs: 'Ocio y social',
+    nameEs: 'Ocio y vida social',
     color: { hex: '#d946ef', bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600' },
     subcategories: [
       { name: 'Eating out', nameJa: '外食・カフェ', nameEs: 'Comer fuera' },
@@ -100,7 +106,7 @@ export const CATEGORIES: CategoryInfo[] = [
   {
     name: 'Others',
     nameJa: 'その他',
-    nameEs: 'Otros',
+    nameEs: 'Otros / Por revisar',
     color: { hex: '#94a3b8', bg: 'bg-slate-500/15', text: 'text-slate-600' },
     subcategories: [
       { name: 'Miscellaneous', nameJa: '分類に迷うもの', nameEs: 'Varios' }
@@ -267,7 +273,7 @@ export function getLocalizedCategoryName(
 ): string {
   if (locale === 'ja') return getCategoryJapaneseName(category) || category;
   if (locale === 'es') return getCategorySpanishName(category) || category;
-  return category;
+  return CATEGORY_DISPLAY_NAMES[category] || category;
 }
 
 export function getLocalizedSubcategoryName(

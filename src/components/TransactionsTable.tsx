@@ -4,7 +4,7 @@ import { Fragment, type ReactNode, useId, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
-import { formatCurrency, formatDateFull, formatDateShort } from '@/utils/format';
+import { formatDateFull, formatDateShort } from '@/utils/format';
 import { generateColorVariants } from '@/utils/color';
 import {
   CATEGORIES,
@@ -25,6 +25,10 @@ interface TransactionsTableProps {
   categoryColors?: Record<string, string>;
   onTransactionUpdated?: (transaction: Transaction) => void;
   onTransactionDeleted?: (id: number) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  scopeLabel?: string;
+  currency?: string;
 }
 
 type SortField = 'date' | 'place' | 'category' | 'amount';
@@ -39,12 +43,15 @@ export default function TransactionsTable({
   transactions,
   categoryColors,
   onTransactionUpdated,
-  onTransactionDeleted
+  onTransactionDeleted, searchQuery: controlledSearch, onSearchChange, scopeLabel, currency = 'NZD'
 }: TransactionsTableProps) {
   const { t, locale } = useLocale();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
+  const searchQuery = controlledSearch ?? localSearch;
+  const [queryDraft, setQueryDraft] = useState<string | null>(null);
+  const money = (value: number) => /^[A-Z]{3}$/.test(currency) ? new Intl.NumberFormat(locale === 'en' ? 'en-NZ' : locale === 'ja' ? 'ja-JP' : 'es', { style: 'currency', currency }).format(value) : `${currency} ${value.toLocaleString()}`;
   const [reviewSuggestionsOnly, setReviewSuggestionsOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -83,7 +90,8 @@ export default function TransactionsTable({
   };
 
   const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
+    if (onSearchChange) onSearchChange(value); else setLocalSearch(value);
+    setQueryDraft(null);
     setVisibleCount(PAGE_SIZE);
   };
 
@@ -209,7 +217,7 @@ export default function TransactionsTable({
       const response = await fetch(`/api/transactions/${transaction.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...transaction, category, subcategory })
+        body: JSON.stringify({ category, subcategory })
       });
 
       const data = await response.json().catch(() => null);
@@ -287,7 +295,7 @@ export default function TransactionsTable({
     return (
       <span
         className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-        style={colors.style}
+        style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', borderLeft: `3px solid ${colors.style.color}` }}
         title={category}
       >
         {getLocalizedCategoryName(category, locale)}
@@ -304,7 +312,7 @@ export default function TransactionsTable({
     return (
       <span
         className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-        style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
+        style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', borderLeft: `3px solid ${color}` }}
         title={subcategory}
       >
         {getLocalizedSubcategoryName(subcategory, locale)}
@@ -312,7 +320,7 @@ export default function TransactionsTable({
     );
   };
 
-  const renderEditor = (transaction: Transaction) => {
+  const renderEditor = (transaction: Transaction, screen: 'desktop' | 'mobile') => {
     const isSaving = savingId === transaction.id;
     const isDeleting = deletingId === transaction.id;
     const isBusy = isSaving || isDeleting;
@@ -321,11 +329,11 @@ export default function TransactionsTable({
       <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor={`${editorId}-category`} className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor={`${editorId}-${screen}-category`} className="mb-1 block text-xs font-medium text-muted">
               {t('table.categoryLabel')}
             </label>
-            <select
-              id={`${editorId}-category`}
+            <div className="mesa-select"><select
+              id={`${editorId}-${screen}-category`}
               value={categoryInput}
               onChange={(e) => {
                 const category = e.target.value;
@@ -342,14 +350,14 @@ export default function TransactionsTable({
                   </option>
                 );
               })}
-            </select>
+            </select><ChevronDown aria-hidden="true" /></div>
           </div>
           <div>
-            <label htmlFor={`${editorId}-subcategory`} className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor={`${editorId}-${screen}-subcategory`} className="mb-1 block text-xs font-medium text-muted">
               {t('table.subcategoryLabel')}
             </label>
-            <select
-              id={`${editorId}-subcategory`}
+            <div className="mesa-select"><select
+              id={`${editorId}-${screen}-subcategory`}
               value={subcategoryInput}
               onChange={(e) => setSubcategoryInput(e.target.value)}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-base sm:text-sm"
@@ -360,7 +368,7 @@ export default function TransactionsTable({
                   {getLocalizedSubcategoryName(sub.name, locale)}
                 </option>
               ))}
-            </select>
+            </select><ChevronDown aria-hidden="true" /></div>
           </div>
         </div>
         {actionError?.id === transaction.id && (
@@ -417,14 +425,14 @@ export default function TransactionsTable({
   );
 
   const resultCountLabel = t(
-    sortedTransactions.length === 1 ? 'table.resultSingular' : 'table.resultPlural',
+    sortedTransactions.length === 1 ? 'mesa.record' : 'mesa.records',
     { count: sortedTransactions.length }
   );
-  let emptyMessage = t('table.empty');
+  let emptyMessage = t('mesa.empty');
   if (reviewSuggestionsOnly) {
     emptyMessage = t('table.noSuggestions');
   } else if (searchQuery) {
-    emptyMessage = t('table.searchEmpty');
+    emptyMessage = t('mesa.empty');
   }
 
   const renderSuggestion = (transaction: Transaction, mobile = false) => {
@@ -468,33 +476,17 @@ export default function TransactionsTable({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold">{t('table.title')}</h2>
-          <p className="mt-0.5 text-xs text-muted">{t('table.description')}</p>
-        </div>
-        <p className="text-sm tabular-nums text-muted" role="status" aria-live="polite">
-          {searchQuery
-            ? t('table.matching', { count: resultCountLabel, query: searchQuery })
-            : resultCountLabel}
-        </p>
+      <div className="mesa-panel-title">
+        <div><h2>{t('mesa.ledgerTitle')}</h2><p className="mesa-micro">{scopeLabel} · {resultCountLabel}</p></div>
+        <div><strong>{money(sortedTransactions.reduce((sum, row) => sum + row.value, 0))}</strong><small>{t('mesa.listTotal')}</small></div>
       </div>
-
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            aria-label={t('table.search')}
-            placeholder={t('table.search')}
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface pl-10 pr-3 text-base text-foreground placeholder:text-muted focus:border-primary focus:outline-none sm:text-sm"
-          />
-        </div>
+      <form className="mesa-search" onSubmit={event => { event.preventDefault(); handleSearchChange(queryDraft ?? searchQuery); }}>
+        <label className="mesa-search-input"><Search aria-hidden="true" /><input type="search" aria-label={t('mesa.searchHint')} placeholder={t('mesa.searchPlaceholder')} value={queryDraft ?? searchQuery} onChange={event => setQueryDraft(event.target.value)} /></label>
+        <button type="submit">{t('mesa.search')}</button>
+        {(searchQuery || queryDraft) && <button type="button" onClick={() => handleSearchChange('')}>{t('mesa.clear')}</button>}
+      </form>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <p className="mesa-micro" role="status" aria-live="polite">{resultCountLabel}</p>
         {(categorySuggestions.size > 0 || reviewSuggestionsOnly) && (
           <button
             type="button"
@@ -524,14 +516,14 @@ export default function TransactionsTable({
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border-subtle bg-surface lg:block">
+          <div className="mesa-ledger-table hidden overflow-hidden rounded-2xl border border-border-subtle bg-surface lg:block">
               <table className="w-full table-fixed divide-y divide-border-subtle">
                 <colgroup>
-                  <col className="w-[9.25rem]" />
-                  <col />
-                  <col className="w-[24rem] xl:w-[30rem]" />
-                  <col className="w-[8rem]" />
-                  <col className="w-[7rem]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[10%]" />
                 </colgroup>
                 <thead className="bg-surface-2">
                   <tr>
@@ -562,7 +554,7 @@ export default function TransactionsTable({
                           {formatDateFull(transaction.date_iso, locale)}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          <span className="block truncate" title={transaction.place}>
+                          <span className="block break-words" title={transaction.place}>
                             {transaction.place}
                           </span>
                         </td>
@@ -574,14 +566,14 @@ export default function TransactionsTable({
                           {renderSuggestion(transaction)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium tabular-nums">
-                          {formatCurrency(transaction.value, locale)}
+                          {money(transaction.value)}
                         </td>
                         <td className="whitespace-nowrap px-3 py-3 text-right">
                           <span className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => toggleEditing(transaction)}
-                              aria-label={t('table.editAria', { place: transaction.place })}
+                              aria-label={t('mesa.edit', { place: transaction.place })}
                               aria-expanded={editingId === transaction.id}
                               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground"
                             >
@@ -591,7 +583,7 @@ export default function TransactionsTable({
                               type="button"
                               onClick={() => handleDelete(transaction)}
                               disabled={deletingId === transaction.id}
-                              aria-label={t('table.deleteAria', { place: transaction.place })}
+                              aria-label={t('mesa.delete', { place: transaction.place })}
                               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground disabled:opacity-60"
                             >
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -602,7 +594,7 @@ export default function TransactionsTable({
                       {editingId === transaction.id && (
                         <tr>
                           <td colSpan={5} className="bg-surface-2 px-4 py-4">
-                            {renderEditor(transaction)}
+                            {renderEditor(transaction, 'desktop')}
                           </td>
                         </tr>
                       )}
@@ -632,9 +624,9 @@ export default function TransactionsTable({
                   className="flex min-h-11 w-full flex-col gap-2 p-3.5 text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
                 >
                   <span className="flex w-full items-center justify-between gap-3">
-                    <span className="truncate text-sm font-semibold">{transaction.place}</span>
+                    <span className="min-w-0 break-words text-sm font-semibold">{transaction.place}</span>
                     <span className="shrink-0 font-semibold tabular-nums">
-                      {formatCurrency(transaction.value, locale)}
+                      {money(transaction.value)}
                     </span>
                   </span>
                   <span className="flex w-full flex-wrap items-center gap-1.5">
@@ -651,7 +643,7 @@ export default function TransactionsTable({
                 </button>
                 {editingId !== transaction.id && renderSuggestion(transaction, true)}
                 {editingId === transaction.id && (
-                  <div className="border-t border-border-subtle p-4">{renderEditor(transaction)}</div>
+                  <div className="border-t border-border-subtle p-4">{renderEditor(transaction, 'mobile')}</div>
                 )}
                 {editingId !== transaction.id && actionError?.id === transaction.id && (
                   <p role="alert" className="mx-4 mb-3 text-sm text-red-600 dark:text-red-400">
@@ -669,7 +661,7 @@ export default function TransactionsTable({
                 onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
                 className="min-h-11 rounded-xl border border-border-subtle bg-surface px-5 text-sm font-medium text-muted transition-colors hover:text-foreground"
               >
-                {t('table.showMore', { count: remainingCount })}
+                {t('mesa.showMore', { count: remainingCount })}
               </button>
             </div>
           )}

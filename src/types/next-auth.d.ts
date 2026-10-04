@@ -6,6 +6,9 @@ declare module 'next-auth' {
       id: string;
       name: string;
       username: string;
+      provider?: string;
+      emailVerified?: boolean;
+      authorized?: boolean;
       email?: string;
       image?: string;
     };
@@ -23,5 +26,7 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     username: string;
+    provider?: string;
+    emailVerified?: boolean;
   }
 }

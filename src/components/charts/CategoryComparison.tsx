@@ -12,7 +12,6 @@ import {
   YAxis
 } from 'recharts';
 import {
-  getCategoryHexColor,
   getLocalizedCategoryName,
   getLocalizedSubcategoryName
 } from '@/constants/categories';
@@ -23,10 +22,14 @@ import {
   buildCategoryComparison,
   type CategoryComparisonPeriod
 } from '@/utils/category-comparison';
-import { formatCurrency, formatCurrencyWhole } from '@/utils/format';
+function formatCurrency(value: number, locale: Locale, currency: string, whole = false): string {
+  if (!/^[A-Z]{3}$/.test(currency)) return `${currency} ${value.toLocaleString(LOCALE_TAGS[locale])}`;
+  return new Intl.NumberFormat(LOCALE_TAGS[locale], { style: 'currency', currency, maximumFractionDigits: whole ? 0 : 2 }).format(value);
+}
 
 interface CategoryComparisonProps {
   transactions: Transaction[];
+  currency?: string;
   category: string;
   subcategory: string | null;
   onSubcategoryChange: (subcategory: string | null) => void;
@@ -42,6 +45,7 @@ interface ComparisonTooltipProps {
   active?: boolean;
   payload?: Array<{ payload?: ComparisonRow }>;
   locale: Locale;
+  currency: string;
 }
 
 function getLocalTodayIso(): string {
@@ -64,17 +68,17 @@ function formatPeriodLabel(dateIso: string, locale: Locale, long: boolean): stri
   }).format(date);
 }
 
-function formatCompactCurrency(value: number, locale: Locale): string {
+function formatCompactCurrency(value: number, locale: Locale, currency: string): string {
   return new Intl.NumberFormat(LOCALE_TAGS[locale], {
     style: 'currency',
-    currency: 'NZD',
+    currency: /^[A-Z]{3}$/.test(currency) ? currency : 'NZD',
     currencyDisplay: 'narrowSymbol',
     notation: 'compact',
     maximumFractionDigits: 1
   }).format(value);
 }
 
-function ComparisonTooltip({ active, payload, locale }: ComparisonTooltipProps) {
+function ComparisonTooltip({ active, payload, locale, currency }: ComparisonTooltipProps) {
   const row = payload?.[0]?.payload;
   if (!active || !row) return null;
 
@@ -82,7 +86,7 @@ function ComparisonTooltip({ active, payload, locale }: ComparisonTooltipProps) 
     <div className="rounded-xl border border-border-subtle bg-surface px-3 py-2 shadow-lg">
       <p className="text-xs text-muted">{row.longLabel}</p>
       <p className="mt-0.5 font-semibold tabular-nums text-foreground">
-        {formatCurrency(row.total, locale)}
+        {formatCurrency(row.total, locale, currency)}
       </p>
     </div>
   );
@@ -110,7 +114,7 @@ export default function CategoryComparison({
   transactions,
   category,
   subcategory,
-  onSubcategoryChange
+  onSubcategoryChange, currency = 'NZD'
 }: CategoryComparisonProps) {
   const { t, locale } = useLocale();
   const scopeId = useId();
@@ -151,7 +155,7 @@ export default function CategoryComparison({
     return current;
   }, null);
   const maxTotal = highest?.total ?? 0;
-  const categoryColor = getCategoryHexColor(category);
+  const categoryColor = 'var(--primary)';
 
   if (rows.length === 0) {
     return <p className="py-8 text-center text-sm text-muted">{t('comparison.noData')}</p>;
@@ -197,12 +201,12 @@ export default function CategoryComparison({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        <SummaryCard label={t('comparison.total')} value={formatCurrencyWhole(total, locale)} />
-        <SummaryCard label={t('comparison.average')} value={formatCurrency(average, locale)} />
+        <SummaryCard label={t('comparison.total')} value={formatCurrency(total, locale, currency, true)} />
+        <SummaryCard label={t('comparison.average')} value={formatCurrency(average, locale, currency)} />
         <div className="col-span-2 sm:col-span-1">
           <SummaryCard
             label={t('comparison.highest')}
-            value={formatCurrency(highest?.total ?? 0, locale)}
+            value={formatCurrency(highest?.total ?? 0, locale, currency)}
             context={highest?.longLabel}
           />
         </div>
@@ -229,9 +233,9 @@ export default function CategoryComparison({
               tickLine={false}
               width={52}
               tick={{ fill: 'var(--muted)', fontSize: 11 }}
-              tickFormatter={(value: number) => formatCompactCurrency(value, locale)}
+              tickFormatter={(value: number) => formatCompactCurrency(value, locale, currency)}
             />
-            <Tooltip content={<ComparisonTooltip locale={locale} />} cursor={{ fill: 'var(--surface-2)' }} />
+            <Tooltip content={<ComparisonTooltip locale={locale} currency={currency} />} cursor={{ fill: 'var(--surface-2)' }} />
             <Bar dataKey="total" fill={categoryColor} radius={[6, 6, 0, 0]} maxBarSize={44} />
           </BarChart>
         </ResponsiveContainer>
@@ -262,7 +266,7 @@ export default function CategoryComparison({
                     <p className="mt-0.5 text-xs text-muted">{countLabel}</p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                    {formatCurrency(row.total, locale)}
+                    {formatCurrency(row.total, locale, currency)}
                   </p>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">

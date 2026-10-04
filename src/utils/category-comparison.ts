@@ -48,6 +48,18 @@ export function buildCategoryComparison(
     periods.set(key, existing);
   }
 
+  const ordered = [...periods.values()].sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+  if (ordered.length && ordered.every(period => /^\d{4}-\d{2}-26$/.test(period.key))) {
+    const first = ordered[0].statementEnd.slice(0, 7);
+    const last = ordered.at(-1)!.statementEnd.slice(0, 7);
+    const cursor = new Date(`${last}-26T00:00:00Z`);
+    for (let index = 0; index < limit; index++) {
+      const key = cursor.toISOString().slice(0, 10);
+      if (key.slice(0, 7) < first) break;
+      if (!periods.has(key)) periods.set(key, { key, statementEnd: key, sortDate: key, total: 0, count: 0 });
+      cursor.setUTCMonth(cursor.getUTCMonth() - 1);
+    }
+  }
   return [...periods.values()]
     .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
     .slice(-limit)

@@ -40,6 +40,12 @@ describe('buildCategoryComparison', () => {
     ]);
   });
 
+  it('includes a calendar gap with no transactions in any category', () => {
+    const rows = [transaction(1, '2026-06-26', 'Groceries', 'Food', 100), transaction(2, '2026-08-26', 'Groceries', 'Food', 200)];
+    const periods = buildCategoryComparison(rows, 'Groceries', null);
+    expect(periods).toHaveLength(3);
+    expect(periods[1]).toEqual({ key: '2026-07-26', statementEnd: '2026-07-26', total: 0, count: 0 });
+  });
   it('can compare one subcategory without changing the available periods', () => {
     const transactions = [
       transaction(1, '2026-07-26', 'Groceries', 'Food', 200),

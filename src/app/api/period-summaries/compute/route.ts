@@ -1,27 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  missingApiKeyResponse,
-  proxyUpstream,
-  requireSession
-} from '@/lib/api-upstream';
-
+import { NextRequest } from 'next/server';
+import { requireSession, upstreamJson, requestError } from '@/lib/api-upstream';
+import { readJson, validateWindow, isIsoDate, InvalidRequest } from '@/lib/api-validation';
 export async function POST(request: NextRequest) {
-  const { error } = await requireSession();
-  if (error) return error;
-
-  try {
-    const body = await request.json();
-    const response = await proxyUpstream('/period-summaries/compute', {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    const data = await response.json().catch(() => ({ error: 'Invalid upstream response' }));
-    return NextResponse.json(data, { status: response.status });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'API_KEY_MISSING') {
-      return missingApiKeyResponse();
-    }
-    console.error('Error computing period summary:', err);
-    return NextResponse.json({ error: 'Failed to compute period summary' }, { status: 500 });
-  }
+  const { error } = await requireSession(request); if (error) return error;
+  try { const body = await readJson(request); if (Object.keys(body).some(key => !['statement_id','start','end'].includes(key))) throw new InvalidRequest(); if (body.statement_id !== undefined && !isIsoDate(body.statement_id)) throw new InvalidRequest(); if (body.start !== undefined || body.end !== undefined) validateWindow(body.start, body.end); else if (!isIsoDate(body.statement_id)) throw new InvalidRequest(); return await upstreamJson('/period-summaries/compute', { method: 'POST', body: JSON.stringify(body) }); } catch (error) { return requestError(error); }
 }
