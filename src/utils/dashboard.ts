@@ -25,7 +25,7 @@ export function monthEnd(month: string): string {
 }
 
 export function currencyCode(currency: string): string {
-  return ['NZ$', 'NZD', '$'].includes(currency) ? 'NZD' : currency;
+  return ['NZ$', 'NZD'].includes(currency) ? 'NZD' : currency;
 }
 
 export function isRent(transaction: Transaction): boolean {
@@ -39,7 +39,7 @@ export function buildDashboard(
   const includesYear = (date: string) => selectedYears === undefined || selectedYears.includes(date.slice(0, 4));
   const months = calendarMonths(start, end).filter(includesYear);
   const records = transactions.filter(tx => tx.date_iso >= start && tx.date_iso <= end &&
-    includesYear(tx.date_iso) && currencyCode(tx.currency) === currency && (includeRent || !isRent(tx)));
+    includesYear(tx.date_iso) && currencyCode(tx.currency) === currencyCode(currency) && (includeRent || !isRent(tx)));
   // The existing import schema stores spending as positive magnitudes. A negative
   // record has no established direction; it must not become invented income.
   const valid = records.filter(tx => Number.isFinite(tx.value) && tx.value >= 0 && isIsoDate(tx.date_iso));

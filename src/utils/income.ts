@@ -1,3 +1,4 @@
+import { currencyCode } from '@/utils/dashboard';
 import { isIsoDate } from '@/lib/api-validation';
 import type { IncomeSummary } from '@/types/income';
 
@@ -17,7 +18,7 @@ export function validateIncomeSummary(value: unknown): IncomeSummary {
 }
 
 export function combineIncomeSummaries(summaries: IncomeSummary[], currency: string) {
-  const cents = summaries.reduce((sum, item) => sum + (item.totals_by_currency[currency]?.cents ?? 0), 0);
+  const cents = summaries.reduce((sum, item) => sum + Object.entries(item.totals_by_currency).reduce((total, [code, value]) => total + (currencyCode(code) === currencyCode(currency) ? value.cents : 0), 0), 0);
   const denominator = summaries.reduce((sum, item) => sum + item.covered_calendar_months, 0);
   return { cents, total: cents / 100, denominator, average: denominator ? cents / 100 / denominator : null,
     complete: summaries.length > 0 && summaries.every(item => item.coverage_complete),

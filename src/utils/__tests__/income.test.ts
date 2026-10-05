@@ -35,3 +35,13 @@ describe('income verified coverage windows', () => {
     expect(() => validateIncomeSummary({ ...base, totals_by_currency: { NZD: { cents: 100, total: 2, monthly_average: 1 } } })).toThrow();
   });
 });
+
+describe('real legacy currency aliases', () => {
+  it('includes NZ$ expenses in actual net and ratio and separates other currencies', () => {
+    const records=[{...row(1,20),currency:'NZ$'},row(2,100,'income','inflow'),{...row(3,70),currency:'USD'},{...row(4,80),currency:'$'}];
+    const data=buildDashboard(records,'2026-01-01','2026-01-31',true,'NZD','2026-02-01');
+    expect(data.outflow).toBe(20); expect(data.income.reduce((sum,item)=>sum+item.value,0)-data.outflow).toBe(80); expect(data.total/100).toBe(0.2); expect(data.records.map(item=>item.id)).toEqual([1,2]); expect(records[0].currency).toBe('NZ$');
+    const summary=validateIncomeSummary({start_date:'2026-01-01',end_date:'2026-01-31',coverage:[{start:'2026-01-01',end:'2026-01-31'}],covered_calendar_months:1,coverage_complete:true,totals_by_currency:{'NZ$':{cents:1000,total:10,monthly_average:10},NZD:{cents:2000,total:20,monthly_average:20},USD:{cents:9000,total:90,monthly_average:90},'$':{cents:8000,total:80,monthly_average:80}}});
+    expect(combineIncomeSummaries([summary],'NZD').cents).toBe(3000); expect(combineIncomeSummaries([summary],'NZ$').cents).toBe(3000); expect(combineIncomeSummaries([summary],'USD').cents).toBe(9000); expect(combineIncomeSummaries([summary],'$').cents).toBe(8000);
+  });
+});
