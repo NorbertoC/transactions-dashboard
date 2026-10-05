@@ -3,7 +3,7 @@ const session = vi.hoisted(() => ({ value: null as unknown }));
 vi.mock('next-auth', () => ({ getServerSession: vi.fn(async () => session.value) }));
 import { authOptions } from '@/lib/auth';
 import { isAuthorizedIdentity } from '@/lib/auth-policy';
-import { requireSession, upstreamJson } from '@/lib/api-upstream';
+import { requireSession, upstreamJson, requestError } from '@/lib/api-upstream';
 import { InvalidRequest, isIsoDate, readBoundedText, validId, validateRule, validateWindow } from '@/lib/api-validation';
 import { ApiService } from '@/services/api';
 import { GET as incomeSummary } from '@/app/api/income-summary/route';
@@ -120,4 +120,34 @@ describe('custom write boundaries', () => {
     const response = await upstreamJson('/transactions');
     expect(response.status).toBe(502); expect(await response.text()).not.toContain('sensitive'); expect(fetch.mock.calls[0][1].cache).toBe('no-store'); expect(response.headers.get('cache-control')).toContain('no-store');
   });
+});
+
+describe('sanitized upstream correlation', () => {
+  it('correlates API failures without logging paths, payloads or secrets and never retries writes', async () => {
+    const id = '12345678-1234-4123-8123-123456789abc';
+    const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => new Response('{}', { status: 500, headers: { 'X-Request-ID': id } }));
+    vi.stubGlobal('fetch', fetch);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const response = await upstreamJson('/transactions/1765', { method: 'PUT', body: '{"category":"Synthetic"}' });
+      expect(response.status).toBe(502); expect(response.headers.get('x-request-id')).toBe(id); expect(fetch).toHaveBeenCalledTimes(1);
+      expect(new Headers(fetch.mock.calls[0][1]?.headers).get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(/synthetic-key|Synthetic|1765/);
+    } finally { log.mockRestore(); }
+  });
+  it('does not trust arbitrary upstream correlation headers', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500, headers: { 'X-Request-ID': 'private-untrusted-value' } })));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try { expect((await upstreamJson('/transactions')).headers.get('x-request-id')).toBeNull(); } finally { log.mockRestore(); }
+  });
+});
+
+it('preserves safe correlation for transport errors without retrying writes', async () => {
+ const fetch = vi.fn(async () => { throw new Error('private URL credential'); });vi.stubGlobal('fetch', fetch);
+ const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+ try {
+  let failure: unknown;try { await upstreamJson('/transactions/1', { method: 'PUT', body: '{}' }); } catch (error) { failure = error; }
+  const response = requestError(failure);expect(response.status).toBe(502);expect(response.headers.get('x-request-id')).toMatch(/^[a-f0-9-]{36}$/);
+  expect(fetch).toHaveBeenCalledTimes(1);expect(JSON.stringify(log.mock.calls)).not.toMatch(/private|credential/);
+ } finally { log.mockRestore(); }
 });
