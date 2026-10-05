@@ -4,6 +4,7 @@ import { Fragment, type ReactNode, useId, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
+import { transactionLabel } from '@/utils/transaction-label';
 import { formatDateFull, formatDateShort } from '@/utils/format';
 import { generateColorVariants } from '@/utils/color';
 import {
@@ -51,7 +52,7 @@ export default function TransactionsTable({
   const signedValue = (row: Transaction) => row.record_type === 'transfer' ? 0 : row.direction === 'inflow' ? row.value : -row.value;
   const displayAmount = (row: Transaction) => `${movementTypes ? row.direction === 'inflow' ? '+' : '−' : ''}${money(row.value)}`;
   const movementLabel = (row: Transaction) => t(`income.${row.record_type ?? 'expense'}`);
-  const badges = (row: Transaction) => isExpense(row) ? <>{renderCategoryBadge(row.category || DEFAULT_CATEGORY)}{renderSubcategoryBadge(row.category, row.subcategory)}</> : <span className="mesa-micro">{movementLabel(row)}{row.income_source ? ` · ${row.income_source}` : ''}</span>;
+  const badges = (row: Transaction) => isExpense(row) ? <>{renderCategoryBadge(row.category || DEFAULT_CATEGORY)}{renderSubcategoryBadge(row.category, row.subcategory)}</> : <span className="mesa-micro">{movementLabel(row)}{row.record_type !== 'income' && row.income_source ? ` · ${row.income_source}` : ''}</span>;
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [localSearch, setLocalSearch] = useState('');
@@ -106,6 +107,7 @@ export default function TransactionsTable({
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
+      transactionLabel(transaction).toLowerCase().includes(query) ||
       transaction.place.toLowerCase().includes(query) ||
       transaction.category.toLowerCase().includes(query) ||
       transaction.subcategory?.toLowerCase().includes(query) ||
@@ -118,7 +120,7 @@ export default function TransactionsTable({
 
   const getSortValue = (transaction: Transaction): string | number => {
     if (sortField === 'date') return new Date(transaction.date_iso).getTime();
-    if (sortField === 'place') return transaction.place.toLowerCase();
+    if (sortField === 'place') return transactionLabel(transaction).toLowerCase();
     if (sortField === 'category') return transaction.category.toLowerCase();
     return transaction.value;
   };
@@ -566,9 +568,9 @@ export default function TransactionsTable({
                           {formatDateFull(transaction.date_iso, locale)}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          <span className="block break-words" title={transaction.place}>
-                            {transaction.place}
-                          </span>{movementTypes && <small className="mesa-micro">{movementLabel(transaction)}{transaction.owner ? ` · ${transaction.owner}` : ''}</small>}
+                          <span className="block break-words" title={transactionLabel(transaction)}>
+                            {transactionLabel(transaction)}
+                          </span>{movementTypes && <small className="mesa-micro">{movementLabel(transaction)}{transaction.record_type !== 'income' && transaction.owner ? ` · ${transaction.owner}` : ''}</small>}
                         </td>
                         <td className="min-w-0 px-4 py-3">
                           <span className="flex flex-wrap items-center gap-1.5">
@@ -636,14 +638,14 @@ export default function TransactionsTable({
                   className="flex min-h-11 w-full flex-col gap-2 p-3.5 text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
                 >
                   <span className="flex w-full items-center justify-between gap-3">
-                    <span className="min-w-0 break-words text-sm font-semibold">{transaction.place}</span>
+                    <span className="min-w-0 break-words text-sm font-semibold">{transactionLabel(transaction)}</span>
                     <span className="shrink-0 font-semibold tabular-nums">
                       {displayAmount(transaction)}
                     </span>
                   </span>
                   <span className="flex w-full flex-wrap items-center gap-1.5">
                     <span className="mr-auto text-xs text-muted">{formatDateShort(transaction.date_iso, locale)}</span>
-                    {badges(transaction)}{movementTypes && transaction.owner && <small>{transaction.owner}</small>}
+                    {badges(transaction)}{movementTypes && transaction.record_type !== 'income' && transaction.owner && <small>{transaction.owner}</small>}
                     {isExpense(transaction) && <ChevronDown
                       className={`h-4 w-4 shrink-0 text-muted transition-transform ${
                         editingId === transaction.id ? 'rotate-180' : ''

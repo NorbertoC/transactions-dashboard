@@ -15,6 +15,7 @@
 .mesa-checkbox { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; font-size: 13px; cursor: pointer; }
 .mesa-checkbox input { width: 17px; height: 17px; margin: 0; flex-shrink: 0; accent-color: var(--mesa-accent); }
 .mesa-micro { font-size: 12px; line-height: 1.65; color: var(--muted); margin: 8px 0 16px; }
+.mesa-period-options { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px 24px; margin-left: auto; padding: 20px 0 0 24px; align-self: stretch; }
 .mesa-coverage { flex-basis: 100%; margin: 0; }
 .mesa-appbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 25px 30px; border: 1px solid var(--mesa-line); border-top: 0; }
 .mesa-appbar h1 { margin: 0; font-family: var(--font-manrope), var(--font-inter), sans-serif; font-size: 23px; font-weight: 800; letter-spacing: -1px; }
@@ -52,10 +53,10 @@
 .mesa-category-rail > button span { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .mesa-category-rail > button strong { white-space: nowrap; font-size: 14px; }
 .mesa-category-rail > button[aria-pressed="true"] { background: var(--surface-2); box-shadow: inset 3px 0 var(--mesa-accent); }
-.mesa-scope { padding: 16px; margin: 15px 0; border-radius: 8px; background: var(--surface-2); font-size: 13px; line-height: 1.6; }
-.mesa-scope > span { display: block; }
-.mesa-scope button { margin-top: 10px; }
-.mesa-scope p { margin-bottom: 0; font-size: 11px; color: var(--muted); }
+.mesa-scope { display: grid; gap: 14px; padding: 18px; margin: 0; border-radius: 8px; background: var(--surface-2); font-size: 13px; line-height: 1.6; }
+.mesa-scope > span { display: block; overflow-wrap: anywhere; }
+.mesa-scope button { justify-self: start; max-width: 100%; white-space: normal; }
+.mesa-scope p { margin: 0; font-size: 11px; color: var(--muted); }
 .mesa-reading { min-width: 0; padding: 20px; border-radius: 12px; background: var(--surface-2); }
 .mesa-reading h2 { font: 34px/1.2 Georgia, serif; margin: 12px 0 22px; letter-spacing: -1px; }
 .mesa-reading h2 > span { display: block; font-size: 45px; }
@@ -174,11 +175,13 @@
   .mesa-reading-foot { margin-top: auto; padding-top: 20px; }
   .mesa-bars { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; }
   .mesa-bars .mesa-chart { margin-top: auto; }
+  .mesa-scope { grid-row: 3; }
   .mesa-index { grid-column: 2; grid-row: 3; }
   .mesa-ledger { grid-column: 2; grid-row: 4; }
   .mesa-board > section:last-child:not(.mesa-index):not(.mesa-ledger):not(.mesa-reading):not(.mesa-bars) { grid-column: 2; grid-row: 1; }
 }
 @media (min-width: 1201px) {
+  .mesa-scope { grid-row: 2; }
   .mesa-board-layout { grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr); }
   .mesa-bars { grid-column: 3; grid-row: 1; }
   .mesa-index { grid-column: 2 / -1; grid-row: 2; }
@@ -207,3 +210,7 @@
 .month-evidence-card > p:last-child { margin-top: auto; }
 @media (max-width: 1023px) { .month-evidence-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 380px) { .month-evidence-card { padding: 16px; } .month-top-list li { padding: 8px; gap: 6px; } }
+
+@media (max-width: 800px) {
+  .mesa-period-options { flex-basis: 100%; justify-content: flex-start; margin-left: 0; padding: 8px 0 0; border-top: 1px solid var(--mesa-line); }
+}
