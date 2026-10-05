@@ -13,7 +13,12 @@
 :root[data-theme='light'] { color-scheme: light; }
 :root[data-theme='dark'] { color-scheme: dark; }
 .bg-primary, .bg-primary .text-white { color: var(--on-primary); }
-.appearance-controls { display: flex; align-items: center; gap: 4px; padding: 5px 12px; justify-content: flex-end; border-top: 1px solid var(--border-subtle); }
+.appearance-controls { display: flex; align-items: center; gap: 4px; padding: 12px; justify-content: flex-end; border-top: 1px solid var(--border-subtle); }
 .appearance-controls button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 6px 12px; color: var(--foreground); background: var(--surface); }
 .appearance-controls button:hover { background: var(--surface-2); }
+.select-control { position: relative; display: inline-grid; width: 100%; min-width: 0; color: var(--foreground); }
+.select-control select { box-sizing: border-box; appearance: none; -webkit-appearance: none; width: 100%; min-width: 0; min-height: 44px; padding-left: 12px; padding-right: 42px; }
+.select-control > svg { position: absolute; right: 14px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); pointer-events: none; color: currentColor; }
+.select-control.signin-language-control { width: auto; }
+.select-control.statement-period-control { max-width: 28rem; }
 @media (max-width: 1023px) { .mesa-main { padding-bottom: calc(100px + env(safe-area-inset-bottom)); } }

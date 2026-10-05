@@ -85,7 +85,7 @@ export default function Header({ onUploadClick }: HeaderProps) {
                 id="locale-switcher"
                 value={locale}
                 onChange={(event) => setLocale(event.target.value as Locale)}
-                className="min-h-11 w-[6.5rem] appearance-none rounded-xl border border-border-subtle bg-surface py-2 pl-3 pr-8 text-base font-medium text-foreground transition-colors hover:bg-surface-2 sm:w-auto sm:min-w-[7rem] lg:text-sm"
+                className="min-h-11 w-[6.5rem] appearance-none rounded-xl border border-border-subtle bg-surface py-2 pl-3 pr-10 text-base font-medium text-foreground transition-colors hover:bg-surface-2 sm:w-auto sm:min-w-[7rem] lg:text-sm"
               >
                 {LOCALES.map((code) => (
                   <option key={code} value={code}>
@@ -95,7 +95,7 @@ export default function Header({ onUploadClick }: HeaderProps) {
               </select>
               <ChevronDown
                 aria-hidden="true"
-                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
               />
             </div>
 

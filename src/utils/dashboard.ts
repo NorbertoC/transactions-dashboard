@@ -34,11 +34,12 @@ export function isRent(transaction: Transaction): boolean {
 
 export function buildDashboard(
   transactions: Transaction[], start: string, end: string,
-  includeRent: boolean, currency: string, today: string
+  includeRent: boolean, currency: string, today: string, selectedYears?: readonly string[]
 ) {
-  const months = calendarMonths(start, end);
+  const includesYear = (date: string) => selectedYears === undefined || selectedYears.includes(date.slice(0, 4));
+  const months = calendarMonths(start, end).filter(includesYear);
   const records = transactions.filter(tx => tx.date_iso >= start && tx.date_iso <= end &&
-    currencyCode(tx.currency) === currency && (includeRent || !isRent(tx)));
+    includesYear(tx.date_iso) && currencyCode(tx.currency) === currency && (includeRent || !isRent(tx)));
   // The existing import schema stores spending as positive magnitudes. A negative
   // record has no established direction; it must not become invented income.
   const expenses = records.filter(tx => Number.isFinite(tx.value) && tx.value >= 0 && isIsoDate(tx.date_iso) && tx.category !== 'Savings');

@@ -1,5 +1,7 @@
 'use client';
 
+import SelectControl from '@/components/SelectControl';
+
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { FileUp, Info, Pencil, Plus, Repeat2, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
@@ -437,7 +439,7 @@ function RecurringView() {
               className="space-y-3 rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm"
             >
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.label')}</span>
                   <input
                     required
@@ -446,7 +448,7 @@ function RecurringView() {
                     className="min-h-11 w-full rounded-xl border border-border-subtle bg-background px-3"
                   />
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.amount')}</span>
                   <input
                     required
@@ -460,9 +462,9 @@ function RecurringView() {
                     className="min-h-11 w-full rounded-xl border border-border-subtle bg-background px-3"
                   />
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.kind')}</span>
-                  <select
+                  <SelectControl
                     value={form.kind}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, kind: e.target.value as RecurringKind }))
@@ -471,11 +473,11 @@ function RecurringView() {
                   >
                     <option value="expense">{t('recurring.kind.expense')}</option>
                     <option value="income">{t('recurring.kind.income')}</option>
-                  </select>
+                  </SelectControl>
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.cadence')}</span>
-                  <select
+                  <SelectControl
                     value={form.cadence}
                     onChange={(e) =>
                       setForm((f) => ({
@@ -488,9 +490,9 @@ function RecurringView() {
                     <option value="weekly">{t('recurring.cadence.weekly')}</option>
                     <option value="fortnightly">{t('recurring.cadence.fortnightly')}</option>
                     <option value="monthly">{t('recurring.cadence.monthly')}</option>
-                  </select>
+                  </SelectControl>
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.start')}</span>
                   <input
                     required
@@ -502,7 +504,7 @@ function RecurringView() {
                     className="min-h-11 w-full rounded-xl border border-border-subtle bg-background px-3"
                   />
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.end')}</span>
                   <input
                     type="date"
@@ -517,9 +519,9 @@ function RecurringView() {
                     className="min-h-11 w-full rounded-xl border border-border-subtle bg-background px-3"
                   />
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.category')}</span>
-                  <select
+                  <SelectControl
                     value={form.category ?? ''}
                     onChange={(e) => {
                       const category = e.target.value;
@@ -538,11 +540,11 @@ function RecurringView() {
                         {getLocalizedCategoryName(cat.name, locale)}
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                 </label>
-                <label className="space-y-1 text-sm">
+                <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.subcategory')}</span>
-                  <select
+                  <SelectControl
                     value={form.subcategory ?? ''}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, subcategory: e.target.value }))
@@ -554,9 +556,9 @@ function RecurringView() {
                         {getLocalizedSubcategoryName(sub.name, locale)}
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                 </label>
-                <label className="space-y-1 text-sm sm:col-span-2">
+                <label className="flex flex-col gap-2 text-sm sm:col-span-2">
                   <span>{t('recurring.merchantPattern')}</span>
                   <input
                     value={form.merchant_pattern ?? ''}

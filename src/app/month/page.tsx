@@ -1,5 +1,7 @@
 'use client';
 
+import SelectControl from '@/components/SelectControl';
+
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lightbulb, RefreshCw, Wallet } from 'lucide-react';
@@ -190,9 +192,10 @@ function MonthView() {
             </button>
           </div>
 
-          <label className="block space-y-2">
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-muted">{t('month.pickPeriod')}</span>
-            <select
+            <SelectControl
+              wrapperClassName="statement-period-control"
               value={selectedKey}
               onChange={(event) => setSelectedKey(event.target.value)}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-sm sm:max-w-md"
@@ -202,7 +205,7 @@ function MonthView() {
                   {option.label}
                 </option>
               ))}
-            </select>
+            </SelectControl>
           </label>
 
           {statusError && (

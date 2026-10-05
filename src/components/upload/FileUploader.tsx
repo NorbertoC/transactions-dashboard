@@ -1,5 +1,7 @@
 'use client';
 
+import SelectControl from '@/components/SelectControl';
+
 import { useId, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, FileSpreadsheet, Loader2, UploadCloud } from 'lucide-react';
@@ -419,9 +421,9 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                 { label: 'Amount column', value: manualAmount, onChange: setManualAmount }
               ] as const
             ).map((picker) => (
-              <label key={picker.label} className="flex flex-col gap-1 text-sm font-medium text-foreground">
+              <label key={picker.label} className="flex flex-col gap-2 text-sm font-medium text-foreground">
                 {picker.label}
-                <select
+                <SelectControl
                   value={picker.value}
                   onChange={(event) => picker.onChange(event.target.value)}
                   className="min-h-11 rounded-xl border border-border-subtle bg-surface-2 px-3 text-base text-foreground sm:text-sm"
@@ -432,7 +434,7 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                       {columnLabel(rawRows, col)}
                     </option>
                   ))}
-                </select>
+                </SelectControl>
               </label>
             ))}
           </div>
@@ -528,7 +530,7 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                 </p>
 
                 <div className="mt-2 grid grid-cols-2 gap-2 md:contents">
-                  <select
+                  <SelectControl
                     value={row.category}
                     onChange={(event) => handleCategoryChange(row.id, event.target.value)}
                     aria-label={`Category for ${row.place}`}
@@ -540,8 +542,8 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                         {category.name}
                       </option>
                     ))}
-                  </select>
-                  <select
+                  </SelectControl>
+                  <SelectControl
                     value={row.subcategory}
                     onChange={(event) => updateRow(row.id, { subcategory: event.target.value })}
                     aria-label={`Subcategory for ${row.place}`}
@@ -552,7 +554,7 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                         {subcategory.name} ({subcategory.nameJa})
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                 </div>
               </li>
             ))}

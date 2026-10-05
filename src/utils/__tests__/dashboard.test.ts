@@ -38,4 +38,21 @@ describe('calendar dashboard calculation with synthetic records', () => {
     expect(monthEnd('2024-02')).toBe('2024-02-29');
     expect(calendarMonths('2026-03-01', '2026-01-31')).toEqual([]);
   });
+  it('uses only selected calendar years including gaps within them', () => {
+    const rows = [tx(1, '2024-10-10', 30), tx(2, '2025-02-10', 999), tx(3, '2026-03-10', 90)];
+    const data = buildDashboard(rows, '2024-10-01', '2026-03-31', true, 'NZD', '2026-04-01', ['2024', '2026']);
+    expect(data.total).toBe(120);
+    expect(data.denominator).toBe(6);
+    expect(data.average).toBe(20);
+    expect(data.categories[0].average).toBe(20);
+    expect(data.expenses.map(row => row.id)).toEqual([1, 3]);
+    expect(data.monthly.map(row => row.key)).toEqual(['2024-10', '2024-11', '2024-12', '2026-01', '2026-02', '2026-03']);
+    const empty = buildDashboard(rows, '2024-10-01', '2026-03-31', true, 'NZD', '2026-04-01', []);
+    expect(empty.total).toBe(0); expect(empty.denominator).toBe(0); expect(empty.expenses).toEqual([]);
+  });
+  it('intersects a cross-year statement with the explicitly selected posted year', () => {
+    const data = buildDashboard([tx(1, '2025-12-28', 20), tx(2, '2026-01-10', 40)], '2025-12-27', '2026-01-26', true, 'NZD', '2026-02-01', ['2026']);
+    expect(data.total).toBe(40); expect(data.denominator).toBe(1);
+    expect(data.monthly).toEqual([{ key: '2026-01', total: 40, partial: true }]);
+  });
 });

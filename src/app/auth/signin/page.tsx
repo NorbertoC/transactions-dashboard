@@ -6,6 +6,7 @@ import { TrendingUp } from 'lucide-react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALES, LOCALE_LABELS, type Locale } from '@/i18n/types';
 import ThemeToggle from '@/components/ThemeToggle';
+import SelectControl from '@/components/SelectControl';
 
 export default function SignIn() {
   const { t, locale, setLocale } = useLocale();
@@ -14,7 +15,7 @@ export default function SignIn() {
   useEffect(() => { setFailed(new URLSearchParams(window.location.search).has('error')); }, []);
   return <main className="flex min-h-screen items-center justify-center bg-background p-4">
     <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6 sm:p-8">
-      <div className="mb-6 flex justify-end"><label className="sr-only" htmlFor="signin-language">{t('nav.language')}</label><select id="signin-language" value={locale} onChange={event => setLocale(event.target.value as Locale)} className="min-h-11 rounded-lg border border-border-subtle bg-surface px-3">{LOCALES.map(code => <option key={code} value={code}>{LOCALE_LABELS[code]}</option>)}</select></div>
+      <div className="mb-6 flex justify-end"><label className="sr-only" htmlFor="signin-language">{t('nav.language')}</label><SelectControl wrapperClassName="signin-language-control" id="signin-language" value={locale} onChange={event => setLocale(event.target.value as Locale)} className="min-h-11 rounded-lg border border-border-subtle bg-surface px-3">{LOCALES.map(code => <option key={code} value={code}>{LOCALE_LABELS[code]}</option>)}</SelectControl></div>
       <TrendingUp className="mb-4 h-8 w-8 text-primary" aria-hidden="true" />
       <h1 className="mb-3 text-2xl font-bold">{t('nav.brand')}</h1>
       <p className="mb-6 text-sm text-muted">{t('auth.access')}</p>
