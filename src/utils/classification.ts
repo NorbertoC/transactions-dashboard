@@ -1,128 +1,132 @@
 import { DEFAULT_CATEGORY, DEFAULT_SUBCATEGORY, normalizeCategoryPair } from '@/constants/categories';
 
-export interface Classification { category: string; subcategory: string; confidence?: 'review'; }
-export interface ClassificationSuggestion extends Classification { confidence?: 'review'; }
+export interface Classification { category: string; subcategory: string; confidence?: 'review'; reviewReason?: 'purpose' | 'merchant'; }
+export interface ClassificationSuggestion extends Classification { confidence?: 'review'; reviewReason?: 'purpose' | 'merchant'; }
 
-// Keep merchant rules aligned with transactions-api/classification.js.
+// UI purpose rules preserve backend legacy records; uncertain use needs review.
 const CATEGORY_RULES = [
   {
-    category: 'Transport',
-    subcategory: 'Public transport',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
     keywords: ['public transport', 'at hop', 'athop', 'ax bus fare', 'suica', 'pasmo', 'bus ', 'train', 'ferry']
   },
   {
-    category: 'Transport',
-    subcategory: 'Parking & Tolls',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
     keywords: ['carpark', 'car park', 'parking', 'parkmate', 'wilson parking', 'toll road']
   },
   {
-    category: 'Fun & Social',
-    subcategory: 'Subscriptions',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
     keywords: ['uber one membership', 'uber one']
   },
   {
-    category: 'Fun & Social',
+    category: 'Entertainment',
     subcategory: 'Eating out',
     keywords: ['uber eats', 'burgerfuel', 'deli bros', 'mc donalds', 'sals pizza', 'kura sushi', 'itchiku an air', 'sawamura harunire', 'gong cha', 'the shucker brothers', 'stonyridge vin', 'needo mount ed']
   },
   {
-    category: 'Housing',
+    category: 'Home & daily living',
     subcategory: 'Internet & Phone',
     keywords: ['skinny mobile', 'vodafone', 'spark mobile', 'mobile top up', 'one nz', '2degrees']
   },
   {
-    category: 'Housing',
+    category: 'Home & daily living',
     subcategory: 'Utilities',
     keywords: ['mercury energy', 'genesis energy', 'contact energy', 'meridian', 'electric kiwi', 'powershop', 'watercare']
   },
   {
-    category: 'Housing',
+    category: 'Home & daily living',
     subcategory: 'Rent',
     keywords: ['rent payment', 'landlord', 'property management']
   },
   {
-    category: 'Transport',
-    subcategory: 'Taxi & Rideshare',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
     keywords: ['uber', 'ola', 'didi', 'lyft', 'lime', 'beam', 'neuron']
   },
   {
-    category: 'Transport',
-    subcategory: 'Fuel',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
     keywords: ['petrol', 'gasoline', 'gas station', 'u-go triangle', 'tasman epsom', 'bp', 'z energy', 'caltex', 'mobil', 'gull', 'fuel ']
   },
   {
-    category: 'Transport',
-    subcategory: 'Car maintenance',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
     keywords: ['aa battery', 'aa service', 'aa centre', 'aa smartfuel', 'aa roadside', 'aa nz', 'aa mount wellington', 'vtnz', 'wof']
   },
   {
-    category: 'Groceries',
+    category: 'Home & daily living',
     subcategory: 'Food',
-    keywords: [
-      'woolworths', 'pak n save', 'paksave', 'new world', 'countdown', 'farro', 'supermarket',
-      'liquorland', 'super liquor', 'liquor ', 'bottle o', 'birkenhead liquor',
-      'butcher', 'bakery', 'deli', 'organics', 'wholefoods', 'pachamama latino store', 'daiso japan', '3 japan', 't2 apac'
-    ]
+    keywords: ['woolworths', 'pak n save', 'paksave', 'new world', 'countdown', 'farro', 'supermarket', 'liquorland', 'super liquor', 'liquor ', 'bottle o', 'birkenhead liquor', 'butcher', 'bakery', 'deli', 'organics', 'wholefoods', 'pachamama latino store', 't2 apac']
   },
   {
-    category: 'Fun & Social',
+    category: 'Entertainment',
     subcategory: 'Eating out',
-    keywords: [
-      'coffee', 'cafe', 'espresso', 'starbucks',
-      'mcdonald', 'kfc', 'burger king', 'subway', 'domino', 'pizza hut', 'hungry jacks',
-      'restaurant', 'bistro', 'dining', 'cuisine', 'grill', 'izakaya', 'eatery', 'fat badgers pizza', 'pizza bar'
-    ]
+    keywords: ['coffee', 'cafe', 'espresso', 'starbucks', 'mcdonald', 'kfc', 'burger king', 'subway', 'domino', 'pizza hut', 'hungry jacks', 'restaurant', 'bistro', 'dining', 'cuisine', 'grill', 'izakaya', 'eatery', 'fat badgers pizza', 'pizza bar']
   },
   {
-    category: 'Fun & Social',
-    subcategory: 'Subscriptions',
-    keywords: [
-      'netflix', 'spotify', 'disney', 'apple music', 'youtube', 'paramount', 'hbo', 'amazon prime',
-      'openai', 'claude', 'cursor', 'expressvpn', 'cloudflare', 'icloud', 'itunes', 'microsoft', 'google', 'adobe', 'github', 'x corp. paid features'
-    ]
+    category: 'Entertainment',
+    subcategory: 'Streaming',
+    keywords: ['netflix', 'spotify', 'disney', 'apple music', 'paramount', 'hbo']
   },
   {
-    category: 'Personal spending',
-    subcategory: 'Hobbies & Shopping',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
+    keywords: ['youtube', 'amazon prime', 'openai', 'claude', 'cursor', 'expressvpn', 'cloudflare', 'icloud', 'itunes', 'microsoft', 'google', 'adobe', 'github', 'x corp. paid features']
+  },
+  {
+    category: 'Entertainment',
+    subcategory: 'Games & hobbies',
     keywords: ['playstation', 'steam', 'nintendo', 'xbox', 'game pass', 'gaming', 'instantgami']
   },
   {
-    category: 'Fun & Social',
-    subcategory: 'Travel & Entertainment',
+    category: 'Entertainment',
+    subcategory: 'Travel & events',
     keywords: ['event cinema', 'cinemas', 'movies', 'theatre', 'tvnz event pass', 'kubotaitchiku museum']
   },
   {
-    category: 'Groceries',
-    subcategory: 'Medicine & Supplements',
+    category: 'Personal needs',
+    subcategory: 'Health',
     keywords: ['chemist', 'pharmacy', 'unimeds', 'medical', 'clinic', 'cocokarafine', 'nz muscle']
   },
   {
-    category: 'Groceries',
-    subcategory: 'Household items',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
+    reviewReason: 'merchant' as const,
     keywords: ['kmart', 'the warehouse', 'warehouse', 'briscoes', 'bunnings', 'mitre 10', 'ikea', 'noel leeming', 'harvey norman']
   },
   {
-    category: 'Personal spending',
-    subcategory: 'Hobbies & Shopping',
-    keywords: ['farmers', 'farmer', 'fashion', 'adidas', 'puma', 'nike', 'seed heritage', 'tommy hilfiger', 'hallenstein', 'hallensteins', 'glassons', 'trezor company', 'tnf onehunga', 'bic camera', 'h&m', 'bonds onehunga', 'temu.com', 'jb hi fi', 'mighty ape']
+    category: 'Personal needs',
+    subcategory: 'Clothing & footwear',
+    keywords: ['fashion', 'adidas', 'puma', 'nike', 'seed heritage', 'tommy hilfiger', 'hallenstein', 'hallensteins', 'glassons', 'tnf onehunga', 'h&m', 'bonds onehunga']
   },
   {
-    category: 'Groceries',
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
+    reviewReason: 'merchant' as const,
+    keywords: ['farmers', 'farmer', 'trezor company', 'bic camera', 'temu.com', 'jb hi fi', 'mighty ape']
+  },
+  {
+    category: 'Personal needs',
     subcategory: 'Personal care',
     keywords: ['barber', 'hairdresser', 'hair salon', 'nails', 'lash co']
   },
   {
-    category: 'Fun & Social',
-    subcategory: 'Travel & Entertainment',
-    keywords: [
-      'hotel', 'airbnb', 'accor', 'hilton', 'marriott', 'motel', 'resort', 'booking.com', 'booking',
-      'air new zealand', 'jetstar', 'qantas', 'airline', 'flight'
-    ]
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
+    keywords: ['hotel', 'airbnb', 'accor', 'hilton', 'marriott', 'motel', 'resort', 'booking.com', 'booking', 'air new zealand', 'jetstar', 'qantas', 'airline', 'flight']
   },
   {
-    category: 'Personal spending',
-    subcategory: 'Hobbies & Shopping',
+    category: 'Work & learning',
+    subcategory: 'Education & training',
     keywords: ['language lesson', 'music lesson', 'art class']
+  },
+  {
+    category: 'Others',
+    subcategory: 'Purpose unconfirmed',
+    reviewReason: 'merchant' as const,
+    keywords: ['daiso japan', '3 japan']
   }
 ];
 
@@ -217,10 +221,8 @@ function matchRules(normalizedValue: string, collapsedValue: string, rules = PRO
     );
 
     if (keywordMatch || collapsedMatch) {
-      return {
-        category: rule.category,
-        subcategory: rule.subcategory
-      };
+      const pair = normalizeCategoryPair(rule.category, rule.subcategory);
+      return pair.category === 'Others' ? { ...pair, confidence: 'review', reviewReason: rule.reviewReason ?? 'purpose' } : pair;
     }
   }
 
@@ -237,10 +239,8 @@ export function suggestCategoryForMerchant(place = ''): ClassificationSuggestion
 
     const override = PAYPAL_OVERRIDES.find((entry) => collapsedPaypalName.includes(collapse(entry.match)));
     if (override) {
-      return {
-        category: override.category,
-        subcategory: override.subcategory
-      };
+      const pair = normalizeCategoryPair(override.category, override.subcategory);
+      return override.category !== 'Others' && pair.category === 'Others' ? { ...pair, confidence: 'review', reviewReason: 'purpose' } : pair;
     }
 
     const paypalMatch = matchRules(paypalName, collapsedPaypalName);
@@ -250,7 +250,7 @@ export function suggestCategoryForMerchant(place = ''): ClassificationSuggestion
 
     const reviewMatch = matchRules(paypalName, collapsedPaypalName, PROCESSED_REVIEW_ONLY_RULES);
     if (reviewMatch) {
-      return { ...reviewMatch, confidence: 'review' };
+      return { ...reviewMatch, confidence: 'review', reviewReason: 'merchant' };
     }
 
     return null;
@@ -262,7 +262,7 @@ export function suggestCategoryForMerchant(place = ''): ClassificationSuggestion
   }
 
   const reviewMatch = matchRules(normalizedPlace, collapsedPlace, PROCESSED_REVIEW_ONLY_RULES);
-  return reviewMatch ? { ...reviewMatch, confidence: 'review' } : null;
+  return reviewMatch ? { ...reviewMatch, confidence: 'review', reviewReason: 'merchant' } : null;
 }
 
 export function categorizeMerchant(place = ''): Classification {

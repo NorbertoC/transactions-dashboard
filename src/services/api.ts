@@ -20,7 +20,7 @@ export class ApiService {
       // are preserved; the classifier only fills genuinely missing ones.
       const storedCategory = (transaction.category ?? '').trim();
       const pair = storedCategory
-        ? normalizeCategoryPair(storedCategory, transaction.subcategory)
+        ? normalizeCategoryPair(storedCategory, transaction.subcategory, transaction.category_source)
         : categorizeMerchant(transaction.place || '');
 
       const normalized: Transaction = {

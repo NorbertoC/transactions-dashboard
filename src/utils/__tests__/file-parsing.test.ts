@@ -210,12 +210,12 @@ describe('extractTransactions', () => {
     const { rows } = extractTransactions(headerRows, columns)
 
     const groceries = rows.find((row) => row.place === 'COUNTDOWN AUCKLAND')
-    expect(groceries?.category).toBe('Groceries')
+    expect(groceries?.category).toBe('Home & daily living')
     expect(groceries?.subcategory).toBe('Food')
 
     const fuel = rows.find((row) => row.place === 'BP CONNECT GREENLANE')
-    expect(fuel?.category).toBe('Transport')
-    expect(fuel?.subcategory).toBe('Fuel')
+    expect(fuel?.category).toBe('Others')
+    expect(fuel?.subcategory).toBe('Purpose unconfirmed')
   })
 
   it('skips everything when columns are null', () => {
@@ -316,15 +316,15 @@ describe('Amex NZ CSV', () => {
 
     const groceries = rows.find((row) => row.place === 'COUNTDOWN AUCKLAND')
     expect(groceries?.include).toBe(true)
-    expect(groceries?.category).toBe('Groceries')
+    expect(groceries?.category).toBe('Home & daily living')
     expect(groceries?.subcategory).toBe('Food')
 
     const fuel = rows.find((row) => row.place === 'BP CONNECT GREENLANE')
-    expect(fuel?.category).toBe('Transport')
-    expect(fuel?.subcategory).toBe('Fuel')
+    expect(fuel?.category).toBe('Others')
+    expect(fuel?.subcategory).toBe('Purpose unconfirmed')
   })
 
-  it('prefers a specific merchant match over a coarse bank category', () => {
+  it('keeps software purpose unconfirmed despite a coarse bank food category', () => {
     const rows = [
       amexRows[0],
       [
@@ -348,8 +348,8 @@ describe('Amex NZ CSV', () => {
     const { rows: parsed } = extractTransactions(rows, detectColumns(rows))
 
     expect(parsed[0]).toMatchObject({
-      category: 'Fun & Social',
-      subcategory: 'Subscriptions'
+      category: 'Others',
+      subcategory: 'Purpose unconfirmed'
     })
   })
 })
@@ -357,7 +357,7 @@ describe('Amex NZ CSV', () => {
 describe('mapBankCategoryToTaxonomy', () => {
   it('maps known Amex labels', () => {
     expect(mapBankCategoryToTaxonomy('Restaurant-Restaurant')).toEqual({
-      category: 'Fun & Social',
+      category: 'Entertainment',
       subcategory: 'Eating out'
     })
   })
@@ -368,30 +368,30 @@ describe('mapBankCategoryToTaxonomy', () => {
   })
 
   it.each([
-    ['Retail & Grocery-Pharmacies', 'Groceries', 'Medicine & Supplements'],
-    ['Retail & Grocery-Groceries', 'Groceries', 'Food'],
-    ['Retail & Grocery-Clothing Stores', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-Computer Supplies', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-Electronics Stores', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-Sporting Goods Stores', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-General Retail', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-Online Purchases', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-Department Stores', 'Personal spending', 'Hobbies & Shopping'],
-    ['Retail & Grocery-Furnishing', 'Groceries', 'Household items'],
-    ['Entertainment-Restaurants', 'Fun & Social', 'Eating out'],
-    ['Entertainment-Bars & Cafés', 'Fun & Social', 'Eating out'],
-    ['Entertainment-Other Entertainment', 'Fun & Social', 'Travel & Entertainment'],
-    ['Travel & Transport-Fuel', 'Transport', 'Fuel'],
-    ['Travel & Transport-Taxis & Coach', 'Transport', 'Taxi & Rideshare'],
-    ['Travel & Transport-Parking Charges', 'Transport', 'Parking & Tolls'],
-    ['Travel & Transport-Airline', 'Fun & Social', 'Travel & Entertainment'],
-    ['Travel & Transport-Travel Agencies', 'Fun & Social', 'Travel & Entertainment'],
-    ['Travel & Transport-Accommodation', 'Fun & Social', 'Travel & Entertainment'],
-    ['Travel & Transport-Other Travel', 'Fun & Social', 'Travel & Entertainment'],
-    ['Communications-Internet Communication', 'Housing', 'Internet & Phone'],
+    ['Retail & Grocery-Pharmacies', 'Personal needs', 'Health'],
+    ['Retail & Grocery-Groceries', 'Home & daily living', 'Food'],
+    ['Retail & Grocery-Clothing Stores', 'Personal needs', 'Clothing & footwear'],
+    ['Retail & Grocery-Computer Supplies', 'Others', 'Purpose unconfirmed'],
+    ['Retail & Grocery-Electronics Stores', 'Others', 'Purpose unconfirmed'],
+    ['Retail & Grocery-Sporting Goods Stores', 'Others', 'Purpose unconfirmed'],
+    ['Retail & Grocery-General Retail', 'Others', 'Purpose unconfirmed'],
+    ['Retail & Grocery-Online Purchases', 'Others', 'Purpose unconfirmed'],
+    ['Retail & Grocery-Department Stores', 'Others', 'Purpose unconfirmed'],
+    ['Retail & Grocery-Furnishing', 'Home & daily living', 'Household items'],
+    ['Entertainment-Restaurants', 'Entertainment', 'Eating out'],
+    ['Entertainment-Bars & Cafés', 'Entertainment', 'Eating out'],
+    ['Entertainment-Other Entertainment', 'Entertainment', 'Travel & events'],
+    ['Travel & Transport-Fuel', 'Others', 'Purpose unconfirmed'],
+    ['Travel & Transport-Taxis & Coach', 'Others', 'Purpose unconfirmed'],
+    ['Travel & Transport-Parking Charges', 'Others', 'Purpose unconfirmed'],
+    ['Travel & Transport-Airline', 'Others', 'Purpose unconfirmed'],
+    ['Travel & Transport-Travel Agencies', 'Others', 'Purpose unconfirmed'],
+    ['Travel & Transport-Accommodation', 'Others', 'Purpose unconfirmed'],
+    ['Travel & Transport-Other Travel', 'Others', 'Purpose unconfirmed'],
+    ['Communications-Internet Communication', 'Home & daily living', 'Internet & Phone'],
     ['Finance-Government Services', 'Others', 'Miscellaneous'],
     ['Business Services-Other Services', 'Others', 'Miscellaneous'],
-    ['Miscellaneous-Education', 'Personal spending', 'Hobbies & Shopping'],
+    ['Miscellaneous-Education', 'Work & learning', 'Education & training'],
     ['Miscellaneous-Other', 'Others', 'Miscellaneous']
   ])(
     'maps the current Amex label %s without being confused by its family prefix',
@@ -400,7 +400,7 @@ describe('mapBankCategoryToTaxonomy', () => {
     }
   )
 
-  it('lets a SUICA merchant override Amex incorrect internet metadata', () => {
+  it('keeps transport purpose unconfirmed instead of using incorrect internet metadata', () => {
     const rows = [
       ['Date', 'Description', 'Amount', 'Category'],
       [
@@ -414,8 +414,8 @@ describe('mapBankCategoryToTaxonomy', () => {
     const { rows: parsed } = extractTransactions(rows, detectColumns(rows))
 
     expect(parsed[0]).toMatchObject({
-      category: 'Transport',
-      subcategory: 'Public transport'
+      category: 'Others',
+      subcategory: 'Purpose unconfirmed'
     })
   })
 
@@ -428,8 +428,8 @@ describe('mapBankCategoryToTaxonomy', () => {
     const { rows: parsed } = extractTransactions(rows, detectColumns(rows))
 
     expect(parsed[0]).toMatchObject({
-      category: 'Personal spending',
-      subcategory: 'Hobbies & Shopping'
+      category: 'Others',
+      subcategory: 'Purpose unconfirmed'
     })
   })
 })

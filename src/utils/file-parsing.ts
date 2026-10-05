@@ -369,7 +369,16 @@ export function detectColumns(rows: string[][]): DetectedColumns | null {
  * Map Amex NZ / bank Category labels onto the kakeibo taxonomy when possible.
  * Returns null when the label is empty or unrecognised.
  */
-export function mapBankCategoryToTaxonomy(
+export function mapBankCategoryToTaxonomy(bankCategory: string): { category: string; subcategory: string } | null {
+  const label = bankCategory.toLowerCase();
+  if (/clothing/.test(label)) return { category: 'Personal needs', subcategory: 'Clothing & footwear' };
+  if (/airline|travel|accommodation|lodging/.test(label)) return { category: 'Others', subcategory: 'Purpose unconfirmed' };
+  if (/education/.test(label)) return { category: 'Work & learning', subcategory: 'Education & training' };
+  const pair = mapLegacyBankCategory(bankCategory);
+  return pair ? normalizeCategoryPair(pair.category, pair.subcategory) : null;
+}
+
+function mapLegacyBankCategory(
   bankCategory: string
 ): { category: string; subcategory: string } | null {
   const raw = bankCategory.trim();
@@ -623,11 +632,9 @@ export function extractTransactions(
 
     const fromBank = mapBankCategoryToTaxonomy(bankCategory);
     const fromMerchant = suggestCategoryForMerchant(place);
-    const pair =
-      (fromMerchant?.confidence !== 'review' ? fromMerchant : null) ??
-      (fromBank && fromBank.category !== 'Others'
-        ? normalizeCategoryPair(fromBank.category, fromBank.subcategory)
-        : categorizeMerchant(place));
+    const pair = fromMerchant?.reviewReason === 'purpose'
+      ? { category: 'Others', subcategory: 'Purpose unconfirmed' }
+      : (fromMerchant?.confidence !== 'review' ? fromMerchant : null) ?? fromBank ?? categorizeMerchant(place);
 
     return {
       id: `row-${index}-${dateIso}-${Math.abs(amount)}`,
