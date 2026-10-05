@@ -23,5 +23,5 @@ export function useIncomeSummary(start: string, end: string, years: readonly str
   }, [available, windows]);
   const resource = useScopedResource(`income:${key}`, fetcher);
   return { summaries: available ? resource.data ?? null : null, loading: available && windows.length > 0 && resource.loading,
-    updating: resource.updating, error: resource.error, retry: resource.refetch };
+    updating: resource.updating, slow: resource.slow, error: resource.error, retry: resource.refetch };
 }

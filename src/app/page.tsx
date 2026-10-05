@@ -17,6 +17,7 @@ function Dashboard() {
     transactions,
     loading,
     updating,
+    slow,
     error,
     incomeAvailable,
     refetch,
@@ -30,8 +31,8 @@ function Dashboard() {
     <div className="flex min-h-screen flex-col">
       <Header onUploadClick={() => setShowUploadModal(true)} />
       <main className="mesa-main flex-1">
-        <DataFeedback loading={loading} updating={updating} error={error} retry={refetch} />
-        <MesaDashboard loading={loading || (error !== null && !transactions.length)} transactions={transactions} incomeAvailable={incomeAvailable} onTransactionUpdated={updateTransaction} onTransactionDeleted={removeTransaction} />
+        <DataFeedback slow={slow} loading={loading} updating={updating} error={error} retry={refetch} />
+        <MesaDashboard loading={loading} unavailable={error !== null && !transactions.length} transactions={transactions} incomeAvailable={incomeAvailable} onTransactionUpdated={updateTransaction} onTransactionDeleted={removeTransaction} />
       </main>
 
       {showUploadModal && (

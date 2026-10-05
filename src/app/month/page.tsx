@@ -22,7 +22,7 @@ import { formatCurrency } from '@/utils/format';
 
 function MonthView() {
   const { t, locale } = useLocale();
-  const { transactions, loading, updating, error, refetch } = useTransactions();
+  const { transactions, loading, updating, slow, error, refetch } = useTransactions();
   const { options, optionsMap, defaultKey } = useStatementFilters(transactions);
   const statementOptions = useMemo(
     () => options.filter((option) => option.type === 'statement'),
@@ -87,6 +87,7 @@ function MonthView() {
               onChange={(event) => setSelectedKey(event.target.value)}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-sm sm:max-w-md"
             >
+              {!statementOptions.length && <option value="">{t(loading ? 'data.loading' : error ? 'data.unavailable' : 'month.empty')}</option>}
               {statementOptions.map((option) => (
                 <option key={option.key} value={option.key}>
                   {option.label}
@@ -95,8 +96,8 @@ function MonthView() {
             </SelectControl>
           </label>
 
-          <DataFeedback loading={loading} updating={updating} error={error} retry={refetch} />
-          <DataFeedback loading={summaryResource.loading} updating={summaryResource.updating} error={summaryResource.error} retry={summaryResource.refetch} />
+          <DataFeedback slow={slow} loading={loading} updating={updating} error={error} retry={refetch} />
+          <DataFeedback slow={summaryResource.slow} loading={summaryResource.loading} updating={summaryResource.updating} error={summaryResource.error} retry={summaryResource.refetch} />
 
           {loading || summaryResource.loading ? <SectionSkeleton label={t('month.title')} /> : !summary ? (
             <p className="text-muted">{t('month.empty')}</p>
@@ -142,9 +143,7 @@ function MonthView() {
               <section className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-5">
                 <h2 className="text-lg font-semibold">{t('month.projectionTitle')}</h2>
                 <p className="mt-1 text-sm text-muted">{t('month.projectionHelp')}</p>
-                {projectionError && (
-                  <DataFeedback error={projectionError} retry={projectionResource.refetch} />
-                )}
+                <DataFeedback slow={projectionResource.slow} error={projectionError} retry={projectionResource.refetch} />
                 {projectionResource.loading ? <SectionSkeleton label={t('month.projectionTitle')} /> : <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-surface p-4">
                     <dt className="text-sm text-muted">{t('month.projectedExpenses')}</dt>

@@ -9,6 +9,8 @@ export function useScopedResource<T>(scope: string, fetcher: (signal: AbortSigna
   const authorized = status === 'authenticated' && session?.user.authorized === true;
   const key = authorized ? JSON.stringify([session.user.id, session.user.email, scope]) : null;
   const [state, setState] = useState<{ key: string | null; data?: T; pending: boolean; error: string | null }>({ key: null, pending: false, error: null });
+  const [slow, setSlow] = useState(false);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controller = useRef<AbortController | null>(null);
   const currentKey = useRef(key);
   currentKey.current = key;
@@ -16,9 +18,14 @@ export function useScopedResource<T>(scope: string, fetcher: (signal: AbortSigna
 
   const refetch = useCallback(async () => {
     controller.current?.abort();
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    setSlow(false);
     if (!key || blocked.current) return;
     const request = new AbortController();
     controller.current = request;
+    slowTimer.current = setTimeout(() => {
+      if (!request.signal.aborted && currentKey.current === key && !blocked.current) setSlow(true);
+    }, 8000);
     setState(previous => ({ key, data: previous.key === key ? previous.data : undefined, pending: true, error: null }));
     try {
       const data = await fetcher(request.signal);
@@ -27,6 +34,11 @@ export function useScopedResource<T>(scope: string, fetcher: (signal: AbortSigna
       if (!request.signal.aborted && currentKey.current === key && !blocked.current) {
         setState(previous => ({ ...previous, pending: false, error: error instanceof Error ? error.message : 'Request failed' }));
       }
+    } finally {
+      if (controller.current === request) {
+        if (slowTimer.current) clearTimeout(slowTimer.current);
+        setSlow(false);
+      }
     }
   }, [key, fetcher]);
 
@@ -34,6 +46,8 @@ export function useScopedResource<T>(scope: string, fetcher: (signal: AbortSigna
     const clear = () => {
       blocked.current = true;
       controller.current?.abort();
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+      setSlow(false);
       setState({ key: null, pending: false, error: null });
     };
     window.addEventListener(SESSION_INVALIDATED, clear);
@@ -43,7 +57,10 @@ export function useScopedResource<T>(scope: string, fetcher: (signal: AbortSigna
   useEffect(() => {
     blocked.current = false;
     void refetch();
-    return () => controller.current?.abort();
+    return () => {
+      controller.current?.abort();
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+    };
   }, [refetch]);
 
   const data = key && state.key === key && !blocked.current ? state.data : undefined;
@@ -51,6 +68,6 @@ export function useScopedResource<T>(scope: string, fetcher: (signal: AbortSigna
     if (!key || previous.key !== key || previous.data === undefined || blocked.current) return previous;
     return { ...previous, data: update(previous.data) };
   });
-  return { data, loading: authorized && data === undefined && (state.key !== key || state.pending), updating: data !== undefined && state.pending,
+  return { data, slow: slow && state.pending && state.key === key, loading: authorized && data === undefined && (state.key !== key || state.pending), updating: data !== undefined && state.pending,
     error: key && state.key === key ? state.error : null, refetch, setData };
 }

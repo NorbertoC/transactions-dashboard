@@ -244,3 +244,17 @@
 .mesa-metrics .skeleton-metric, .mesa-metrics .skeleton-metric-note { height: auto; margin-bottom: 0; }
 .mesa-coverage { min-height: 40px; }
 @media (max-width: 800px) { .mesa-coverage { min-height: 120px; } }
+
+.skeleton-line, .skeleton-chart {
+  background: linear-gradient(105deg, var(--surface-2) 25%, color-mix(in srgb, var(--primary) 24%, var(--surface-2)) 45%, var(--surface-2) 65%);
+  background-size: 240% 100%;
+  animation: section-shimmer 1.8s ease-in-out infinite;
+}
+@keyframes section-shimmer { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+.section-unavailable { min-width: 0; padding: 23px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface); color: var(--muted); }
+.section-unavailable p { font-size: 14px; line-height: 1.6; }
+.dashboard-unavailable .mesa-reading, .dashboard-unavailable .mesa-bars { min-height: 180px; }
+.data-menu-placeholder { font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line, .skeleton-chart { animation: none; background: var(--surface-2); }
+}

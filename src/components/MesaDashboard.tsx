@@ -25,6 +25,7 @@ import { DashboardSkeleton, MetricsSkeleton, DataFeedback } from '@/components/L
 interface Props {
   transactions: Transaction[];
   loading?: boolean;
+  unavailable?: boolean;
   incomeAvailable?: boolean;
   onTransactionUpdated: (transaction: Transaction) => void;
   onTransactionDeleted: (id: number) => void;
@@ -41,7 +42,7 @@ function Sparkline({ values, label }: { values: number[]; label: string }) {
   </svg>;
 }
 
-export default function MesaDashboard({ transactions, loading = false, incomeAvailable = false, onTransactionUpdated, onTransactionDeleted }: Props) {
+export default function MesaDashboard({ transactions, loading = false, unavailable = false, incomeAvailable = false, onTransactionUpdated, onTransactionDeleted }: Props) {
   const { locale, t } = useLocale();
   const dates = useMemo(() => transactions.map(tx => tx.date_iso).filter(isIsoDate).sort(), [transactions]);
   const today = new Date().toLocaleDateString('en-CA');
@@ -124,6 +125,7 @@ export default function MesaDashboard({ transactions, loading = false, incomeAva
     {graphReading.partial && <p className="mesa-micro">{t('categoryReading.partial')}</p>}
   </div>;
 
+  const waitingLabel = loading ? t('data.loading') : unavailable ? t('data.unavailable') : t('mesa.noMonths');
   return <div className="mesa-dashboard">
     <section className="mesa-global-controls" aria-label={t('period.filterAria')}>
       <label className="mesa-field">{t('mesa.mode')}<span className="mesa-select"><select value={mode} onChange={event => { setMode(event.target.value as 'calendar' | 'statement'); resetPeriodDetail(); }}>
@@ -131,35 +133,39 @@ export default function MesaDashboard({ transactions, loading = false, incomeAva
       </select><ChevronDown aria-hidden="true" /></span></label>
       {mode === 'calendar' ? <>
         <label className="mesa-field">{t('mesa.from')}<span className="mesa-select"><select value={firstMonth} disabled={!selectableMonths.length} onChange={event => { setFrom(event.target.value); if (event.target.value > lastMonth) setTo(event.target.value); resetPeriodDetail(); }}>
+          {!selectableMonths.length && <option value="">{waitingLabel}</option>}
           {selectableMonths.map(key => <option key={key} value={key}>{monthLabel(key)}</option>)}
         </select><ChevronDown aria-hidden="true" /></span></label>
         <label className="mesa-field">{t('mesa.to')}<span className="mesa-select"><select value={lastMonth} disabled={!selectableMonths.length} onChange={event => { setTo(event.target.value); resetPeriodDetail(); }}>
+          {!selectableMonths.length && <option value="">{waitingLabel}</option>}
           {selectableMonths.filter(key => key >= firstMonth).map(key => <option key={key} value={key}>{monthLabel(key)}</option>)}
         </select><ChevronDown aria-hidden="true" /></span></label>
-      </> : <label className="mesa-field">{t('month.pickPeriod')}<span className="mesa-select"><select value={currentStatement?.key ?? ''} onChange={event => { setStatement(event.target.value); resetPeriodDetail(); }}>
+      </> : <label className="mesa-field">{t('month.pickPeriod')}<span className="mesa-select"><select disabled={!statementOptions.length} value={currentStatement?.key ?? ''} onChange={event => { setStatement(event.target.value); resetPeriodDetail(); }}>
+        {!statementOptions.length && <option value="">{waitingLabel}</option>}
         {statementOptions.map(option => <option key={option.key} value={option.key}>{option.startDate} – {option.endDate}</option>)}
       </select><ChevronDown aria-hidden="true" /></span></label>}
       {currencies.length > 1 && <label className="mesa-field">{t('mesa.currency')}<span className="mesa-select"><select value={currency} onChange={event => { setCurrency(event.target.value); resetPeriodDetail(); }}>{currencies.map(value => <option key={value}>{value}</option>)}</select><ChevronDown aria-hidden="true" /></span></label>}
       <div className="mesa-period-options"><label className="mesa-checkbox"><input type="checkbox" checked={includeRent} onChange={event => { setIncludeRent(event.target.checked); resetPeriodDetail(); }} />{t('mesa.rent')}</label>
       {mode === 'calendar' && <label className="mesa-checkbox"><input type="checkbox" checked={includePartial} onChange={event => { setIncludePartial(event.target.checked); resetPeriodDetail(); }} />{t('mesa.partial')}</label>}</div>
-      <p className="mesa-micro mesa-coverage">{loading ? t('overview.loading') : <>{t(mode === 'calendar' ? 'mesa.calendar' : 'mesa.statement')}. {t('mesa.coverage', { count: data.denominator })}</>}</p>
+      <p className="mesa-micro mesa-coverage">{loading ? t('overview.loading') : unavailable ? t('data.unavailable') : <>{t(mode === 'calendar' ? 'mesa.calendar' : 'mesa.statement')}. {t('mesa.coverage', { count: data.denominator })}</>}</p>
     </section>
     <div className="mesa-appbar"><h1>{t('mesa.title')}</h1><span>{t('mesa.yearScope', { years: selectedYears.join(', ') || '—' })} · {periodLabel} · {currency}</span></div>
     <div className="mesa-workspace">
-      <DataFeedback loading={incomeResponse.loading} updating={incomeResponse.updating} error={incomeResponse.error} retry={incomeResponse.retry} />
-      {loading ? <MetricsSkeleton /> : <div className="mesa-metrics" data-testid="summary">
-        {metricLabels.map((label, i) => <div key={label}><span>{t(label)}</span><strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : i === 0 ? incomeKnown ? money(incomeSummary!.total) : '—' : recordedNet !== null ? money(recordedNet) : '—'}</strong><small>{i === 0 ? t(incomeKnown ? 'income.basis' : 'income.unavailable') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
+      <DataFeedback slow={incomeResponse.slow} loading={incomeResponse.loading} updating={incomeResponse.updating} error={incomeResponse.error} retry={incomeResponse.retry} />
+      {loading || unavailable ? <MetricsSkeleton unavailable={unavailable && !loading} /> : <div className="mesa-metrics" data-testid="summary">
+        {metricLabels.map((label, i) => <div key={label} aria-busy={(i === 0 || i === 2) && incomeResponse.loading}><span>{t(label)}</span>{(i === 0 || i === 2) && incomeResponse.loading ? <strong className="skeleton-line skeleton-metric" aria-hidden="true">&nbsp;</strong> : <strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : i === 0 ? incomeKnown ? money(incomeSummary!.total) : '—' : recordedNet !== null ? money(recordedNet) : '—'}</strong>}<small>{i === 0 ? t(incomeKnown ? 'income.basis' : incomeResponse.loading ? 'income.loading' : 'income.unavailable') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
       </div>}
       <fieldset className="mesa-visibility"><legend>{t('mesa.organize')}</legend>
         <div className="mesa-years" role="group" aria-label={t('mesa.years')}><strong>{t('mesa.years')}</strong>
           <label className="mesa-checkbox"><input type="checkbox" disabled={loading || !availableYears.length} checked={availableYears.length > 0 && selectedYears.length === availableYears.length} onChange={event => chooseYears(event.target.checked ? 'all' : [])} />{t('mesa.allYears')}</label>
+          {loading && <span className="data-menu-placeholder">{t('data.loading')}</span>}
           {availableYears.map(year => <label key={year} className="mesa-checkbox"><input type="checkbox" checked={selectedYears.includes(year)} onChange={event => chooseYears(event.target.checked ? [...selectedYears, year].sort() : selectedYears.filter(value => value !== year))} />{year}</label>)}
-          <p className="mesa-micro">{t('mesa.yearsHint')}</p>{!loading && !selectedYears.length && <p className="mesa-micro" role="status">{t('mesa.noYears')}</p>}
+          <p className="mesa-micro">{t('mesa.yearsHint')}</p>{!loading && !unavailable && !selectedYears.length && <p className="mesa-micro" role="status">{t('mesa.noYears')}</p>}
         </div>
         {MODULES.map(key => <label key={key} className="mesa-checkbox"><input type="checkbox" checked={modules[key]} onChange={event => setModules(previous => ({ ...previous, [key]: event.target.checked }))} />{t(`mesa.${key}`)}</label>)}
         <button type="button" onClick={() => setModules(ALL_MODULES)}>{t('mesa.showAll')}</button><p className="mesa-micro">{t('mesa.visibilityNote')}</p>
       </fieldset>
-      {loading ? <DashboardSkeleton modules={modules} /> : <>
+      {loading || unavailable ? <DashboardSkeleton unavailable={unavailable && !loading} modules={modules} /> : <>
       <section className="mesa-months"><div className="mesa-section-heading"><div><p className="mesa-eyebrow">{t('mesa.monthByMonth')}</p><h2>{categoryLabel}</h2></div><button type="button" aria-pressed={!activeMonth} onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button></div>
         <div className="mesa-month-strip">{!data.denominator && <p className="mesa-micro">{t('mesa.noMonths')}</p>}{[...detailMonthly].reverse().map(row => <button type="button" className="mesa-month-card" key={row.key} aria-pressed={activeMonth === row.key} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><span>{monthLabel(row.key)}</span><strong>{money(row.total)}</strong><small>{t('mesa.monthExpense')}{row.partial && ` · ${t('mesa.partialLabel')}`}</small></button>)}</div>
         <p className="mesa-micro">{t('mesa.monthNote')}</p>

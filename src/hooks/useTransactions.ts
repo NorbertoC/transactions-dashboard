@@ -21,7 +21,7 @@ export function useTransactions(scope: RecordScope = 'expense') {
   const updateTransaction = (transaction: Transaction) => resource.setData(previous => ({ ...previous, transactions: previous.transactions.map(row => row.id === transaction.id ? transaction : row) }));
   const removeTransaction = (id: number) => resource.setData(previous => ({ ...previous, transactions: previous.transactions.filter(row => row.id !== id) }));
   return { transactions: resource.data?.transactions ?? [], incomeAvailable: resource.data?.incomeAvailable ?? false,
-    loading: resource.loading, updating: resource.updating, error: resource.error, refetch: resource.refetch, updateTransaction, removeTransaction };
+    loading: resource.loading, slow: resource.slow, updating: resource.updating, error: resource.error, refetch: resource.refetch, updateTransaction, removeTransaction };
 }
 
 export function useFilteredTransactions(

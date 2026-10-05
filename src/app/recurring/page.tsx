@@ -364,7 +364,7 @@ function RecurringView() {
             </div>
           </section>
 
-          <DataFeedback loading={loading} updating={updating} error={error} retry={load} />
+          <DataFeedback slow={resource.slow} loading={loading} updating={updating} error={error} retry={load} />
 
           {pendingImport.length > 0 && (
             <section role="status" className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
