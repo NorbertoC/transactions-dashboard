@@ -46,3 +46,27 @@ describe('income presentation', () => {
     expect(transactionLabel({ ...income, record_type: 'expense' })).toBe('Ingresos - Mana');
   });
 });
+
+describe('recorded monthly narrative evidence', () => {
+  it('reports changes only between adjacent complete observed months', () => {
+    const rows = [row(1, '2024-01-10', 100), row(2, '2024-02-10', 160), row(3, '2024-04-10', 500), row(4, '2026-01-10', 80), row(5, '2026-02-10', 30)];
+    const data = buildDashboard(rows, '2024-01-01', '2026-02-28', true, 'NZD', '2026-10-05', ['2024', '2026']);
+    const reading = categoryReading(data.expenses, data.monthly);
+    expect(reading.changes).toEqual([{ from: '2024-01', to: '2024-02', difference: 60 }, { from: '2026-01', to: '2026-02', difference: -50 }]);
+    expect(reading.latestChange?.difference).toBe(-50);
+    expect(reading.monthly.find(month => month.key === '2024-03')?.count).toBe(0);
+    expect(reading.peakShare).toBe(500 / 870);
+    expect(reading.topMerchant).toEqual({ place: 'Fixture', total: 500, month: '2024-04' });
+    expect(reading.total).toBe(data.total);
+    expect(reading.average).toBe(data.average);
+  });
+  it('does not compare partial months or divide by zero; preserves tied peaks', () => {
+    const data = buildDashboard([row(1, '2026-01-30', 0), row(2, '2026-02-10', 0)], '2026-01-27', '2026-02-26', true, 'NZD', '2026-10-05');
+    const reading = categoryReading(data.expenses, data.monthly);
+    expect(reading.changes).toEqual([]);
+    expect(reading.latestChange).toBeNull();
+    expect(reading.peakShare).toBeNull();
+    expect(reading.peaks).toHaveLength(2);
+    expect(categoryReading([], data.monthly).topMerchant).toBeNull();
+  });
+});
