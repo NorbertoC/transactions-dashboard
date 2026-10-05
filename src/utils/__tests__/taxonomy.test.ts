@@ -58,3 +58,19 @@ describe('four purpose groups and preserved evidence', () => {
     expect(preview[0]).not.toHaveProperty('expense_flexibility'); expect(records[0]).not.toHaveProperty('cadence');
   });
 });
+
+it('retains all manual purpose subcategories on repeated client reloads without merchant fallback', async () => {
+  const pairs = CATEGORIES.slice(0, 4).flatMap(group => group.subcategories.map(sub => [group.name, sub.name]));
+  expect(pairs).toHaveLength(18);
+  pairs.push(['Dining', 'Restaurants'], ['Shopping', 'Clothing'], ['Fun & Social', 'Subscriptions'], ['Custom bucket', 'Custom purpose']);
+  const rows = pairs.map(([category, subcategory], index) => row(index + 1, category, subcategory, {
+    category_source: 'manual', record_type: 'expense', direction: 'outflow', place: 'NETFLIX CHEMIST WAREHOUSE',
+    statement_id: '2026-01-26', statement_start: '2025-12-27', statement_end: '2026-01-26'
+  }));
+  const original = structuredClone(rows);
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(JSON.stringify(rows))));
+  for (let reload = 0; reload < 3; reload++) {
+    expect(await ApiService.fetchTransactionsClient('all')).toEqual(original);
+    expect(rows).toEqual(original);
+  }
+});
