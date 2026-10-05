@@ -2,12 +2,16 @@ import { Transaction } from '@/types/transaction';
 import { categorizeMerchant } from '@/utils/classification';
 import { normalizeCategoryPair } from '@/constants/categories';
 
+export type RecordScope = 'expense' | 'income' | 'transfer' | 'all';
+export class IncomeCapabilityUnavailable extends Error {}
+
 export class ApiService {
   private static readonly API_URL = process.env.NEXT_PUBLIC_API_URL;
   private static readonly API_KEY = process.env.API_KEY;
 
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
+      if (transaction.record_type === 'income' || transaction.record_type === 'transfer') return transaction;
       // Legacy pairs (Dining, Shopping, …) are remapped on the fly so the UI
       // always shows the canonical taxonomy even before the DB migration runs.
       // Stored categories — including an explicit 'Others / Miscellaneous' —
@@ -85,11 +89,13 @@ export class ApiService {
     };
   }
 
-  static async fetchTransactions(): Promise<Transaction[]> {
+  static async fetchTransactions(scope: RecordScope = 'expense'): Promise<Transaction[]> {
     if (!this.API_URL || !this.API_KEY) {
       throw new Error('Transaction API is not configured');
     }
-    const response = await fetch(this.API_URL, {
+    const url = new URL(this.API_URL);
+    url.searchParams.set('record_type', scope);
+    const response = await fetch(url, {
       cache: 'no-store',
       headers: { 'X-API-Key': this.API_KEY, 'Content-Type': 'application/json' },
     });
@@ -97,9 +103,14 @@ export class ApiService {
     return ApiService.normalizeTransactions(await response.json() as Transaction[]);
   }
 
-  static async fetchTransactionsClient(): Promise<Transaction[]> {
-    const response = await fetch('/api/transactions', { cache: 'no-store' });
+  static async fetchTransactionsClient(scope: RecordScope = 'expense'): Promise<Transaction[]> {
+    const response = await fetch(`/api/transactions?record_type=${scope}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return ApiService.normalizeTransactions(await response.json() as Transaction[]);
+    const rows: Transaction[] = await response.json();
+    if (scope === 'all' && (!Array.isArray(rows) || rows.some(row =>
+      !['income', 'expense', 'transfer'].includes(row.record_type ?? '') || !['inflow', 'outflow'].includes(row.direction ?? '') ||
+      row.record_type === 'income' && row.direction !== 'inflow' || row.record_type === 'expense' && row.direction !== 'outflow'
+    ))) throw new IncomeCapabilityUnavailable();
+    return ApiService.normalizeTransactions(rows);
   }
 }

@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { isAuthorizedIdentity } from '@/lib/auth-policy';
 import { requireSession, upstreamJson } from '@/lib/api-upstream';
 import { InvalidRequest, isIsoDate, readBoundedText, validId, validateRule, validateWindow } from '@/lib/api-validation';
+import { ApiService } from '@/services/api';
+import { GET as incomeSummary } from '@/app/api/income-summary/route';
 import { GET as transactions } from '@/app/api/transactions/route';
 import { POST as upload } from '@/app/api/upload-json/route';
 import { NextRequest } from 'next/server';
@@ -27,7 +29,7 @@ describe('Google identity and current allowlist', () => {
   });
   it('denies reads before any upstream access and never caches errors', async () => {
     session.value = null; const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
-    const response = await transactions();
+    const response = await transactions(new Request('https://fixture.test/api/transactions'));
     expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toContain('no-store'); expect(fetch).not.toHaveBeenCalled();
   });
   it('requires verified Google profile at sign-in and denies other providers', async () => {
@@ -48,16 +50,38 @@ describe('Google identity and current allowlist', () => {
     const summaryId = await import('@/app/api/period-summaries/[statement_id]/route');
     const compute = await import('@/app/api/period-summaries/compute/route');
     const project = await import('@/app/api/recurring-rules/project/route');
+    const incomeSummary = await import('@/app/api/income-summary/route');
     const request = new NextRequest('https://fixture.test/api/fixture', { method: 'POST', headers: { origin: 'https://fixture.test', 'content-type': 'application/json' }, body: '{}' });
     const id = { params: Promise.resolve({ id: '1' }) };
-    const responses = await Promise.all([transactions(), upload(request), recurring.GET(), recurring.POST(request), recurringId.PATCH(request, id), recurringId.DELETE(request, id), transactionId.PATCH(request, id), transactionId.PUT(request, id), transactionId.DELETE(request, id), summaries.GET(), summaryId.GET(request, { params: Promise.resolve({ statement_id: '2026-01-26' }) }), compute.POST(request), project.GET(request)]);
-    expect(responses).toHaveLength(13);
+    const responses = await Promise.all([transactions(new Request('https://fixture.test/api/transactions')), upload(request), recurring.GET(), recurring.POST(request), recurringId.PATCH(request, id), recurringId.DELETE(request, id), transactionId.PATCH(request, id), transactionId.PUT(request, id), transactionId.DELETE(request, id), summaries.GET(), summaryId.GET(request, { params: Promise.resolve({ statement_id: '2026-01-26' }) }), compute.POST(request), project.GET(request), incomeSummary.GET(request)]);
+    expect(responses).toHaveLength(14);
     responses.forEach(response => { expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toContain('no-store'); });
     expect(fetch).not.toHaveBeenCalled();
   });
   it('rejects existing sessions without verified Google claims', async () => {
     session.value = { user: { email: 'synthetic-a@example.test' } };
     expect((await requireSession()).error?.status).toBe(401);
+  });
+});
+describe('typed movement and income read boundaries', () => {
+  it('validates record scope before any upstream call', async () => {
+    const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
+    const response = await transactions(new Request('https://fixture.test/api/transactions?record_type=all/secret'));
+    expect(response.status).toBe(400); expect(fetch).not.toHaveBeenCalled();
+  });
+  it('forwards only the explicit validated all scope', async () => {
+    const upstream = vi.spyOn(ApiService, 'fetchTransactions').mockResolvedValue([]);
+    try {
+      const response = await transactions(new Request('https://fixture.test/api/transactions?record_type=all'));
+      expect(response.status).toBe(200); expect(upstream).toHaveBeenCalledWith('all'); expect(response.headers.get('cache-control')).toContain('no-store');
+    } finally { upstream.mockRestore(); }
+  });
+  it('rejects invalid income windows and conceals unavailable upstream diagnostics', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({error:'Synthetic private diagnostic'}), { status: 500 })); vi.stubGlobal('fetch', fetch);
+    const invalid = await incomeSummary(new Request('https://fixture.test/api/income-summary?start_date=2026-02-30&end_date=2026-03-01'));
+    expect(invalid.status).toBe(400); expect(fetch).not.toHaveBeenCalled();
+    const response = await incomeSummary(new Request('https://fixture.test/api/income-summary?start_date=2026-01-01&end_date=2026-09-30'));
+    expect(response.status).toBe(502); expect(await response.text()).not.toContain('private'); expect(response.headers.get('cache-control')).toContain('no-store');
   });
 });
 describe('custom write boundaries', () => {

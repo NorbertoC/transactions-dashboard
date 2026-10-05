@@ -29,6 +29,7 @@ interface TransactionsTableProps {
   onSearchChange?: (query: string) => void;
   scopeLabel?: string;
   currency?: string;
+  movementTypes?: boolean;
 }
 
 type SortField = 'date' | 'place' | 'category' | 'amount';
@@ -43,9 +44,14 @@ export default function TransactionsTable({
   transactions,
   categoryColors,
   onTransactionUpdated,
-  onTransactionDeleted, searchQuery: controlledSearch, onSearchChange, scopeLabel, currency = 'NZD'
+  onTransactionDeleted, searchQuery: controlledSearch, onSearchChange, scopeLabel, currency = 'NZD', movementTypes = false
 }: TransactionsTableProps) {
   const { t, locale } = useLocale();
+  const isExpense = (row: Transaction) => !row.record_type || row.record_type === 'expense';
+  const signedValue = (row: Transaction) => row.record_type === 'transfer' ? 0 : row.direction === 'inflow' ? row.value : -row.value;
+  const displayAmount = (row: Transaction) => `${movementTypes ? row.direction === 'inflow' ? '+' : '−' : ''}${money(row.value)}`;
+  const movementLabel = (row: Transaction) => t(`income.${row.record_type ?? 'expense'}`);
+  const badges = (row: Transaction) => isExpense(row) ? <>{renderCategoryBadge(row.category || DEFAULT_CATEGORY)}{renderSubcategoryBadge(row.category, row.subcategory)}</> : <span className="mesa-micro">{movementLabel(row)}{row.income_source ? ` · ${row.income_source}` : ''}</span>;
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [localSearch, setLocalSearch] = useState('');
@@ -66,7 +72,7 @@ export default function TransactionsTable({
     const suggestions = new Map<number, Classification>();
 
     transactions.forEach((transaction) => {
-      if (transaction.category_source === 'manual') return;
+      if (!isExpense(transaction) || transaction.category_source === 'manual') return;
       const suggestion = suggestCategoryForMerchant(transaction.place);
       if (!suggestion) return;
 
@@ -103,6 +109,9 @@ export default function TransactionsTable({
       transaction.place.toLowerCase().includes(query) ||
       transaction.category.toLowerCase().includes(query) ||
       transaction.subcategory?.toLowerCase().includes(query) ||
+      transaction.owner?.toLowerCase().includes(query) ||
+      transaction.income_source?.toLowerCase().includes(query) ||
+      (movementTypes && movementLabel(transaction).toLowerCase().includes(query)) ||
       transaction.value.toString().includes(query)
     );
   });
@@ -199,6 +208,7 @@ export default function TransactionsTable({
   };
 
   const toggleEditing = (transaction: Transaction) => {
+    if (!isExpense(transaction)) return;
     if (editingId === transaction.id) {
       cancelEditing();
       return;
@@ -269,6 +279,7 @@ export default function TransactionsTable({
   };
 
   const handleDelete = async (transaction: Transaction) => {
+    if (!isExpense(transaction)) return;
     if (!window.confirm(t('table.deleteConfirm'))) return;
     try {
       setDeletingId(transaction.id);
@@ -478,8 +489,9 @@ export default function TransactionsTable({
     >
       <div className="mesa-panel-title">
         <div><h2>{t('mesa.ledgerTitle')}</h2><p className="mesa-micro">{scopeLabel} · {resultCountLabel}</p></div>
-        <div><strong>{money(sortedTransactions.reduce((sum, row) => sum + row.value, 0))}</strong><small>{t('mesa.listTotal')}</small></div>
+        <div><strong>{money(sortedTransactions.reduce((sum, row) => sum + (movementTypes ? signedValue(row) : row.value), 0))}</strong><small>{t(movementTypes ? 'income.listNet' : 'mesa.listTotal')}</small></div>
       </div>
+      {movementTypes && <div className="mesa-list-flows mesa-micro"><span>{t('income.incomeTotal')}: {money(sortedTransactions.filter(row => row.record_type === 'income').reduce((sum, row) => sum + row.value, 0))}</span><span>{t('income.outflowTotal')}: {money(sortedTransactions.filter(isExpense).reduce((sum, row) => sum + row.value, 0))}</span><span>{t('income.transferNote')}</span></div>}
       <form className="mesa-search" onSubmit={event => { event.preventDefault(); handleSearchChange(queryDraft ?? searchQuery); }}>
         <label className="mesa-search-input"><Search aria-hidden="true" /><input type="search" aria-label={t('mesa.searchHint')} placeholder={t('mesa.searchPlaceholder')} value={queryDraft ?? searchQuery} onChange={event => setQueryDraft(event.target.value)} /></label>
         <button type="submit">{t('mesa.search')}</button>
@@ -556,20 +568,19 @@ export default function TransactionsTable({
                         <td className="px-4 py-3 text-sm font-medium">
                           <span className="block break-words" title={transaction.place}>
                             {transaction.place}
-                          </span>
+                          </span>{movementTypes && <small className="mesa-micro">{movementLabel(transaction)}{transaction.owner ? ` · ${transaction.owner}` : ''}</small>}
                         </td>
                         <td className="min-w-0 px-4 py-3">
                           <span className="flex flex-wrap items-center gap-1.5">
-                            {renderCategoryBadge(transaction.category || DEFAULT_CATEGORY)}
-                            {renderSubcategoryBadge(transaction.category, transaction.subcategory)}
+                            {badges(transaction)}
                           </span>
                           {renderSuggestion(transaction)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium tabular-nums">
-                          {money(transaction.value)}
+                          {displayAmount(transaction)}
                         </td>
                         <td className="whitespace-nowrap px-3 py-3 text-right">
-                          <span className="flex items-center justify-end gap-1">
+                          {isExpense(transaction) ? <span className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => toggleEditing(transaction)}
@@ -588,7 +599,7 @@ export default function TransactionsTable({
                             >
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
-                          </span>
+                          </span> : <small className="mesa-micro block whitespace-normal break-words">{t('income.readOnly')}</small>}
                         </td>
                       </tr>
                       {editingId === transaction.id && (
@@ -620,27 +631,28 @@ export default function TransactionsTable({
                 <button
                   type="button"
                   onClick={() => toggleEditing(transaction)}
+                  disabled={!isExpense(transaction)}
                   aria-expanded={editingId === transaction.id}
                   className="flex min-h-11 w-full flex-col gap-2 p-3.5 text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
                 >
                   <span className="flex w-full items-center justify-between gap-3">
                     <span className="min-w-0 break-words text-sm font-semibold">{transaction.place}</span>
                     <span className="shrink-0 font-semibold tabular-nums">
-                      {money(transaction.value)}
+                      {displayAmount(transaction)}
                     </span>
                   </span>
                   <span className="flex w-full flex-wrap items-center gap-1.5">
                     <span className="mr-auto text-xs text-muted">{formatDateShort(transaction.date_iso, locale)}</span>
-                    {renderCategoryBadge(transaction.category || DEFAULT_CATEGORY)}
-                    {renderSubcategoryBadge(transaction.category, transaction.subcategory)}
-                    <ChevronDown
+                    {badges(transaction)}{movementTypes && transaction.owner && <small>{transaction.owner}</small>}
+                    {isExpense(transaction) && <ChevronDown
                       className={`h-4 w-4 shrink-0 text-muted transition-transform ${
                         editingId === transaction.id ? 'rotate-180' : ''
                       }`}
                       aria-hidden="true"
-                    />
+                    />}
                   </span>
                 </button>
+                {!isExpense(transaction) && <p className="mesa-micro px-3.5 pb-3">{t('income.readOnly')}</p>}
                 {editingId !== transaction.id && renderSuggestion(transaction, true)}
                 {editingId === transaction.id && (
                   <div className="border-t border-border-subtle p-4">{renderEditor(transaction, 'mobile')}</div>

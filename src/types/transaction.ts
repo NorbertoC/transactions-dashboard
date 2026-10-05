@@ -1,4 +1,8 @@
 export interface Transaction {
+  record_type?: 'expense' | 'income' | 'transfer';
+  direction?: 'inflow' | 'outflow';
+  owner?: string | null;
+  income_source?: string | null;
   id: number;
   place: string;
   amount: string;
@@ -8,7 +12,7 @@ export interface Transaction {
   date_iso: string;
   category: string;
   subcategory?: string;
-  category_source?: 'manual' | 'imported' | 'merchant' | null;
+  category_source?: 'manual' | 'imported' | 'merchant' | 'approved-income' | null;
   statement_id?: string | null;
   statement_start?: string | null;
   statement_end?: string | null;

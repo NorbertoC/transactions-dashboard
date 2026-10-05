@@ -16,10 +16,11 @@ function Dashboard() {
     transactions,
     loading,
     error,
+    incomeAvailable,
     refetch,
     updateTransaction,
     removeTransaction,
-  } = useTransactions();
+  } = useTransactions('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   if (loading) {
@@ -60,7 +61,7 @@ function Dashboard() {
     <div className="flex min-h-screen flex-col">
       <Header onUploadClick={() => setShowUploadModal(true)} />
       <main className="mesa-main flex-1">
-        <MesaDashboard transactions={transactions} onTransactionUpdated={updateTransaction} onTransactionDeleted={removeTransaction} />
+        <MesaDashboard transactions={transactions} incomeAvailable={incomeAvailable} onTransactionUpdated={updateTransaction} onTransactionDeleted={removeTransaction} />
       </main>
 
       {showUploadModal && (

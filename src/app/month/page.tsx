@@ -1,10 +1,11 @@
 'use client';
 
 import SelectControl from '@/components/SelectControl';
+import MonthEvidence from '@/components/MonthEvidence';
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lightbulb, RefreshCw, Wallet } from 'lucide-react';
+import { RefreshCw, Wallet } from 'lucide-react';
 import AuthGuard from '@/components/AuthGuard';
 import Header from '@/components/Header';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -17,9 +18,6 @@ import { fetchRecurringProjection } from '@/services/recurring';
 import type { PeriodSummary, RecurringProjection } from '@/types/recurring';
 import { buildClientPeriodSummary } from '@/utils/period-summary-fallback';
 import { formatCurrency } from '@/utils/format';
-import {
-  getLocalizedCategoryName
-} from '@/constants/categories';
 
 function MonthView() {
   const { t, locale } = useLocale();
@@ -286,52 +284,7 @@ function MonthView() {
                 </dl>
               </section>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <section className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm">
-                  <h2 className="mb-3 text-lg font-semibold">{t('month.topSpends')}</h2>
-                  {summary.top_expenses.length === 0 ? (
-                    <p className="text-sm text-muted">{t('month.noTransactions')}</p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {summary.top_expenses.map((item, index) => (
-                        <li
-                          key={`${item.place}-${index}`}
-                          className="flex items-center justify-between gap-3 rounded-xl bg-surface-2/60 px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{item.place}</p>
-                            <p className="text-xs text-muted">
-                              {item.category
-                                ? getLocalizedCategoryName(item.category, locale)
-                                : '—'}
-                            </p>
-                          </div>
-                          <span className="shrink-0 tabular-nums font-semibold">
-                            {formatCurrency(item.value, locale)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-
-                <section className="rounded-2xl border border-border-subtle bg-surface p-5 shadow-sm">
-                  <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                    <Lightbulb className="h-5 w-5 text-primary" />
-                    {t('month.insights')}
-                  </h2>
-                  <ul className="space-y-2">
-                    {summary.insights.map((insight, index) => (
-                      <li
-                        key={`${index}-${insight.slice(0, 24)}`}
-                        className="rounded-xl border border-border-subtle px-3 py-2 text-sm"
-                      >
-                        {insight}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              </div>
+              <MonthEvidence transactions={transactions} start={current?.startDate ?? ''} end={current?.endDate ?? ''} />
             </>
           )}
         </div>

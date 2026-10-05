@@ -11,6 +11,8 @@ import { getLocalizedCategoryName } from '@/constants/categories';
 import { buildDashboard, calendarMonths, currencyCode, monthEnd } from '@/utils/dashboard';
 import type { Transaction } from '@/types/transaction';
 import type { MessageKey } from '@/i18n/messages';
+import { useIncomeSummary } from '@/hooks/useIncomeSummary';
+import { combineIncomeSummaries } from '@/utils/income';
 
 const MODULES = ['reading', 'distribution', 'index', 'evidence'] as const;
 type Module = typeof MODULES[number];
@@ -19,6 +21,7 @@ const LOCALE_TAGS = { en: 'en-NZ', es: 'es', ja: 'ja-JP' };
 
 interface Props {
   transactions: Transaction[];
+  incomeAvailable?: boolean;
   onTransactionUpdated: (transaction: Transaction) => void;
   onTransactionDeleted: (id: number) => void;
 }
@@ -34,7 +37,7 @@ function Sparkline({ values, label }: { values: number[]; label: string }) {
   </svg>;
 }
 
-export default function MesaDashboard({ transactions, onTransactionUpdated, onTransactionDeleted }: Props) {
+export default function MesaDashboard({ transactions, incomeAvailable = false, onTransactionUpdated, onTransactionDeleted }: Props) {
   const { locale, t } = useLocale();
   const dates = useMemo(() => transactions.map(tx => tx.date_iso).filter(isIsoDate).sort(), [transactions]);
   const today = new Date().toLocaleDateString('en-CA');
@@ -59,6 +62,7 @@ export default function MesaDashboard({ transactions, onTransactionUpdated, onTr
   const [category, setCategory] = useState<string | null>(null);
   const [month, setMonth] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [ledgerType, setLedgerType] = useState<'all' | 'expense' | 'income'>('all');
   const [modules, setModules] = useState(ALL_MODULES);
   const [resetVersion, setResetVersion] = useState(0);
   const [comparisonOpen, setComparisonOpen] = useState<string | null>(null);
@@ -75,10 +79,16 @@ export default function MesaDashboard({ transactions, onTransactionUpdated, onTr
   const start = mode === 'statement' ? currentStatement?.startDate ?? '' : firstMonth ? `${firstMonth}-01` : '';
   const end = mode === 'statement' ? currentStatement?.endDate ?? '' : lastMonth ? monthEnd(lastMonth) : '';
   const data = useMemo(() => buildDashboard(transactions, start, end, includeRent, currency, today, selectedYears), [transactions, start, end, includeRent, currency, today, selectedYears]);
+  const incomeCents = data.income.reduce((sum, row) => sum + Math.round(row.value * 100), 0);
+  const incomeResponse = useIncomeSummary(start, end, selectedYears, incomeAvailable, incomeCents);
+  const incomeSummary = incomeResponse.summaries ? combineIncomeSummaries(incomeResponse.summaries, currency) : null;
+  const incomeKnown = incomeSummary !== null && incomeSummary.denominator > 0 && incomeSummary.cents === incomeCents;
+  const outflowCents = data.records.filter(row => !row.record_type || row.record_type === 'expense').reduce((sum, row) => sum + Math.round(row.value * 100), 0);
+  const recordedNet = incomeKnown ? (incomeSummary.cents - outflowCents) / 100 : null;
   const activeCategory = data.categories.some(row => row.name === category) ? category : null;
   const activeMonth = data.monthly.some(row => row.key === month) ? month : null;
   const detail = activeCategory ? data.categories.find(row => row.name === activeCategory)! : null;
-  const detailRows = detail?.records ?? data.expenses;
+  const detailRows = (detail?.records ?? data.records).filter(row => ledgerType === 'all' || (row.record_type ?? 'expense') === ledgerType);
   const detailMonthly = data.monthly.map((row, i) => ({ ...row, total: detail?.monthly[i] ?? row.total }));
   const money = (value: number) => {
     if (/^[A-Z]{3}$/.test(currency)) return new Intl.NumberFormat(LOCALE_TAGS[locale], { style: 'currency', currency, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
@@ -88,7 +98,7 @@ export default function MesaDashboard({ transactions, onTransactionUpdated, onTr
   const dateLabel = (date: string) => new Intl.DateTimeFormat(LOCALE_TAGS[locale], { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
   const categoryLabel = activeCategory ? getLocalizedCategoryName(activeCategory, locale) : t('mesa.allExpenses');
   const periodLabel = mode === 'statement' ? `${start} – ${end}` : firstMonth && lastMonth ? `${monthLabel(firstMonth)} – ${monthLabel(lastMonth)}` : '—';
-  const resetDetail = () => { setCategory(null); setMonth(null); setSearch(''); setResetVersion(version => version + 1); };
+  const resetDetail = () => { setCategory(null); setMonth(null); setSearch(''); setLedgerType('all'); setResetVersion(version => version + 1); };
   const resetPeriodDetail = () => { resetDetail(); setIndexOpen(null); setComparisonOpen(null); setComparisonSubcategory(null); };
   const chooseYears = (selection: 'all' | string[]) => {
     setYearSelection(selection); setFrom(''); setTo(''); setStatement(''); resetPeriodDetail();
@@ -121,7 +131,7 @@ export default function MesaDashboard({ transactions, onTransactionUpdated, onTr
     <div className="mesa-appbar"><h1>{t('mesa.title')}</h1><span>{t('mesa.yearScope', { years: selectedYears.join(', ') || '—' })} · {periodLabel} · {currency}</span></div>
     <div className="mesa-workspace">
       <div className="mesa-metrics" data-testid="summary">
-        {metricLabels.map((label, i) => <div key={label}><span>{t(label)}</span><strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : '—'}</strong><small>{i === 0 ? t('mesa.incomeNote') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
+        {metricLabels.map((label, i) => <div key={label}><span>{t(label)}</span><strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : i === 0 ? incomeKnown ? money(incomeSummary!.total) : '—' : recordedNet !== null ? money(recordedNet) : '—'}</strong><small>{i === 0 ? t(incomeKnown ? 'income.basis' : 'income.unavailable') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
       </div>
       <fieldset className="mesa-visibility"><legend>{t('mesa.organize')}</legend>
         <div className="mesa-years" role="group" aria-label={t('mesa.years')}><strong>{t('mesa.years')}</strong>
@@ -143,18 +153,18 @@ export default function MesaDashboard({ transactions, onTransactionUpdated, onTr
         </section>
         <div className="mesa-scope"><span>{t('mesa.detail')}: <strong>{categoryLabel}</strong> · <strong>{activeMonth ? monthLabel(activeMonth) : t('mesa.fullPeriod')}</strong></span><button type="button" onClick={resetDetail}>{t('mesa.reset')}</button><p>{t('mesa.scope')}</p></div>
       </aside><div className="mesa-board">
-        {modules.reading && <section className="mesa-reading"><p className="mesa-eyebrow">{t('mesa.periodReading')}</p><h2><span>—</span><em>{t('mesa.afterExpenses')}</em></h2><p className="mesa-narrative">{t('mesa.unsupportedIncome')}</p>{top && <p className="mesa-narrative">{t('mesa.topNarrative', { category: getLocalizedCategoryName(top.name, locale), average: money(top.average) })}</p>}<p className="mesa-micro">{t(includeRent ? 'mesa.rentIncluded' : 'mesa.rentExcluded')}</p><div className="mesa-reading-foot"><div><strong>—</strong><small>{t('mesa.ratio')}</small></div><div><strong>{top ? money(top.average) : '—'}</strong><small>{top ? getLocalizedCategoryName(top.name, locale) : t('mesa.category')} · {t('mesa.perMonth')}</small></div></div></section>}
+        {modules.reading && <section className="mesa-reading"><p className="mesa-eyebrow">{t('mesa.periodReading')}</p><h2><span>{recordedNet !== null ? money(recordedNet) : '—'}</span><em>{t('income.afterOutflows')}</em></h2><p className="mesa-narrative">{t(incomeKnown ? 'income.basis' : incomeResponse.loading ? 'income.loading' : 'income.unavailable')}</p>{incomeSummary && incomeSummary.windows.map(window => <p className="mesa-micro" key={window.start}>{window.start} – {window.end}: {window.coverage.filter(range => range.start <= window.end && range.end >= window.start).map(range => t('income.coverage', { start: range.start, end: range.end })).join(' ') || t('income.unavailable')}</p>)}{incomeKnown && <><p className="mesa-micro">{t('income.average', { amount: money(incomeSummary!.average!), count: incomeSummary!.denominator })}</p><p className="mesa-micro">{t('income.denominators', { expenses: data.denominator, income: incomeSummary!.denominator })}</p>{!incomeSummary!.complete && <p className="mesa-micro">{t('income.partialCoverage')}</p>}</>}{top && <p className="mesa-narrative">{t('mesa.topNarrative', { category: getLocalizedCategoryName(top.name, locale), average: money(top.average) })}</p>}<p className="mesa-micro">{t(includeRent ? 'mesa.rentIncluded' : 'mesa.rentExcluded')}</p><div className="mesa-reading-foot"><div><strong>{incomeKnown && incomeSummary!.total > 0 ? new Intl.NumberFormat(LOCALE_TAGS[locale], { style: 'percent', maximumFractionDigits: 1 }).format(data.total / incomeSummary!.total) : '—'}</strong><small>{t('mesa.ratio')}</small></div><div><strong>{top ? money(top.average) : '—'}</strong><small>{top ? getLocalizedCategoryName(top.name, locale) : t('mesa.category')} · {t('mesa.perMonth')}</small></div></div></section>}
         {modules.distribution && <section className="mesa-panel mesa-bars"><div className="mesa-panel-title"><div><h2>{categoryLabel}</h2><p className="mesa-micro">{currency} · {t('mesa.barsHint')}</p></div><div><strong>{data.denominator ? money(detail?.average ?? data.average) : '—'}</strong><small>{t('mesa.perMonth')}</small></div></div><div className={`mesa-chart ${detailMonthly.length > 12 ? 'mesa-chart-many' : ''}`}>{detailMonthly.map(row => <button type="button" key={row.key} aria-pressed={activeMonth === row.key} aria-label={`${monthLabel(row.key)} · ${money(row.total)}${row.partial ? ` · ${t('mesa.partialLabel')}` : ''}`} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><b title={money(row.total)}>{new Intl.NumberFormat(LOCALE_TAGS[locale], { maximumFractionDigits: 0, notation: row.total >= 10000 ? 'compact' : 'standard' }).format(row.total)}</b><span style={{ height: `${row.total / maxBar * 135 + 4}px` }} /><small><span>{new Intl.DateTimeFormat(LOCALE_TAGS[locale], { month: 'short', timeZone: 'UTC' }).format(new Date(`${row.key}-01T00:00:00Z`))}{row.partial && '*'}</span>{start.slice(0, 4) !== end.slice(0, 4) && <span>{row.key.slice(2, 4)}</span>}</small></button>)}</div><p className="mesa-micro">{t('mesa.partialNote')}</p></section>}
         {modules.index && <section className="mesa-panel mesa-wide mesa-index"><h2>{t('mesa.indexTitle')}</h2><p className="mesa-micro">{t('mesa.indexHint')} {t('mesa.denominator', { currency, count: data.denominator })}</p><div className="mesa-index-head"><span>{t('mesa.category')}</span><span>{t('mesa.average')}</span><span>{t('mesa.trend')}</span><span>{t('mesa.periodTotal')}</span></div>
           {data.categories.map(row => <Fragment key={row.name}><button type="button" className="mesa-index-row" aria-expanded={indexOpen === row.name} onClick={() => setIndexOpen(indexOpen === row.name ? null : row.name)}><span><ChevronDown aria-hidden="true" className={indexOpen === row.name ? 'mesa-open' : ''} />{getLocalizedCategoryName(row.name, locale)}</span><strong>{money(row.average)}</strong><Sparkline values={row.monthly} label={`${getLocalizedCategoryName(row.name, locale)} · ${t('mesa.trend')} · ${row.monthly.map(money).join(', ')}`} /><strong>{money(row.total)}</strong></button>
             {indexOpen === row.name && <div className="mesa-index-detail"><div className="mesa-detail-heading"><strong>{getLocalizedCategoryName(row.name, locale)} · {t('mesa.fullPeriod')}</strong><span>{t(row.records.length === 1 ? 'mesa.record' : 'mesa.records', { count: row.records.length })} · {money(row.total)}</span></div><button type="button" aria-expanded={comparisonOpen === row.name} onClick={() => { setComparisonOpen(comparisonOpen === row.name ? null : row.name); setComparisonSubcategory(null); }}>{t(comparisonOpen === row.name ? 'comparison.hide' : 'comparison.show')}</button>{comparisonOpen === row.name && <div className="mesa-comparison"><CategoryComparison transactions={data.expenses} category={row.name} currency={currency} subcategory={comparisonSubcategory} onSubcategoryChange={setComparisonSubcategory} /><p className="mesa-micro">{t('mesa.comparisonNote')}</p></div>}<div className="mesa-index-scroll"><table><thead><tr><th>{t('table.date')}</th><th>{t('mesa.concept')}</th><th>{currency}</th></tr></thead><tbody>{[...row.records].sort((a, b) => b.date_iso.localeCompare(a.date_iso)).map(tx => <tr key={tx.id}><td>{dateLabel(tx.date_iso)}</td><td>{tx.place}<small>{getLocalizedCategoryName(tx.category, locale)}</small></td><td>{money(tx.value)}</td></tr>)}</tbody></table></div><p className="mesa-micro">{t('mesa.indexNote')}</p></div>}
           </Fragment>)}
         </section>}
-        {modules.evidence && <section className="mesa-panel mesa-wide mesa-ledger"><TransactionsTable key={resetVersion} transactions={detailRows.filter(tx => !activeMonth || tx.date_iso.startsWith(activeMonth))} onTransactionUpdated={onTransactionUpdated} onTransactionDeleted={onTransactionDeleted} searchQuery={search} onSearchChange={setSearch} scopeLabel={`${categoryLabel} · ${activeMonth ? monthLabel(activeMonth) : t('mesa.fullPeriod')}`} currency={currency} />{activeMonth && <button type="button" onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button>}<p className="mesa-micro">{t('mesa.ledgerNote')}</p></section>}
+        {modules.evidence && <section className="mesa-panel mesa-wide mesa-ledger"><div className="mesa-movement-filter" role="group" aria-label={t('income.movements')}>{(['all', 'expense', 'income'] as const).map(type => <button type="button" key={type} aria-pressed={ledgerType === type} onClick={() => { setLedgerType(type); setCategory(null); setResetVersion(version => version + 1); }}>{t(`income.${type}`)}</button>)}</div>{!incomeAvailable && <p className="mesa-micro">{t('income.unavailable')}</p>}<TransactionsTable movementTypes={incomeAvailable} key={resetVersion} transactions={detailRows.filter(tx => !activeMonth || tx.date_iso.startsWith(activeMonth))} onTransactionUpdated={onTransactionUpdated} onTransactionDeleted={onTransactionDeleted} searchQuery={search} onSearchChange={setSearch} scopeLabel={`${activeCategory ? categoryLabel : t(`income.${ledgerType}`)} · ${activeMonth ? monthLabel(activeMonth) : t('mesa.fullPeriod')}`} currency={currency} />{activeMonth && <button type="button" onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button>}<p className="mesa-micro">{t('mesa.ledgerNote')}</p></section>}
         {MODULES.every(key => !modules[key]) && <section className="mesa-panel mesa-wide"><h2>{t('mesa.emptyBoard')}</h2><p>{t('mesa.emptyBoardHint')}</p><button type="button" onClick={() => setModules(ALL_MODULES)}>{t('mesa.showAll')}</button></section>}
       </div></div>
       {!transactions.length && <p className="mesa-panel">{t('mesa.noData')}</p>}
-      <section className="mesa-methodology"><h2>{t('mesa.methodology')}</h2><p>{t('mesa.directionNote')}</p><p><strong>{t('mesa.outflow')}: {money(data.outflow)}</strong> · {t('mesa.expenses')}: {money(data.total)} · {t('mesa.savings')}: {money(data.savings)}</p>{data.unsupported > 0 && <p>{t('mesa.unsupported', { count: data.unsupported })}</p>}</section>
+      <section className="mesa-methodology"><h2>{t('mesa.methodology')}</h2><p>{t(incomeAvailable ? 'income.directions' : 'mesa.directionNote')}</p><p><strong>{t('mesa.outflow')}: {money(data.outflow)}</strong> · {t('mesa.expenses')}: {money(data.total)} · {t('mesa.savings')}: {money(data.savings)}</p>{data.unsupported > 0 && <p>{t('mesa.unsupported', { count: data.unsupported })}</p>}</section>
     </div>
   </div>;
 }

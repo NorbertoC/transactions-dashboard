@@ -42,8 +42,12 @@ export function buildDashboard(
     includesYear(tx.date_iso) && currencyCode(tx.currency) === currency && (includeRent || !isRent(tx)));
   // The existing import schema stores spending as positive magnitudes. A negative
   // record has no established direction; it must not become invented income.
-  const expenses = records.filter(tx => Number.isFinite(tx.value) && tx.value >= 0 && isIsoDate(tx.date_iso) && tx.category !== 'Savings');
-  const savings = records.filter(tx => tx.category === 'Savings' && Number.isFinite(tx.value) && tx.value >= 0 && isIsoDate(tx.date_iso))
+  const valid = records.filter(tx => Number.isFinite(tx.value) && tx.value >= 0 && isIsoDate(tx.date_iso));
+  const spending = valid.filter(tx => (!tx.record_type || tx.record_type === 'expense') && (!tx.direction || tx.direction === 'outflow'));
+  const expenses = spending.filter(tx => tx.category !== 'Savings');
+  const income = valid.filter(tx => tx.record_type === 'income' && tx.direction === 'inflow');
+  const transfers = valid.filter(tx => tx.record_type === 'transfer');
+  const savings = spending.filter(tx => tx.category === 'Savings')
     .reduce((sum, tx) => sum + tx.value, 0);
   const total = expenses.reduce((sum, tx) => sum + tx.value, 0);
   const categories = [...new Set(expenses.map(tx => tx.category))].map(name => {
@@ -56,7 +60,7 @@ export function buildDashboard(
     partial: start > `${key}-01` || end < monthEnd(key) || today < monthEnd(key),
     total: expenses.filter(tx => tx.date_iso.startsWith(key)).reduce((sum, tx) => sum + tx.value, 0)
   }));
-  return { expenses, categories, monthly, total, savings, outflow: total + savings,
+  return { records: valid, expenses, income, transfers, categories, monthly, total, savings, outflow: total + savings,
     average: months.length ? total / months.length : 0, denominator: months.length,
     unsupported: records.filter(tx => !Number.isFinite(tx.value) || tx.value < 0 || !isIsoDate(tx.date_iso)).length };
 }

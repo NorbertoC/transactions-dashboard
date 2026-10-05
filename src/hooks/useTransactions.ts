@@ -1,21 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Transaction, ChartDataPoint } from '@/types/transaction';
-import { ApiService } from '@/services/api';
+import { ApiService, type RecordScope } from '@/services/api';
 
-export function useTransactions() {
+export function useTransactions(scope: RecordScope = 'expense') {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [incomeAvailable, setIncomeAvailable] = useState(false);
 
-  const fetchData = async (isInitialLoad = false) => {
+  const fetchData = useCallback(async (isInitialLoad = false) => {
     try {
       // Only show full-page spinner on initial load
       if (isInitialLoad) {
         setLoading(true);
       }
-      const data = await ApiService.fetchTransactionsClient();
+      let data: Transaction[];
+      try {
+        data = await ApiService.fetchTransactionsClient(scope);
+        setIncomeAvailable(scope === 'all');
+      } catch (error) {
+        if (scope !== 'all') throw error;
+        data = await ApiService.fetchTransactionsClient();
+        setIncomeAvailable(false);
+      }
       setTransactions(data);
       setError(null);
     } catch (err) {
@@ -23,7 +32,7 @@ export function useTransactions() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [scope]);
 
   const updateTransaction = (updatedTransaction: Transaction) => {
     setTransactions(prev =>
@@ -37,9 +46,9 @@ export function useTransactions() {
 
   useEffect(() => {
     fetchData(true);
-  }, []);
+  }, [fetchData]);
 
-  return { transactions, loading, error, refetch: fetchData, updateTransaction, removeTransaction };
+  return { transactions, loading, error, incomeAvailable, refetch: fetchData, updateTransaction, removeTransaction };
 }
 
 export function useFilteredTransactions(
