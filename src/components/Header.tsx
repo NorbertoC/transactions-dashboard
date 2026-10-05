@@ -16,6 +16,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALE_LABELS, LOCALES, type Locale } from '@/i18n/types';
 
+import { invalidateClientSession } from '@/utils/client-session';
+
 interface HeaderProps {
   onUploadClick?: () => void;
 }
@@ -33,6 +35,7 @@ export default function Header({ onUploadClick }: HeaderProps) {
   const { locale, setLocale, t } = useLocale();
 
   const handleLogout = async () => {
+    invalidateClientSession();
     await signOut({ callbackUrl: '/auth/signin' });
   };
 

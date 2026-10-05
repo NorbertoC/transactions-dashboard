@@ -224,3 +224,23 @@
 .mesa-month-breakdown dd { margin: 0; text-align: right; }
 .mesa-month-breakdown dd small { display: block; margin-top: 5px; color: var(--muted); line-height: 1.6; }
 .mesa-graph-narrative > .mesa-narrative { margin: 0 0 12px; }
+
+.section-skeleton { min-width: 0; padding: 23px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface); }
+.skeleton-line, .skeleton-chart { background: var(--surface-2); border-radius: 6px; }
+.skeleton-line { width: 75%; height: 12px; margin: 12px 0; }
+.skeleton-title { width: 45%; height: 18px; }
+.skeleton-value { width: 65%; height: 28px; }
+.skeleton-chart { height: 240px; margin: 24px 0; }
+.skeleton-months { margin-bottom: 25px; }
+.skeleton-months .skeleton-chart { height: 86px; }
+.data-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; max-width: 1480px; margin: 0 auto 16px; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface); color: var(--foreground); font-size: 14px; }
+.data-feedback button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.data-feedback button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+@media (max-width: 800px) { .section-skeleton { padding: 18px; } }
+.mesa-select select { min-width: 150px; }
+.dashboard-skeleton .mesa-reading, .dashboard-skeleton .mesa-bars { min-height: 420px; }
+.dashboard-skeleton .mesa-index .skeleton-chart { height: 220px; }
+@media (max-width: 800px) { .mesa-select select { min-width: 0; } }
+.mesa-metrics .skeleton-metric, .mesa-metrics .skeleton-metric-note { height: auto; margin-bottom: 0; }
+.mesa-coverage { min-height: 40px; }
+@media (max-width: 800px) { .mesa-coverage { min-height: 120px; } }

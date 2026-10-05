@@ -1,54 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Transaction, ChartDataPoint } from '@/types/transaction';
-import { ApiService, type RecordScope } from '@/services/api';
+import { ApiService, IncomeCapabilityUnavailable, type RecordScope } from '@/services/api';
+
+import { useScopedResource } from '@/hooks/useScopedResource';
 
 export function useTransactions(scope: RecordScope = 'expense') {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [incomeAvailable, setIncomeAvailable] = useState(false);
-
-  const fetchData = useCallback(async (isInitialLoad = false) => {
+  const fetcher = useCallback(async (signal: AbortSignal) => {
     try {
-      // Only show full-page spinner on initial load
-      if (isInitialLoad) {
-        setLoading(true);
-      }
-      let data: Transaction[];
-      try {
-        data = await ApiService.fetchTransactionsClient(scope);
-        setIncomeAvailable(scope === 'all');
-      } catch (error) {
-        if (scope !== 'all') throw error;
-        data = await ApiService.fetchTransactionsClient();
-        setIncomeAvailable(false);
-      }
-      setTransactions(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch transactions');
-    } finally {
-      setLoading(false);
+      const transactions = await ApiService.fetchTransactionsClient(scope, signal);
+      return { transactions, incomeAvailable: scope === 'all' };
+    } catch (error) {
+      if (scope !== 'all' || !(error instanceof IncomeCapabilityUnavailable)) throw error;
+      const transactions = await ApiService.fetchTransactionsClient('expense', signal);
+      return { transactions, incomeAvailable: false };
     }
   }, [scope]);
-
-  const updateTransaction = (updatedTransaction: Transaction) => {
-    setTransactions(prev =>
-      prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t)
-    );
-  };
-
-  const removeTransaction = (id: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  };
-
-  useEffect(() => {
-    fetchData(true);
-  }, [fetchData]);
-
-  return { transactions, loading, error, incomeAvailable, refetch: fetchData, updateTransaction, removeTransaction };
+  const resource = useScopedResource(scope, fetcher);
+  const updateTransaction = (transaction: Transaction) => resource.setData(previous => ({ ...previous, transactions: previous.transactions.map(row => row.id === transaction.id ? transaction : row) }));
+  const removeTransaction = (id: number) => resource.setData(previous => ({ ...previous, transactions: previous.transactions.filter(row => row.id !== id) }));
+  return { transactions: resource.data?.transactions ?? [], incomeAvailable: resource.data?.incomeAvailable ?? false,
+    loading: resource.loading, updating: resource.updating, error: resource.error, refetch: resource.refetch, updateTransaction, removeTransaction };
 }
 
 export function useFilteredTransactions(

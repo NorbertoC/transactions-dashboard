@@ -2,6 +2,8 @@ import { Transaction } from '@/types/transaction';
 import { categorizeMerchant } from '@/utils/classification';
 import { normalizeCategoryPair } from '@/constants/categories';
 
+import { checkSessionResponse, getClientSessionGeneration, HttpError } from '@/utils/client-session';
+
 export type RecordScope = 'expense' | 'income' | 'transfer' | 'all';
 export class IncomeCapabilityUnavailable extends Error {}
 
@@ -103,9 +105,12 @@ export class ApiService {
     return ApiService.normalizeTransactions(await response.json() as Transaction[]);
   }
 
-  static async fetchTransactionsClient(scope: RecordScope = 'expense'): Promise<Transaction[]> {
-    const response = await fetch(`/api/transactions?record_type=${scope}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  static async fetchTransactionsClient(scope: RecordScope = 'expense', signal?: AbortSignal): Promise<Transaction[]> {
+    const generation = getClientSessionGeneration();
+    const response = await fetch(`/api/transactions?record_type=${scope}`, { cache: 'no-store', signal });
+    signal?.throwIfAborted();
+    checkSessionResponse(response, generation);
+    if (!response.ok) throw new HttpError(response.status, `HTTP error! status: ${response.status}`);
     const rows: Transaction[] = await response.json();
     if (scope === 'all' && (!Array.isArray(rows) || rows.some(row =>
       !['income', 'expense', 'transfer'].includes(row.record_type ?? '') || !['inflow', 'outflow'].includes(row.direction ?? '') ||

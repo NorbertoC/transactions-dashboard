@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
+import { DataFeedback } from '@/components/LoadingState';
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
 import MesaDashboard from '@/components/MesaDashboard';
@@ -15,6 +16,7 @@ function Dashboard() {
   const {
     transactions,
     loading,
+    updating,
     error,
     incomeAvailable,
     refetch,
@@ -23,45 +25,13 @@ function Dashboard() {
   } = useTransactions('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          className="text-center"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-          <p className="text-muted">{t('overview.loading')}</p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6 text-center shadow-sm">
-          <p className="mb-4 text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            onClick={() => refetch()}
-            className="min-h-11 rounded-xl bg-primary px-4 font-medium text-white hover:bg-primary/90"
-          >
-            {t('overview.retry')}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header onUploadClick={() => setShowUploadModal(true)} />
       <main className="mesa-main flex-1">
-        <MesaDashboard transactions={transactions} incomeAvailable={incomeAvailable} onTransactionUpdated={updateTransaction} onTransactionDeleted={removeTransaction} />
+        <DataFeedback loading={loading} updating={updating} error={error} retry={refetch} />
+        <MesaDashboard loading={loading || (error !== null && !transactions.length)} transactions={transactions} incomeAvailable={incomeAvailable} onTransactionUpdated={updateTransaction} onTransactionDeleted={removeTransaction} />
       </main>
 
       {showUploadModal && (

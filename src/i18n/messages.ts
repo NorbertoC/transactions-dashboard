@@ -4,6 +4,8 @@ export type MessageKey = keyof typeof messages.en;
 
 export const messages = {
   "en": {
+    "data.failed": "Could not load this section. Try again.",
+    "data.updating": "Updating…",
     "mesa.comparisonNote": "Comparison uses up to 12 statement periods within the selected reading in this currency. It includes periods with no records, counts partial periods once and does not extrapolate. It is separate from the calendar-month average above. Coverage is unverified.",
     "auth.google": "Sign in with Google",
     "auth.access": "Sign in with Google to continue.",
@@ -354,6 +356,8 @@ export const messages = {
     "month.evidenceCoverage": "The statement has ended; completeness of imported expenses is not verified."
   },
   "ja": {
+    "data.failed": "このセクションを読み込めませんでした。もう一度お試しください。",
+    "data.updating": "更新中…",
     "mesa.comparisonNote": "比較はこの通貨の選択範囲から最大12回の明細期間を使用します。記録のない期間も含み、途中の期間は1回として数え、推計はしません。上の暦月平均とは別です。履歴の網羅性は未確認です。",
     "auth.google": "Googleでログイン",
     "auth.access": "Googleでログインして続行してください。",
@@ -704,6 +708,8 @@ export const messages = {
     "month.evidenceCoverage": "明細期間は終了していますが、すべての支出が取り込まれたかは未確認です。"
   },
   "es": {
+    "data.failed": "No se pudo cargar esta sección. Vuelve a intentarlo.",
+    "data.updating": "Actualizando…",
     "mesa.comparisonNote": "La comparación usa hasta 12 períodos de resumen dentro de la lectura seleccionada en esta moneda. Incluye períodos sin registros; los parciales cuentan una vez, sin extrapolar. Es independiente del promedio por mes calendario de arriba. La cobertura no está verificada.",
     "auth.google": "Ingresar con Google",
     "auth.access": "Ingresá con Google para continuar.",

@@ -2,13 +2,23 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import Header from '@/components/Header';
+import { SectionSkeleton } from '@/components/LoadingState';
+import { SESSION_INVALIDATED, setClientSessionScope } from '@/utils/client-session';
 import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status, data } = useSession();
-  const unauthorized = status === 'unauthenticated' || status === 'authenticated' && data?.user.authorized !== true;
+  const [invalidated, setInvalidated] = useState(false);
+  const sessionScope = status === 'authenticated' ? JSON.stringify([data?.user.id, data?.user.email]) : null;
+  useLayoutEffect(() => { setClientSessionScope(sessionScope); }, [sessionScope]);
+  useEffect(() => {
+    const clear = () => setInvalidated(true);
+    window.addEventListener(SESSION_INVALIDATED, clear);
+    return () => window.removeEventListener(SESSION_INVALIDATED, clear);
+  }, []);
+  const unauthorized = invalidated || status === 'unauthenticated' || status === 'authenticated' && data?.user.authorized !== true;
   const router = useRouter();
   const { t } = useLocale();
 
@@ -19,24 +29,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [unauthorized, router]);
 
   if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          role="status"
-          aria-live="polite"
-          className="text-center"
-        >
-          <div
-            className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent"
-            aria-hidden="true"
-          />
-          <p className="text-sm text-muted">{t('auth.loading')}</p>
-        </motion.div>
-      </div>
-    );
+    return <div className="flex min-h-screen flex-col"><Header /><main className="mesa-main flex-1"><SectionSkeleton label={t('auth.loading')} /></main></div>;
   }
 
   if (unauthorized) {

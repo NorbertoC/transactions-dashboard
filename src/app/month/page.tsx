@@ -1,9 +1,12 @@
 'use client';
 
+import { useScopedResource } from '@/hooks/useScopedResource';
+import { DataFeedback, SectionSkeleton } from '@/components/LoadingState';
+
 import SelectControl from '@/components/SelectControl';
 import MonthEvidence from '@/components/MonthEvidence';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCw, Wallet } from 'lucide-react';
 import AuthGuard from '@/components/AuthGuard';
@@ -15,13 +18,11 @@ import {
   computePeriodSummary
 } from '@/services/period-summaries';
 import { fetchRecurringProjection } from '@/services/recurring';
-import type { PeriodSummary, RecurringProjection } from '@/types/recurring';
-import { buildClientPeriodSummary } from '@/utils/period-summary-fallback';
 import { formatCurrency } from '@/utils/format';
 
 function MonthView() {
   const { t, locale } = useLocale();
-  const { transactions, loading, error, refetch } = useTransactions();
+  const { transactions, loading, updating, error, refetch } = useTransactions();
   const { options, optionsMap, defaultKey } = useStatementFilters(transactions);
   const statementOptions = useMemo(
     () => options.filter((option) => option.type === 'statement'),
@@ -29,13 +30,6 @@ function MonthView() {
   );
 
   const [selectedKey, setSelectedKey] = useState('');
-  const [summary, setSummary] = useState<PeriodSummary | null>(null);
-  const [source, setSource] = useState<'api' | 'fallback' | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [projection, setProjection] = useState<RecurringProjection | null>(null);
-  const [projectionError, setProjectionError] = useState(false);
-
   useEffect(() => {
     if (defaultKey && (!selectedKey || !optionsMap[selectedKey])) {
       const firstStatement = statementOptions[0]?.key || defaultKey;
@@ -45,129 +39,23 @@ function MonthView() {
 
   const current = selectedKey ? optionsMap[selectedKey] : undefined;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      if (!current?.endDate || !current.startDate) {
-        setSummary(null);
-        setSource(null);
-        return;
-      }
-
-      setBusy(true);
-      setStatusError(null);
-      try {
-        const fromApi = await computePeriodSummary({
-          statement_id: current.endDate,
-          start: current.startDate,
-          end: current.endDate
-        });
-        if (cancelled) return;
-        setSummary(fromApi);
-        setSource('api');
-      } catch (err) {
-        if (cancelled) return;
-        setSummary(
-          buildClientPeriodSummary(
-            transactions,
-            current.endDate,
-            current.startDate,
-            current.endDate
-          )
-        );
-        setSource('fallback');
-        setStatusError(err instanceof Error ? err.message : 'API unavailable');
-      } finally {
-        if (!cancelled) setBusy(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [current, transactions]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadProjection() {
-      if (!current?.startDate || !current.endDate) {
-        setProjection(null);
-        setProjectionError(false);
-        return;
-      }
-      setProjectionError(false);
-      try {
-        const projected = await fetchRecurringProjection(current.startDate, current.endDate);
-        if (!cancelled) setProjection(projected);
-      } catch {
-        if (!cancelled) {
-          setProjection(null);
-          setProjectionError(true);
-        }
-      }
-    }
-
-    void loadProjection();
-    return () => {
-      cancelled = true;
-    };
-  }, [current]);
-
-  const handleRecompute = async () => {
-    if (!current?.endDate || !current.startDate) return;
-    setBusy(true);
-    setStatusError(null);
-    try {
-      const computed = await computePeriodSummary({
-        statement_id: current.endDate,
-        start: current.startDate,
-        end: current.endDate
-      });
-      setSummary(computed);
-      setSource('api');
-      await refetch();
-    } catch (err) {
-      setSummary(
-        buildClientPeriodSummary(
-          transactions,
-          current.endDate,
-          current.startDate,
-          current.endDate
-        )
-      );
-      setSource('fallback');
-      setStatusError(err instanceof Error ? err.message : 'Recompute failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted">{t('overview.loading')}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6 text-center shadow-sm">
-          <p className="mb-4 text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            onClick={() => refetch()}
-            className="min-h-11 rounded-xl bg-primary px-4 font-medium text-white hover:bg-primary/90"
-          >
-            {t('overview.retry')}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const start = current?.startDate ?? '';
+  const end = current?.endDate ?? '';
+  const fetchSummary = useCallback(async (signal: AbortSignal) => {
+    if (!start || !end) return null;
+    return computePeriodSummary({ statement_id: end, start, end }, signal);
+  }, [start, end]);
+  const fetchProjection = useCallback(async (signal: AbortSignal) => {
+    if (!start || !end) return null;
+    return fetchRecurringProjection(start, end, signal);
+  }, [start, end]);
+  const summaryResource = useScopedResource(`summary:${start}:${end}`, fetchSummary);
+  const projectionResource = useScopedResource(`projection:${start}:${end}`, fetchProjection);
+  const summary = summaryResource.data;
+  const projection = projectionResource.data;
+  const busy = summaryResource.loading || summaryResource.updating;
+  const projectionError = projectionResource.error;
+  const handleRecompute = async () => { await summaryResource.refetch(); await refetch(); };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -194,6 +82,7 @@ function MonthView() {
             <span className="text-sm font-medium text-muted">{t('month.pickPeriod')}</span>
             <SelectControl
               wrapperClassName="statement-period-control"
+              disabled={loading || !statementOptions.length}
               value={selectedKey}
               onChange={(event) => setSelectedKey(event.target.value)}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-sm sm:max-w-md"
@@ -206,20 +95,10 @@ function MonthView() {
             </SelectControl>
           </label>
 
-          {statusError && (
-            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-              {statusError}
-            </p>
-          )}
+          <DataFeedback loading={loading} updating={updating} error={error} retry={refetch} />
+          <DataFeedback loading={summaryResource.loading} updating={summaryResource.updating} error={summaryResource.error} retry={summaryResource.refetch} />
 
-          {source === 'fallback' && (
-            <p className="text-sm text-muted">{t('month.fallbackNote')}</p>
-          )}
-          {source === 'api' && (
-            <p className="text-sm text-muted">{t('month.apiNote')}</p>
-          )}
-
-          {!summary ? (
+          {loading || summaryResource.loading ? <SectionSkeleton label={t('month.title')} /> : !summary ? (
             <p className="text-muted">{t('month.empty')}</p>
           ) : (
             <>
@@ -264,24 +143,22 @@ function MonthView() {
                 <h2 className="text-lg font-semibold">{t('month.projectionTitle')}</h2>
                 <p className="mt-1 text-sm text-muted">{t('month.projectionHelp')}</p>
                 {projectionError && (
-                  <p role="alert" className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-                    {t('month.projectionUnavailable')}
-                  </p>
+                  <DataFeedback error={projectionError} retry={projectionResource.refetch} />
                 )}
-                <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {projectionResource.loading ? <SectionSkeleton label={t('month.projectionTitle')} /> : <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-surface p-4">
                     <dt className="text-sm text-muted">{t('month.projectedExpenses')}</dt>
                     <dd className="mt-1 text-2xl font-bold tabular-nums">
-                      {projectionError ? '—' : formatCurrency(projection?.expense_total ?? 0, locale)}
+                      {projection ? formatCurrency(projection.expense_total, locale) : '—'}
                     </dd>
                   </div>
                   <div className="rounded-xl bg-surface p-4">
                     <dt className="text-sm text-muted">{t('month.projectedIncome')}</dt>
                     <dd className="mt-1 text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                      {projectionError ? '—' : formatCurrency(projection?.income_total ?? 0, locale)}
+                      {projection ? formatCurrency(projection.income_total, locale) : '—'}
                     </dd>
                   </div>
-                </dl>
+                </dl>}
               </section>
 
               <MonthEvidence transactions={transactions} start={current?.startDate ?? ''} end={current?.endDate ?? ''} />

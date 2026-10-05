@@ -1,8 +1,11 @@
 'use client';
 
+import { useScopedResource } from '@/hooks/useScopedResource';
+import { DataFeedback, SectionSkeleton } from '@/components/LoadingState';
+
 import SelectControl from '@/components/SelectControl';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { FileUp, Info, Pencil, Plus, Repeat2, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import AuthGuard from '@/components/AuthGuard';
@@ -167,9 +170,13 @@ function isEnabled(rule: RecurringRule): boolean {
 
 function RecurringView() {
   const { t, locale } = useLocale();
-  const [rules, setRules] = useState<RecurringRule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const fetchRules = useCallback((signal: AbortSignal) => fetchRecurringRules(signal), []);
+  const resource = useScopedResource('recurring', fetchRules);
+  const rules = useMemo(() => resource.data ?? [], [resource.data]);
+  const { loading, updating, refetch } = resource;
+  const [actionError, setError] = useState<string | null>(null);
+  const error = resource.error ?? actionError;
+  const load = useCallback(() => { setError(null); return refetch(); }, [refetch]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<RecurringRuleInput>(EMPTY_FORM);
@@ -177,23 +184,6 @@ function RecurringView() {
   const [pendingImport, setPendingImport] = useState<RecurringRuleInput[]>([]);
   const [importFileName, setImportFileName] = useState('');
   const [importing, setImporting] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchRecurringRules();
-      setRules(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load rules');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const subcategoryOptions = useMemo(
     () => getSubcategoriesForCategory(form.category || 'Housing'),
@@ -374,11 +364,7 @@ function RecurringView() {
             </div>
           </section>
 
-          {error && (
-            <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-              {error}
-            </p>
-          )}
+          <DataFeedback loading={loading} updating={updating} error={error} retry={load} />
 
           {pendingImport.length > 0 && (
             <section role="status" className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -596,8 +582,8 @@ function RecurringView() {
           )}
 
           {loading ? (
-            <p className="text-muted">{t('auth.loading')}</p>
-          ) : rules.length === 0 ? (
+            <SectionSkeleton label={t('recurring.title')} />
+          ) : error && !resource.data ? null : rules.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border-subtle bg-surface p-10 text-center">
               <Repeat2 className="mx-auto h-8 w-8 text-primary" aria-hidden="true" />
               <p className="mt-3 font-medium">{t('recurring.empty')}</p>

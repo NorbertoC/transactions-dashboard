@@ -20,8 +20,11 @@ type Module = typeof MODULES[number];
 const ALL_MODULES: Record<Module, boolean> = { reading: true, distribution: true, index: true, evidence: true };
 const LOCALE_TAGS = { en: 'en-NZ', es: 'es', ja: 'ja-JP' };
 
+import { DashboardSkeleton, MetricsSkeleton, DataFeedback } from '@/components/LoadingState';
+
 interface Props {
   transactions: Transaction[];
+  loading?: boolean;
   incomeAvailable?: boolean;
   onTransactionUpdated: (transaction: Transaction) => void;
   onTransactionDeleted: (id: number) => void;
@@ -38,7 +41,7 @@ function Sparkline({ values, label }: { values: number[]; label: string }) {
   </svg>;
 }
 
-export default function MesaDashboard({ transactions, incomeAvailable = false, onTransactionUpdated, onTransactionDeleted }: Props) {
+export default function MesaDashboard({ transactions, loading = false, incomeAvailable = false, onTransactionUpdated, onTransactionDeleted }: Props) {
   const { locale, t } = useLocale();
   const dates = useMemo(() => transactions.map(tx => tx.date_iso).filter(isIsoDate).sort(), [transactions]);
   const today = new Date().toLocaleDateString('en-CA');
@@ -81,7 +84,7 @@ export default function MesaDashboard({ transactions, incomeAvailable = false, o
   const end = mode === 'statement' ? currentStatement?.endDate ?? '' : lastMonth ? monthEnd(lastMonth) : '';
   const data = useMemo(() => buildDashboard(transactions, start, end, includeRent, currency, today, selectedYears), [transactions, start, end, includeRent, currency, today, selectedYears]);
   const incomeCents = data.income.reduce((sum, row) => sum + Math.round(row.value * 100), 0);
-  const incomeResponse = useIncomeSummary(start, end, selectedYears, incomeAvailable, incomeCents);
+  const incomeResponse = useIncomeSummary(start, end, selectedYears, incomeAvailable && !loading, incomeCents);
   const incomeSummary = incomeResponse.summaries ? combineIncomeSummaries(incomeResponse.summaries, currency) : null;
   const incomeKnown = incomeSummary !== null && incomeSummary.denominator > 0 && incomeSummary.cents === incomeCents;
   const outflowCents = data.records.filter(row => !row.record_type || row.record_type === 'expense').reduce((sum, row) => sum + Math.round(row.value * 100), 0);
@@ -139,22 +142,24 @@ export default function MesaDashboard({ transactions, incomeAvailable = false, o
       {currencies.length > 1 && <label className="mesa-field">{t('mesa.currency')}<span className="mesa-select"><select value={currency} onChange={event => { setCurrency(event.target.value); resetPeriodDetail(); }}>{currencies.map(value => <option key={value}>{value}</option>)}</select><ChevronDown aria-hidden="true" /></span></label>}
       <div className="mesa-period-options"><label className="mesa-checkbox"><input type="checkbox" checked={includeRent} onChange={event => { setIncludeRent(event.target.checked); resetPeriodDetail(); }} />{t('mesa.rent')}</label>
       {mode === 'calendar' && <label className="mesa-checkbox"><input type="checkbox" checked={includePartial} onChange={event => { setIncludePartial(event.target.checked); resetPeriodDetail(); }} />{t('mesa.partial')}</label>}</div>
-      <p className="mesa-micro mesa-coverage">{t(mode === 'calendar' ? 'mesa.calendar' : 'mesa.statement')}. {t('mesa.coverage', { count: data.denominator })}</p>
+      <p className="mesa-micro mesa-coverage">{loading ? t('overview.loading') : <>{t(mode === 'calendar' ? 'mesa.calendar' : 'mesa.statement')}. {t('mesa.coverage', { count: data.denominator })}</>}</p>
     </section>
     <div className="mesa-appbar"><h1>{t('mesa.title')}</h1><span>{t('mesa.yearScope', { years: selectedYears.join(', ') || '—' })} · {periodLabel} · {currency}</span></div>
     <div className="mesa-workspace">
-      <div className="mesa-metrics" data-testid="summary">
+      <DataFeedback loading={incomeResponse.loading} updating={incomeResponse.updating} error={incomeResponse.error} retry={incomeResponse.retry} />
+      {loading ? <MetricsSkeleton /> : <div className="mesa-metrics" data-testid="summary">
         {metricLabels.map((label, i) => <div key={label}><span>{t(label)}</span><strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : i === 0 ? incomeKnown ? money(incomeSummary!.total) : '—' : recordedNet !== null ? money(recordedNet) : '—'}</strong><small>{i === 0 ? t(incomeKnown ? 'income.basis' : 'income.unavailable') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
-      </div>
+      </div>}
       <fieldset className="mesa-visibility"><legend>{t('mesa.organize')}</legend>
         <div className="mesa-years" role="group" aria-label={t('mesa.years')}><strong>{t('mesa.years')}</strong>
-          <label className="mesa-checkbox"><input type="checkbox" checked={availableYears.length > 0 && selectedYears.length === availableYears.length} onChange={event => chooseYears(event.target.checked ? 'all' : [])} />{t('mesa.allYears')}</label>
+          <label className="mesa-checkbox"><input type="checkbox" disabled={loading || !availableYears.length} checked={availableYears.length > 0 && selectedYears.length === availableYears.length} onChange={event => chooseYears(event.target.checked ? 'all' : [])} />{t('mesa.allYears')}</label>
           {availableYears.map(year => <label key={year} className="mesa-checkbox"><input type="checkbox" checked={selectedYears.includes(year)} onChange={event => chooseYears(event.target.checked ? [...selectedYears, year].sort() : selectedYears.filter(value => value !== year))} />{year}</label>)}
-          <p className="mesa-micro">{t('mesa.yearsHint')}</p>{!selectedYears.length && <p className="mesa-micro" role="status">{t('mesa.noYears')}</p>}
+          <p className="mesa-micro">{t('mesa.yearsHint')}</p>{!loading && !selectedYears.length && <p className="mesa-micro" role="status">{t('mesa.noYears')}</p>}
         </div>
         {MODULES.map(key => <label key={key} className="mesa-checkbox"><input type="checkbox" checked={modules[key]} onChange={event => setModules(previous => ({ ...previous, [key]: event.target.checked }))} />{t(`mesa.${key}`)}</label>)}
         <button type="button" onClick={() => setModules(ALL_MODULES)}>{t('mesa.showAll')}</button><p className="mesa-micro">{t('mesa.visibilityNote')}</p>
       </fieldset>
+      {loading ? <DashboardSkeleton modules={modules} /> : <>
       <section className="mesa-months"><div className="mesa-section-heading"><div><p className="mesa-eyebrow">{t('mesa.monthByMonth')}</p><h2>{categoryLabel}</h2></div><button type="button" aria-pressed={!activeMonth} onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button></div>
         <div className="mesa-month-strip">{!data.denominator && <p className="mesa-micro">{t('mesa.noMonths')}</p>}{[...detailMonthly].reverse().map(row => <button type="button" className="mesa-month-card" key={row.key} aria-pressed={activeMonth === row.key} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><span>{monthLabel(row.key)}</span><strong>{money(row.total)}</strong><small>{t('mesa.monthExpense')}{row.partial && ` · ${t('mesa.partialLabel')}`}</small></button>)}</div>
         <p className="mesa-micro">{t('mesa.monthNote')}</p>
@@ -183,6 +188,7 @@ export default function MesaDashboard({ transactions, incomeAvailable = false, o
       </div></div>
       {!transactions.length && <p className="mesa-panel">{t('mesa.noData')}</p>}
       <section className="mesa-methodology"><h2>{t('mesa.methodology')}</h2><p>{t(incomeAvailable ? 'income.directions' : 'mesa.directionNote')}</p><p><strong>{t('mesa.outflow')}: {money(data.outflow)}</strong> · {t('mesa.expenses')}: {money(data.total)} · {t('mesa.savings')}: {money(data.savings)}</p>{data.unsupported > 0 && <p>{t('mesa.unsupported', { count: data.unsupported })}</p>}</section>
+      </>}
     </div>
   </div>;
 }
