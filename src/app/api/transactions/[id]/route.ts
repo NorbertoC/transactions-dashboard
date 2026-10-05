@@ -9,7 +9,7 @@ async function update(request: NextRequest, { params }: { params: Promise<{ id: 
     if (Object.keys(body).some(key => !['category','subcategory'].includes(key))) throw new InvalidRequest();
     if (![body.category, body.subcategory].some(value => typeof value === 'string' && value.trim())) throw new InvalidRequest();
     for (const value of Object.values(body)) if (typeof value !== 'string' || value.length > 200) throw new InvalidRequest();
-    return await upstreamJson(`/transactions/${id}`, { method: request.method, body: JSON.stringify({ ...body, category_source: 'manual' }) });
+    return await upstreamJson(`/transactions/${id}`, { method: request.method, body: JSON.stringify(body) });
   } catch (error) { return requestError(error); }
 }
 export const PATCH = update;

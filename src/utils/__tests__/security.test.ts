@@ -107,12 +107,12 @@ describe('custom write boundaries', () => {
     expect(() => validateWindow('2020-01-01','2026-01-01')).toThrow();
     expect(() => validateRule({ kind: 'income', label: 'Fixture', amount: 10, cadence: 'monthly', start_date: '2026-01-01' })).not.toThrow();
   });
-  it('accepts a valid category edit and stamps manual source without changing financial fields', async () => {
+  it('forwards only editable category fields under the backend contract', async () => {
     const route = await import('@/app/api/transactions/[id]/route');
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'Synthetic updated' }), { status: 200 })); vi.stubGlobal('fetch', fetch);
     const response = await route.PUT(new NextRequest('https://fixture.test/api/transactions/1', { method: 'PUT', headers: { origin: 'https://fixture.test', 'content-type': 'application/json' }, body: JSON.stringify({ category: 'Transport', subcategory: 'Parking & Tolls' }) }), { params: Promise.resolve({ id: '1' }) });
     expect(response.status).toBe(200);
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ category: 'Transport', subcategory: 'Parking & Tolls', category_source: 'manual' });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ category: 'Transport', subcategory: 'Parking & Tolls' });
     expect(fetch.mock.calls[0][1].headers.get('X-API-Key')).toBe('synthetic-key');
   });
   it('hides upstream errors and disables cache on upstream requests', async () => {
