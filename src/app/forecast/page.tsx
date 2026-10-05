@@ -1,10 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CalendarRange, ChartNoAxesCombined, Info, Repeat2 } from 'lucide-react';
 import AuthGuard from '@/components/AuthGuard';
 import Header from '@/components/Header';
+import ForecastDashboard from '@/components/ForecastDashboard';
+import { DataFeedback, SectionSkeleton, SectionUnavailable } from '@/components/LoadingState';
+import { useIncomeSummary } from '@/hooks/useIncomeSummary';
+import { combineIncomeSummaries } from '@/utils/income';
+import { forecastEvidence } from '@/components/forecast/evidence';
+import { forecastMessages } from '@/components/forecast/messages';
 import { getCategoryHexColor, getLocalizedCategoryName } from '@/constants/categories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -66,8 +73,16 @@ function upcomingStatementWindow() {
 }
 
 function ForecastView() {
+  const { data: session, status: sessionStatus } = useSession();
+  const accountScope = sessionStatus === "authenticated" && session?.user.authorized === true ? JSON.stringify([session.user.id, session.user.email]) : null;
   const { t, locale } = useLocale();
-  const { transactions, loading, error, refetch } = useTransactions();
+  const { transactions, loading, updating, slow, error, incomeAvailable, refetch } = useTransactions('all');
+  const evidence = useMemo(() => forecastEvidence(transactions, new Date().toISOString().slice(0,10)), [transactions]);
+  const incomeResponse = useIncomeSummary(evidence.start, evidence.end, evidence.years, incomeAvailable && !loading && !error, evidence.incomeCents);
+  const incomeSummary = incomeResponse.summaries ? combineIncomeSummaries(incomeResponse.summaries, 'NZD') : null;
+  const verifiedIncome = !error && incomeSummary && incomeSummary.denominator > 0 && incomeSummary.cents === evidence.incomeCents ? incomeSummary.average : null;
+  const selectedMessages = forecastMessages[locale];
+  const [projectionVersion, setProjectionVersion] = useState(0);
   const [rules, setRules] = useState<RecurringRule[]>([]);
   const [nextProjection, setNextProjection] = useState(EMPTY_PROJECTION);
   const [yearProjection, setYearProjection] = useState(EMPTY_PROJECTION);
@@ -86,6 +101,7 @@ function ForecastView() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     async function loadProjection() {
       setProjectionLoading(true);
@@ -93,9 +109,9 @@ function ForecastView() {
       setRulesLoadFailed(false);
       try {
         const [rulesResult, nextResult, yearResult] = await Promise.allSettled([
-          fetchRecurringRules(),
-          fetchRecurringProjection(forecastWindow.start, forecastWindow.end),
-          fetchRecurringProjection(forecastWindow.start, yearEnd)
+          fetchRecurringRules(controller.signal),
+          fetchRecurringProjection(forecastWindow.start, forecastWindow.end, controller.signal),
+          fetchRecurringProjection(forecastWindow.start, yearEnd, controller.signal)
         ]);
         if (cancelled) return;
 
@@ -146,8 +162,9 @@ function ForecastView() {
     void loadProjection();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [forecastWindow.end, forecastWindow.start, yearEnd]);
+  }, [forecastWindow.end, forecastWindow.start, yearEnd, projectionVersion]);
 
   const historical = useMemo(() => {
     const statementIds = Array.from(
@@ -185,6 +202,7 @@ function ForecastView() {
     transactions.forEach((transaction) => {
       const statementId = transaction.statement_id;
       if (!statementId || !totals.has(statementId)) return;
+      if (transaction.record_type && transaction.record_type !== 'expense' || transaction.direction && transaction.direction !== 'outflow' || !['NZD', 'NZ$'].includes(transaction.currency) || !Number.isFinite(transaction.value) || transaction.value < 0) return;
       if (transaction.category === 'Savings') return;
       if (linkedMerchantPatterns.some((pattern) => transaction.place.toLowerCase().includes(pattern))) {
         return;
@@ -236,36 +254,22 @@ function ForecastView() {
   const nextBalance = nextProjection.income_total - nextEstimate;
   const yearBalance = yearProjection.income_total - yearEstimate;
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted">{t('forecast.loading')}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6 text-center">
-          <p className="mb-4 text-red-600 dark:text-red-400">{error}</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="min-h-11 rounded-xl bg-primary px-4 font-medium text-white"
-          >
-            {t('overview.retry')}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:pb-6">
         <div className="mx-auto max-w-7xl space-y-5 pb-safe sm:space-y-6">
+          <DataFeedback slow={slow} loading={loading} updating={updating} error={error} retry={refetch} />
+          <DataFeedback loading={incomeResponse.loading} error={incomeResponse.error} retry={incomeResponse.retry} />
+          {loading ? <SectionSkeleton label={t('forecast.loading')} /> : <ForecastDashboard key={accountScope ?? "unavailable"} accountScope={accountScope} income={verifiedIncome} expense={error ? null : evidence.expense} coverage={incomeResponse.loading ? <SectionSkeleton label={selectedMessages.coverage} /> : <div>
+            <p>{selectedMessages.expenseCoverage}: {evidence.data.denominator} · {evidence.start || '—'} → {evidence.end || '—'}</p>
+            {incomeSummary ? incomeSummary.windows.map(window => <p key={window.start}>{window.start} → {window.end}: {window.coverage.map(range => `${range.start} → ${range.end}`).join(', ') || selectedMessages.coverageEmpty}</p>) : <p>{selectedMessages.coverageEmpty}</p>}
+            {(evidence.partial || incomeSummary && !incomeSummary.complete) && <p>{selectedMessages.partial}</p>}
+            {evidence.excluded && <p>{selectedMessages.excluded}</p>}
+          </div>} />}
+
+          {loading || projectionLoading ? <SectionSkeleton label={t('forecast.loading')} /> : error ? <SectionUnavailable label={t('forecast.title')} /> : <>
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">{t('forecast.title')}</h1>
             <p className="text-sm text-muted">{t('forecast.subtitle')}</p>
@@ -273,7 +277,7 @@ function ForecastView() {
 
           {projectionError && (
             <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-              {t('forecast.error')}
+              {t('forecast.error')} <button type="button" className="ml-3 min-h-11 underline" onClick={() => setProjectionVersion(value => value + 1)}>{t('overview.retry')}</button>
             </p>
           )}
 
@@ -451,6 +455,7 @@ function ForecastView() {
               </p>
             </section>
           </div>
+          </>}
         </div>
       </main>
     </div>
