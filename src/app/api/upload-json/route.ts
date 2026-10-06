@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireSession, privateJson, requestError } from '@/lib/api-upstream';
 import { readBoundedText, isIsoDate, validId } from '@/lib/api-validation';
 import { resolveImportedClassification } from '@/utils/classification';
+import { requireTaxonomyCapability } from '@/lib/taxonomy-guard';
 
 interface Transaction {
   id?: number;
@@ -13,6 +14,7 @@ interface Transaction {
   date_iso: string;
   category: string;
   subcategory: string;
+  category_source?: 'manual' | 'imported';
   statement_id: string | null;
   statement_start: string | null;
   statement_end: string | null;
@@ -154,6 +156,7 @@ function parseValue(value: unknown, amount: unknown): number | null {
 
 function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+  if (entry.record_type != null && entry.record_type !== 'expense') return null;
   if (entry.id !== undefined && !validId(String(entry.id))) return null;
   const place = typeof entry.place === 'string' ? entry.place.trim() : '';
   const dateIso =
@@ -167,7 +170,8 @@ function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
     return null;
   }
 
-  const classification = resolveImportedClassification(entry.category, entry.subcategory, place);
+  const categorySource = entry.category_source === 'manual' ? 'manual' : 'imported';
+  const classification = resolveImportedClassification(entry.category, entry.subcategory, place, categorySource);
   const statementMetadata = computeStatementMetadata(dateIso);
 
   const currency =
@@ -197,6 +201,7 @@ function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
     date_iso: dateIso,
     category,
     subcategory,
+    category_source: categorySource,
     statement_id:
       typeof entry.statement_id === 'string' && entry.statement_id.trim()
         ? entry.statement_id
@@ -263,7 +268,8 @@ async function persistTransactions(transactions: Transaction[]) {
           ...existing,
           ...newTx,
           category: existing.category,
-          subcategory: existing.subcategory
+          subcategory: existing.subcategory,
+          category_source: existing.category_source,
         }
       });
     }
@@ -363,6 +369,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const unavailable = await requireTaxonomyCapability(); if (unavailable) return unavailable;
     const result = await persistTransactions(normalized);
     return privateJson(result);
   } catch (error) {

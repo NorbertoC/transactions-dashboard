@@ -10,6 +10,11 @@
 .mesa-global-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 22px; padding: 20px 24px; background: var(--mesa-card); border: 1px solid var(--mesa-line); border-radius: 12px 12px 0 0; }
 .mesa-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 12px; font-weight: 600; }
 .mesa-select { position: relative; display: block; }
+.mesa-category-editor { min-width: 0; }
+.mesa-category-editor .mesa-select select { max-width: none; min-width: 0; }
+.mesa-micro.mesa-review-guidance { margin: 8px 0 0; overflow-wrap: anywhere; }
+.mesa-review-guidance.mesa-review-guidance--mobile { margin: 0 12px 16px; }
+@media (max-width: 800px) { .mesa-category-editor .mesa-select select { font-size: 16px; } }
 .mesa-select select { appearance: none; width: 100%; min-height: 44px; max-width: 340px; padding: 10px 42px 10px 13px; border: 1px solid var(--mesa-line); border-radius: 7px; background: var(--surface); color: var(--foreground); font-size: 13px; cursor: pointer; }
 .mesa-select svg { position: absolute; pointer-events: none; right: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; }
 .mesa-checkbox { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; font-size: 13px; cursor: pointer; }

@@ -1,213 +1,118 @@
-/**
- * Canonical category taxonomy — single source of truth for the dashboard.
- *
- * Legacy API labels are projected here without rewriting stored records.
- * Explicit manual labels remain unchanged; ambiguous purposes need review.
- */
-
-export interface CategoryColorConfig {
-  hex: string;
-  bg: string;
-  text: string;
-}
-
-export interface CategoryInfo {
-  name: string;
-  nameJa: string;
-  nameEs: string;
-  color: CategoryColorConfig;
-  subcategories: SubcategoryInfo[];
-}
-
-export interface SubcategoryInfo {
-  name: string;
-  nameJa: string;
-  nameEs: string;
-}
-
-export const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
-  'Home & daily living': 'Home & daily living', 'Work & learning': 'Work & learning',
-  'Personal needs': 'Personal needs', Entertainment: 'Entertainment', Others: 'Needs review', Savings: 'Savings',
-  Housing: 'Home', Groceries: 'Daily essentials', Transport: 'Transport',
-  'Fun & Social': 'Leisure & social', 'Personal spending': 'Personal'
-};
-
+/** Purpose v3 labels and stable keys. Legacy projection never writes stored records. */
+export interface CategoryColorConfig { hex: string; bg: string; text: string; }
+export interface SubcategoryInfo { key: string; name: string; nameJa: string; nameEs: string; }
+export interface CategoryInfo { key: string; name: string; nameJa: string; nameEs: string; color: CategoryColorConfig; subcategories: SubcategoryInfo[]; }
+export const PURPOSE_TAXONOMY_VERSION = 'purpose-v3';
 export const DEFAULT_CATEGORY = 'Others';
 export const DEFAULT_SUBCATEGORY = 'Miscellaneous';
-
 export const CATEGORIES: CategoryInfo[] = [
-  {
-    name: 'Home & daily living',
-    nameJa: '住まい・日々の生活',
-    nameEs: 'Hogar y vida diaria',
-    color: { hex: '#2563eb', bg: 'bg-blue-500/15', text: 'text-blue-600' },
-    subcategories: [
-      { name: 'Rent', nameJa: '家賃', nameEs: 'Alquiler' },
-      { name: 'Utilities', nameJa: '光熱費', nameEs: 'Servicios' },
-      { name: 'Food', nameJa: '食料品', nameEs: 'Alimentos' },
-      { name: 'Household items', nameJa: '日用品', nameEs: 'Artículos del hogar' },
-      { name: 'Internet & Phone', nameJa: 'インターネット・携帯', nameEs: 'Internet y teléfono' }
-    ]
-  },
-  {
-    name: 'Work & learning',
-    nameJa: '仕事・学習',
-    nameEs: 'Trabajo y formación',
-    color: { hex: '#06b6d4', bg: 'bg-cyan-500/15', text: 'text-cyan-600' },
-    subcategories: [
-      { name: 'Software & tools', nameJa: 'ソフトウェア・ツール', nameEs: 'Software y herramientas' },
-      { name: 'Education & training', nameJa: '教育・学習', nameEs: 'Educación y formación' },
-      { name: 'Work transport', nameJa: '仕事の移動', nameEs: 'Transporte laboral' },
-      { name: 'Work equipment', nameJa: '仕事用機器', nameEs: 'Equipo de trabajo' }
-    ]
-  },
-  {
-    name: 'Personal needs',
-    nameJa: '身の回りの必要品',
-    nameEs: 'Necesidades personales',
-    color: { hex: '#8b5cf6', bg: 'bg-violet-500/15', text: 'text-violet-600' },
-    subcategories: [
-      { name: 'Clothing & footwear', nameJa: '衣服・靴', nameEs: 'Ropa y calzado' },
-      { name: 'Health', nameJa: '健康', nameEs: 'Salud' },
-      { name: 'Personal care', nameJa: '身だしなみ・ケア', nameEs: 'Cuidado personal' },
-      { name: 'Personal transport', nameJa: '個人の移動', nameEs: 'Movilidad personal' }
-    ]
-  },
-  {
-    name: 'Entertainment',
-    nameJa: '娯楽',
-    nameEs: 'Entretenimiento',
-    color: { hex: '#d946ef', bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600' },
-    subcategories: [
-      { name: 'Eating out', nameJa: '外食・カフェ', nameEs: 'Restaurantes y cafés' },
-      { name: 'Streaming', nameJa: '動画・音楽配信', nameEs: 'Streaming' },
-      { name: 'Games & hobbies', nameJa: 'ゲーム・趣味', nameEs: 'Juegos y hobbies' },
-      { name: 'Travel & events', nameJa: '旅行・イベント', nameEs: 'Viajes y eventos' },
-      { name: 'Social & Gifts', nameJa: '交際・贈り物', nameEs: 'Vida social y regalos' }
-    ]
-  },
-  {
-    name: 'Savings',
-    nameJa: '貯蓄',
-    nameEs: 'Ahorros',
-    color: { hex: '#14b8a6', bg: 'bg-teal-500/15', text: 'text-teal-600' },
-    subcategories: [
-      { name: 'Savings', nameJa: '貯金', nameEs: 'Ahorro' },
-      { name: 'Future funds', nameJa: '将来用', nameEs: 'Fondos futuros' }
-    ]
-  },
-  {
-    name: 'Others',
-    nameJa: '要確認',
-    nameEs: 'Por revisar',
-    color: { hex: '#94a3b8', bg: 'bg-slate-500/15', text: 'text-slate-600' },
-    subcategories: [
-      { name: 'Miscellaneous', nameJa: '未分類', nameEs: 'Sin clasificar' },
-      { name: 'Purpose unconfirmed', nameJa: '目的未確認', nameEs: 'Propósito sin confirmar' },
-      { name: 'Personal allocation', nameJa: '個人予算への配分', nameEs: 'Asignación personal' }
-    ]
-  }
+  { key: "basic_living", name: "Basic living", nameEs: "Vida básica", nameJa: "生活の基本", color: { hex: "#2563eb", bg: "bg-blue-500/15", text: "text-blue-600" }, subcategories: [
+    { key: "rent", name: "Rent", nameEs: "Alquiler", nameJa: "家賃" },
+    { key: "power_internet", name: "Power & internet", nameEs: "Luz e internet", nameJa: "電気・インターネット" },
+    { key: "home_food", name: "Food for home", nameEs: "Comida para casa", nameJa: "家庭の食料品" },
+    { key: "transport", name: "Transport", nameEs: "Transporte", nameJa: "交通" },
+    { key: "phone", name: "Phone", nameEs: "Teléfono", nameJa: "携帯電話" },
+  ] },
+  { key: "personal_purchases", name: "Personal needs & purchases", nameEs: "Personales y compras", nameJa: "個人の必要品・買い物", color: { hex: "#8b5cf6", bg: "bg-violet-500/15", text: "text-violet-600" }, subcategories: [
+    { key: "health", name: "Health", nameEs: "Salud", nameJa: "健康" },
+    { key: "clothing_footwear", name: "Clothing & footwear", nameEs: "Ropa y calzado", nameJa: "衣服・靴" },
+    { key: "personal_care", name: "Personal care", nameEs: "Cuidado personal", nameJa: "身だしなみ" },
+    { key: "home_purchases", name: "Purchases for home", nameEs: "Compras para casa", nameJa: "住まいの買い物" },
+  ] },
+  { key: "work_learning", name: "Work & learning", nameEs: "Trabajo y formación", nameJa: "仕事・学習", color: { hex: "#06b6d4", bg: "bg-cyan-500/15", text: "text-cyan-600" }, subcategories: [
+    { key: "software_tools", name: "Software & tools", nameEs: "Software y herramientas", nameJa: "ソフトウェア・ツール" },
+    { key: "equipment_training", name: "Equipment & training", nameEs: "Equipamiento y formación", nameJa: "機器・学習" },
+  ] },
+  { key: "personal_subscriptions", name: "Personal subscriptions", nameEs: "Suscripciones personales", nameJa: "個人の定期サービス", color: { hex: "#f59e0b", bg: "bg-amber-500/15", text: "text-amber-600" }, subcategories: [
+    { key: "streaming_content", name: "Streaming & content", nameEs: "Streaming y contenido", nameJa: "配信・コンテンツ" },
+    { key: "memberships_services", name: "Memberships & other services", nameEs: "Membresías y otros servicios", nameJa: "会員費・その他サービス" },
+  ] },
+  { key: "outings_entertainment", name: "Outings & entertainment", nameEs: "Salidas y entretenimiento", nameJa: "外出・娯楽", color: { hex: "#d946ef", bg: "bg-fuchsia-500/15", text: "text-fuchsia-600" }, subcategories: [
+    { key: "food_treats", name: "Meals & treats", nameEs: "Comidas y gustos", nameJa: "食事・楽しみの食品" },
+    { key: "activities_entertainment", name: "Activities & entertainment", nameEs: "Actividades y entretenimiento", nameJa: "活動・娯楽" },
+  ] },
+  { key: "travel", name: "Travel", nameEs: "Viajes", nameJa: "旅行", color: { hex: "#10b981", bg: "bg-emerald-500/15", text: "text-emerald-600" }, subcategories: [
+    { key: "tickets_transfers", name: "Tickets & transfers", nameEs: "Pasajes y traslados", nameJa: "切符・移動" },
+    { key: "accommodation", name: "Accommodation", nameEs: "Alojamiento", nameJa: "宿泊" },
+    { key: "travel_food_activities", name: "Meals & activities during travel", nameEs: "Comidas y actividades durante viaje", nameJa: "旅行中の食事・活動" },
+  ] },
+  { key: "others", name: "Others", nameEs: "Otros · Por revisar", nameJa: "その他・要確認", color: { hex: "#64748b", bg: "bg-slate-500/15", text: "text-slate-600" }, subcategories: [
+    { key: "unclassified", name: "Miscellaneous", nameEs: "Sin clasificar", nameJa: "未分類" },
+  ] },
 ];
-
-/**
- * Mapping from the pre-2026 taxonomy (Dining, Entertainment, Shopping, …) to
- * the canonical one. Keys are `category|subcategory` in lowercase; a `|*` key
- * is the fallback for any subcategory of that legacy category.
- */
+export const CATEGORY_DISPLAY_NAMES: Record<string, string> = { Others: "Needs review", Savings: "Savings" };
 const LEGACY_PAIR_MAP: Record<string, { category: string; subcategory: string }> = {
-  'housing|rent': { category: 'Home & daily living', subcategory: 'Rent' },
-  'housing|utilities': { category: 'Home & daily living', subcategory: 'Utilities' },
-  'housing|internet & phone': { category: 'Home & daily living', subcategory: 'Internet & Phone' },
-  'housing|*': { category: 'Home & daily living', subcategory: 'Miscellaneous' },
-  'groceries|food': { category: 'Home & daily living', subcategory: 'Food' },
-  'groceries|household items': { category: 'Home & daily living', subcategory: 'Household items' },
-  'groceries|medicine & supplements': { category: 'Personal needs', subcategory: 'Health' },
-  'groceries|personal care': { category: 'Personal needs', subcategory: 'Personal care' },
-  'groceries|supermarkets': { category: 'Home & daily living', subcategory: 'Food' },
-  'groceries|alcohol & beverage': { category: 'Home & daily living', subcategory: 'Food' },
-  'groceries|specialty food': { category: 'Home & daily living', subcategory: 'Food' },
-  'groceries|*': { category: 'Home & daily living', subcategory: 'Miscellaneous' },
-  'transport|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'car|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'fun & social|eating out': { category: 'Entertainment', subcategory: 'Eating out' },
-  'fun & social|travel & entertainment': { category: 'Entertainment', subcategory: 'Travel & events' },
-  'fun & social|social & gifts': { category: 'Entertainment', subcategory: 'Social & Gifts' },
-  'fun & social|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'personal spending|personal allowance': { category: 'Others', subcategory: 'Personal allocation' },
-  'personal spending|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'dining|*': { category: 'Entertainment', subcategory: 'Eating out' },
-  'entertainment|streaming': { category: 'Entertainment', subcategory: 'Streaming' },
-  'entertainment|gaming': { category: 'Entertainment', subcategory: 'Games & hobbies' },
-  'entertainment|*': { category: 'Entertainment', subcategory: 'Travel & events' },
-  'subscriptions & services|mobile phone': { category: 'Home & daily living', subcategory: 'Internet & Phone' },
-  'subscriptions & services|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'shopping|retail & home': { category: 'Home & daily living', subcategory: 'Household items' },
-  'shopping|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'health|*': { category: 'Personal needs', subcategory: 'Health' },
-  'travel|*': { category: 'Others', subcategory: 'Purpose unconfirmed' },
-  'hobbies|*': { category: 'Entertainment', subcategory: 'Games & hobbies' },
-  'other|*': { category: 'Others', subcategory: 'Miscellaneous' }
+  "housing|rent": {"category": "Basic living", "subcategory": "Rent"},
+  "housing|utilities": {"category": "Basic living", "subcategory": "Power & internet"},
+  "housing|household items": {"category": "Personal needs & purchases", "subcategory": "Purchases for home"},
+  "home & daily living|rent": {"category": "Basic living", "subcategory": "Rent"},
+  "home & daily living|utilities": {"category": "Basic living", "subcategory": "Power & internet"},
+  "home & daily living|household items": {"category": "Personal needs & purchases", "subcategory": "Purchases for home"},
+  "housing|internet & phone": {"category": "Others", "subcategory": "Miscellaneous"},
+  "home & daily living|internet & phone": {"category": "Others", "subcategory": "Miscellaneous"},
+  "groceries|food": {"category": "Basic living", "subcategory": "Food for home"},
+  "groceries|supermarkets": {"category": "Basic living", "subcategory": "Food for home"},
+  "groceries|household items": {"category": "Personal needs & purchases", "subcategory": "Purchases for home"},
+  "groceries|medicine & supplements": {"category": "Personal needs & purchases", "subcategory": "Health"},
+  "groceries|personal care": {"category": "Personal needs & purchases", "subcategory": "Personal care"},
+  "home & daily living|food": {"category": "Basic living", "subcategory": "Food for home"},
+  "home & daily living|supermarkets": {"category": "Basic living", "subcategory": "Food for home"},
+  "home & daily living|medicine & supplements": {"category": "Personal needs & purchases", "subcategory": "Health"},
+  "home & daily living|personal care": {"category": "Personal needs & purchases", "subcategory": "Personal care"},
+  "transport|fuel": {"category": "Basic living", "subcategory": "Transport"},
+  "transport|public transport": {"category": "Basic living", "subcategory": "Transport"},
+  "transport|parking & tolls": {"category": "Basic living", "subcategory": "Transport"},
+  "transport|car maintenance": {"category": "Basic living", "subcategory": "Transport"},
+  "transport|insurance": {"category": "Basic living", "subcategory": "Transport"},
+  "car|fuel": {"category": "Basic living", "subcategory": "Transport"},
+  "car|public transport": {"category": "Basic living", "subcategory": "Transport"},
+  "car|parking & tolls": {"category": "Basic living", "subcategory": "Transport"},
+  "car|car maintenance": {"category": "Basic living", "subcategory": "Transport"},
+  "car|insurance": {"category": "Basic living", "subcategory": "Transport"},
+  "personal needs|health": {"category": "Personal needs & purchases", "subcategory": "Health"},
+  "personal needs|clothing & footwear": {"category": "Personal needs & purchases", "subcategory": "Clothing & footwear"},
+  "personal needs|personal care": {"category": "Personal needs & purchases", "subcategory": "Personal care"},
+  "personal needs|personal transport": {"category": "Basic living", "subcategory": "Transport"},
+  "fun & social|eating out": {"category": "Outings & entertainment", "subcategory": "Meals & treats"},
+  "entertainment|eating out": {"category": "Outings & entertainment", "subcategory": "Meals & treats"},
+  "entertainment|streaming": {"category": "Personal subscriptions", "subcategory": "Streaming & content"},
+  "entertainment|games & hobbies": {"category": "Outings & entertainment", "subcategory": "Activities & entertainment"},
+  "entertainment|gaming": {"category": "Outings & entertainment", "subcategory": "Activities & entertainment"},
+  "work & learning|education & training": {"category": "Work & learning", "subcategory": "Equipment & training"},
+  "work & learning|work equipment": {"category": "Work & learning", "subcategory": "Equipment & training"},
+  "subscriptions & services|mobile phone": {"category": "Basic living", "subcategory": "Phone"},
+  "shopping|retail & home": {"category": "Personal needs & purchases", "subcategory": "Purchases for home"},
+  "shopping|clothing": {"category": "Personal needs & purchases", "subcategory": "Clothing & footwear"},
+  "fun & social|subscriptions": {"category": "Others", "subcategory": "Miscellaneous"},
+  "fun & social|travel & entertainment": {"category": "Others", "subcategory": "Miscellaneous"},
+  "fun & social|social & gifts": {"category": "Others", "subcategory": "Miscellaneous"},
+  "personal spending|personal allowance": {"category": "Others", "subcategory": "Miscellaneous"},
+  "personal spending|hobbies & shopping": {"category": "Others", "subcategory": "Miscellaneous"},
+  "others|purpose unconfirmed": {"category": "Others", "subcategory": "Miscellaneous"},
+  "others|personal allocation": {"category": "Others", "subcategory": "Miscellaneous"},
 };
 
-// lowercase pair key -> canonical-cased pair, so legacy casing differences
-// ('Public Transport') normalize to the canonical names ('Public transport')
-const CANONICAL_PAIR_LOOKUP = new Map(
-  CATEGORIES.flatMap((cat) =>
-    cat.subcategories.map(
-      (sub) =>
-        [
-          `${cat.name.toLowerCase()}|${sub.name.toLowerCase()}`,
-          { category: cat.name, subcategory: sub.name }
-        ] as const
-    )
-  )
-);
-
-const CANONICAL_CATEGORY_NAMES = new Map(
-  CATEGORIES.map((cat) => [cat.name.toLowerCase(), cat.name])
-);
-
-/**
- * Map a possibly-legacy category/subcategory pair to the canonical taxonomy.
- * Pairs already in the canonical taxonomy (or fully unknown ones) pass through
- * unchanged so manual custom labels are never destroyed.
- */
-export function normalizeCategoryPair(
-  category?: string | null,
-  subcategory?: string | null,
-  categorySource?: string | null
-): { category: string; subcategory: string } {
+const CANONICAL_NAMES = new Map(CATEGORIES.map(group => [group.name.toLowerCase(), group.name]));
+const CANONICAL_PAIRS = new Map(CATEGORIES.flatMap(group => group.subcategories.map(sub => [`${group.name.toLowerCase()}|${sub.name.toLowerCase()}`, { category: group.name, subcategory: sub.name }] as const)));
+export function normalizeCategoryPair(category?: string | null, subcategory?: string | null, categorySource?: string | null): { category: string; subcategory: string } {
   const cat = (category ?? '').trim();
   const sub = (subcategory ?? '').trim();
-
-  if (!cat) {
-    return { category: DEFAULT_CATEGORY, subcategory: sub || DEFAULT_SUBCATEGORY };
-  }
-
   if (categorySource === 'manual') return { category: cat, subcategory: sub };
-
-  const catKey = cat.toLowerCase();
-  const subKey = sub.toLowerCase();
-
-  const canonicalPair = CANONICAL_PAIR_LOOKUP.get(`${catKey}|${subKey}`);
-  if (canonicalPair) {
-    return canonicalPair;
-  }
-
-  const mapped = LEGACY_PAIR_MAP[`${catKey}|${subKey}`] ?? (!CANONICAL_CATEGORY_NAMES.has(catKey) ? LEGACY_PAIR_MAP[`${catKey}|*`] : undefined);
-  if (mapped) {
-    return mapped;
-  }
-
-  // Canonical category with a custom subcategory: keep it, normalizing casing.
-  const canonicalName = CANONICAL_CATEGORY_NAMES.get(catKey);
-  if (canonicalName) {
-    return { category: canonicalName, subcategory: sub || DEFAULT_SUBCATEGORY };
-  }
-
-  return { category: cat, subcategory: sub || DEFAULT_SUBCATEGORY };
+  if (!cat) return { category: DEFAULT_CATEGORY, subcategory: subcategory === '' ? '' : sub || DEFAULT_SUBCATEGORY };
+  const key = `${cat.toLowerCase()}|${sub.toLowerCase()}` as const;
+  const canonical = CANONICAL_PAIRS.get(key);
+  if (canonical) return canonical;
+  // A supplied blank or custom purpose is evidence too: no wildcard remapping.
+  const mapped = LEGACY_PAIR_MAP[key];
+  if (mapped) return mapped;
+  return { category: CANONICAL_NAMES.get(cat.toLowerCase()) ?? cat, subcategory: sub };
 }
-
+export function getCategoryByKey(key: string): CategoryInfo | undefined { return CATEGORIES.find(group => group.key === key); }
+export function getTaxonomyPair(groupKey: string, subcategoryKey: string): { category: string; subcategory: string } | null {
+  const group = getCategoryByKey(groupKey);
+  const sub = group?.subcategories.find(item => item.key === subcategoryKey);
+  return group && sub ? { category: group.name, subcategory: sub.name } : null;
+}
 function hashHue(value: string): number {
   let hash = 0;
   const normalized = value || '';
@@ -244,8 +149,8 @@ export const CATEGORY_COLORS: Record<string, CategoryColorConfig> = Object.fromE
   CATEGORIES.map(cat => [cat.name, cat.color])
 );
 
-const LEGACY_CATEGORY_JA = { Housing: '住まい', Groceries: '食費・日用品・健康', Transport: '交通', 'Fun & Social': '娯楽・交際', 'Personal spending': '個人費（お小遣い）' };
-const LEGACY_CATEGORY_ES = { Housing: 'Hogar', Groceries: 'Necesidades diarias', Transport: 'Transporte', 'Fun & Social': 'Ocio y vida social', 'Personal spending': 'Gastos personales' };
+const LEGACY_CATEGORY_JA = { 'Home & daily living': '住まい・日々の生活', 'Personal needs': '身の回りの必要品', Entertainment: '娯楽', Savings: '貯蓄', Housing: '住まい', Groceries: '食費・日用品・健康', Transport: '交通', 'Fun & Social': '娯楽・交際', 'Personal spending': '個人費（お小遣い）' };
+const LEGACY_CATEGORY_ES = { 'Home & daily living': 'Hogar y vida diaria', 'Personal needs': 'Necesidades personales', Entertainment: 'Entretenimiento', Savings: 'Ahorro', Housing: 'Hogar', Groceries: 'Necesidades diarias', Transport: 'Transporte', 'Fun & Social': 'Ocio y vida social', 'Personal spending': 'Gastos personales' };
 
 export const CATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
   CATEGORIES.map(cat => [cat.name, cat.nameJa])

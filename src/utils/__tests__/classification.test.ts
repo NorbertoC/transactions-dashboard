@@ -1,80 +1,79 @@
 import { describe, expect, it } from 'vitest';
-import { categorizeMerchant, resolveImportedClassification, suggestCategoryForMerchant } from '@/utils/classification';
+import { categorizeMerchant, getLocalizedSuggestionReason, resolveImportedClassification, suggestCategoryForMerchant } from '@/utils/classification';
 import { extractTransactions, mapBankCategoryToTaxonomy } from '@/utils/file-parsing';
 
-describe('purpose-based merchant classification', () => {
+const review = { category: 'Others', subcategory: 'Miscellaneous' };
+describe('purpose-v3 explicit proposals', () => {
   it.each([
-    ['APPLE.COM/BILL SYDNEY', 'Others', 'Miscellaneous'],
-    ['OPENAI *CHATGPT SUBSCR SAN FRANCISCO', 'Others', 'Miscellaneous'],
-    ['TOMMY HILFIGER ONEHUNGA', 'Personal needs', 'Clothing & footwear'],
-    ['CHEMIST WAREHOUSE BIRKENHEAD', 'Personal needs', 'Health'],
-    ['THEWAREHOUSEGLENFIELDMA', 'Others', 'Miscellaneous'],
-    ['FARMERS 1580', 'Others', 'Miscellaneous'],
-    ['PAYPAL *LAUCOLLA CAFE', 'Others', 'Miscellaneous'],
-    ['UBER EATS NZ', 'Entertainment', 'Eating out'],
-    ['BURGERFUEL PONSONBY', 'Entertainment', 'Eating out'],
-    ['MC DONALDS QUEEN ST', 'Entertainment', 'Eating out'],
-    ['APPLECOMBILL SYDNEY', 'Others', 'Miscellaneous'],
-    ['AXBUSFARE AUCKLAND', 'Others', 'Miscellaneous'],
-    ['PAYPAL *TWITCHINTER', 'Others', 'Miscellaneous'],
-    ['WINDCAVE*SALS PIZZA BIR AUCKLAND', 'Entertainment', 'Eating out'],
-    ['SUICA KEITAIKESSAI TOKYO', 'Others', 'Miscellaneous'],
-    ['U-GO TRIANGLE ELLERSLIE', 'Others', 'Miscellaneous'],
-    ['KURA SUSHI CHIBA', 'Entertainment', 'Eating out'],
-    ['SAWAMURA HARUNIRE TERRA NAGANO', 'Entertainment', 'Eating out'],
-    ['COCOKARAFINE KANAGAWA', 'Personal needs', 'Health'],
-    ['TNF ONEHUNGA ONEHUNGA', 'Personal needs', 'Clothing & footwear'],
-    ['TVNZ EVENT PASS AUCKLAND', 'Entertainment', 'Travel & events'],
-    ['AKL AIRPORT CARPARK AUCKLAND', 'Others', 'Miscellaneous'],
-    ['HALLENSTEINS 51 AUCKLAND', 'Personal needs', 'Clothing & footwear'],
-    ['SP NZ MUSCLE AUCKLAND', 'Personal needs', 'Health'],
-    ['PAYPAL *MIGHTY APE', 'Others', 'Miscellaneous'],
-    ['NETFLIX', 'Entertainment', 'Streaming'],
-    ['STEAM', 'Entertainment', 'Games & hobbies'],
-    ['LANGUAGE LESSON', 'Work & learning', 'Education & training'],
-  ])('classifies %s without inventing work use', (place, category, subcategory) => {
-    expect(categorizeMerchant(place)).toEqual({ category, subcategory });
+    ['KOGAN MOBILE', 'Basic living', 'Phone'],
+    ['MERCURY ENERGY', 'Basic living', 'Power & internet'],
+    ['AXBUSFARE AUCKLAND', 'Basic living', 'Transport'],
+    ['CAR INSURANCE', 'Basic living', 'Transport'],
+    ['BP CONNECT', 'Basic living', 'Transport'],
+    ['HEALTH INSURANCE', 'Personal needs & purchases', 'Health'],
+    ['CHEMIST WAREHOUSE', 'Personal needs & purchases', 'Health'],
+    ['TOMMY HILFIGER', 'Personal needs & purchases', 'Clothing & footwear'],
+    ['BRISCOES', 'Personal needs & purchases', 'Purchases for home'],
+    ['OPENAI', 'Work & learning', 'Software & tools'],
+    ['CURSOR', 'Work & learning', 'Software & tools'],
+    ['WORK LAPTOP', 'Work & learning', 'Equipment & training'],
+    ['NETFLIX', 'Personal subscriptions', 'Streaming & content'],
+    ['UBER ONE', 'Personal subscriptions', 'Memberships & other services'],
+    ['UBER EATS', 'Outings & entertainment', 'Meals & treats'],
+    ['ALFAJORES ONLINE', 'Outings & entertainment', 'Meals & treats'],
+    ['EVENT CINEMA', 'Outings & entertainment', 'Activities & entertainment'],
+    ['AIR NEW ZEALAND', 'Travel', 'Tickets & transfers'],
+    ['AIRBNB', 'Travel', 'Accommodation'],
+    ['TRAVEL MEAL', 'Travel', 'Meals & activities during travel'],
+  ])('proposes %s with reason and explicit confirmation, never auto-applies', (merchant, category, subcategory) => {
+    const suggestion = suggestCategoryForMerchant(merchant);
+    expect(suggestion).toMatchObject({ category, subcategory, confidence: 'medium', requiresConfirmation: true });
+    expect(suggestion?.reason).toBeTruthy();
+    expect(categorizeMerchant(merchant)).toEqual(review);
   });
-
-  it.each(['MOBILIZE FITNESS AUCKLAND', 'NICHOLAS MARKET', 'UNKNOWN LOCAL MERCHANT'])('does not match unrelated short tokens in %s', place => {
-    expect(suggestCategoryForMerchant(place)).toBeNull();
-    expect(categorizeMerchant(place)).toEqual({ category: 'Others', subcategory: 'Miscellaneous' });
+  it.each(['AMAZON', 'AMAZON NETFLIX', 'PAYPAL *CLOUDFLARE', 'PAYPAL *ALFAJORES', 'APPLE.COM/BILL', 'KOGAN', 'INSURANCE', 'EQUIPMENT', 'TRADEME'])('leaves ambiguous %s unknown instead of inferring purpose', merchant => {
+    expect(suggestCategoryForMerchant(merchant)).toMatchObject({ ...review, confidence: 'unknown', requiresConfirmation: true });
   });
-
-  it.each(['OPENAI', 'CURSOR', 'PAYPAL *CLOUDFLARE', 'UBER ONE', 'BP CONNECT', 'AIR NEW ZEALAND'])('requires purpose review for %s', place => {
-    expect(suggestCategoryForMerchant(place)).toMatchObject({ category: 'Others', subcategory: 'Purpose unconfirmed', confidence: 'review', reviewReason: 'purpose' });
+  it.each(['MOBILIZE FITNESS', 'NICHOLAS MARKET', 'UNKNOWN LOCAL MERCHANT'])('does not match unrelated tokens in %s', merchant => {
+    expect(suggestCategoryForMerchant(merchant)).toBeNull();
+    expect(categorizeMerchant(merchant)).toEqual(review);
   });
-  it.each(['APPLE.COM/BILL', 'TRADEME TF1D PING', 'SAUNA COLLECTIVE', 'FARMERS'])('keeps ambiguous merchant identity in review for %s', place => {
-    expect(suggestCategoryForMerchant(place)).toMatchObject({ confidence: 'review', reviewReason: 'merchant' });
+  it('retains explicit blank and custom import labels without merchant fallback', () => {
+    expect(resolveImportedClassification('Shopping', '', 'NETFLIX', 'manual')).toEqual({ category: 'Shopping', subcategory: '' });
+    expect(resolveImportedClassification('Custom', 'User choice', 'OPENAI')).toEqual({ category: 'Custom', subcategory: 'User choice' });
+    expect(resolveImportedClassification('Basic living', '', 'ALFAJORES')).toEqual({ category: 'Basic living', subcategory: '' });
   });
 });
 
-describe('import precedence and explicit purpose choices', () => {
+describe('specific bank evidence without merchant assignment', () => {
   const columns = { headerRowIndex: -1, dateColumn: 0, descriptionColumn: 1, amountColumn: 2, categoryColumn: 3 };
-  const extract = (merchant: string, bankLabel: string) => extractTransactions([['2026-09-12', merchant, '20', bankLabel]], columns).rows[0];
-  it('retains confirmed choices on repeated normalization', () => {
-    const pair = resolveImportedClassification('Work & learning', 'Software & tools', 'OPENAI');
-    expect(pair).toEqual({ category: 'Work & learning', subcategory: 'Software & tools' });
-    expect(resolveImportedClassification(pair.category, pair.subcategory, 'OPENAI')).toEqual(pair);
-    expect(resolveImportedClassification('Housing', undefined, 'UBER EATS NZ')).toEqual({ category: 'Home & daily living', subcategory: '' });
+  const extract = (merchant: string, bank: string) => extractTransactions([['2026-09-12', merchant, '20', bank]], columns).rows[0];
+  it.each([
+    ['insurance-car insurance', 'Basic living', 'Transport'],
+    ['Retail & Grocery-health insurance', 'Personal needs & purchases', 'Health'],
+    ['Retail & Grocery-Computer Supplies', 'Others', 'Miscellaneous'],
+    ['Retail & Grocery-Equipment', 'Others', 'Miscellaneous'],
+    ['Communications-Telephone Telecom', 'Basic living', 'Phone'],
+    ['Communications-Internet Communication', 'Basic living', 'Power & internet'],
+    ['Travel & Transport-Airline', 'Travel', 'Tickets & transfers'],
+    ['Travel & Transport-Accommodation', 'Travel', 'Accommodation'],
+    ['Retail & Grocery-Furnishing', 'Personal needs & purchases', 'Purchases for home'],
+  ])('maps evidence %s without using a misleading family prefix', (label, category, subcategory) => {
+    expect(mapBankCategoryToTaxonomy(label)).toEqual({ category, subcategory });
   });
-  it('uses a precise health merchant over a broad department-store label', () => {
-    expect(extract('CHEMIST WAREHOUSE', 'Retail & Grocery-Department Stores')).toMatchObject({ category: 'Personal needs', subcategory: 'Health' });
+  it.each(['OPENAI', 'BRISCOES', 'CAR INSURANCE', 'WORK LAPTOP', 'ALFAJORES ONLINE'])('does not misclassify %s as food from a contradictory bank label', merchant => {
+    expect(extract(merchant, 'Retail & Grocery-Groceries')).toMatchObject(review);
   });
-  it('does not let a coarse bank label turn software or transport into household food/connectivity', () => {
-    expect(extract('OPENAI', 'Merchandise & Supplies-Groceries')).toMatchObject({ category: 'Others', subcategory: 'Purpose unconfirmed' });
-    expect(extract('SUICA KEITAIKESSAI', 'Communications-Internet Communication')).toMatchObject({ category: 'Others', subcategory: 'Purpose unconfirmed' });
+  it('does not auto-apply merchant proposals on a generic import', () => {
+    expect(extract('NETFLIX', 'other-other')).toMatchObject(review);
+    expect(extract('BRISCOES', '')).toMatchObject(review);
   });
-  it('can use specific clothing evidence when merchant identity is ambiguous', () => {
-    expect(extract('APPLE.COM/BILL', 'Retail & Grocery-Clothing Stores')).toMatchObject({ category: 'Personal needs', subcategory: 'Clothing & footwear' });
-  });
-  it('keeps generic or unconfirmed evidence in review', () => {
-    expect(extract('APPLE.COM/BILL', 'other-other')).toMatchObject({ category: 'Others', subcategory: 'Miscellaneous' });
-    expect(extract('APPLE.COM/BILL', 'transportation-fuel')).toMatchObject({ category: 'Others', subcategory: 'Purpose unconfirmed' });
-  });
-  it('retains supported household and restaurant labels', () => {
-    expect(mapBankCategoryToTaxonomy('Retail & Grocery-Home supplies')).toEqual({ category: 'Home & daily living', subcategory: 'Household items' });
-    expect(mapBankCategoryToTaxonomy('housing-rent')).toEqual({ category: 'Home & daily living', subcategory: 'Rent' });
-    expect(extract('UBER EATS', 'other-other')).toMatchObject({ category: 'Entertainment', subcategory: 'Eating out' });
-  });
+});
+
+it('provides reasons in EN/ES/JA for both known proposals and unknown purpose', () => {
+  for (const merchant of ['ALFAJORES', 'PAYPAL']) {
+    const suggestion = suggestCategoryForMerchant(merchant)!;
+    for (const locale of ['en', 'es', 'ja'] as const) expect(getLocalizedSuggestionReason(suggestion, locale)).toBeTruthy();
+    expect(getLocalizedSuggestionReason(suggestion, 'es')).not.toBe(getLocalizedSuggestionReason(suggestion, 'en'));
+  }
 });

@@ -20,7 +20,7 @@ describe('typed income API client boundary', () => {
   });
   it('keeps default legacy expense reads explicit', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify([{ ...base, category: 'Groceries' }]))); vi.stubGlobal('fetch', fetch);
-    const rows = await ApiService.fetchTransactionsClient(); expect(rows[0].category).toBe('Home & daily living');
+    const rows = await ApiService.fetchTransactionsClient(); expect(rows[0].category).toBe('Groceries');
     expect(fetch.mock.calls[0][0]).toBe('/api/transactions?record_type=expense');
   });
 });

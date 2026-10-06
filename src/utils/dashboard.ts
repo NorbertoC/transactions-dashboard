@@ -29,7 +29,7 @@ export function currencyCode(currency: string): string {
 }
 
 export function isRent(transaction: Transaction): boolean {
-  return ['Housing', 'Home & daily living'].includes(transaction.category) && transaction.subcategory === 'Rent';
+  return ['Housing', 'Home & daily living', 'Basic living'].includes(transaction.category) && transaction.subcategory === 'Rent';
 }
 
 export function buildDashboard(

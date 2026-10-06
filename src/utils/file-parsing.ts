@@ -8,7 +8,7 @@
 
 import Papa from 'papaparse';
 import { categorizeMerchant, suggestCategoryForMerchant } from '@/utils/classification';
-import { normalizeCategoryPair } from '@/constants/categories';
+import { normalizeCategoryPair, DEFAULT_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants/categories';
 
 export interface DetectedColumns {
   /** Index of the header row, or -1 when columns were inferred from content. */
@@ -370,10 +370,20 @@ export function detectColumns(rows: string[][]): DetectedColumns | null {
  * Returns null when the label is empty or unrecognised.
  */
 export function mapBankCategoryToTaxonomy(bankCategory: string): { category: string; subcategory: string } | null {
-  const label = bankCategory.toLowerCase();
-  if (/clothing/.test(label)) return { category: 'Personal needs', subcategory: 'Clothing & footwear' };
-  if (/airline|travel|accommodation|lodging/.test(label)) return { category: 'Others', subcategory: 'Purpose unconfirmed' };
-  if (/education/.test(label)) return { category: 'Work & learning', subcategory: 'Education & training' };
+  const label = bankCategory.toLowerCase().trim();
+  if (!label) return null;
+  // Specific evidence takes priority over broad bank families such as Retail & Grocery.
+  if (/car insurance|vehicle insurance|motor insurance|fuel|parking charges|rail services/.test(label)) return { category: 'Basic living', subcategory: 'Transport' };
+  if (/health insurance|medical insurance|pharmac/.test(label)) return { category: 'Personal needs & purchases', subcategory: 'Health' };
+  if (/insurance|computer supplies|electronics|equipment|sporting goods|department stores|general retail|online purchases|wholesale stores|other travel|travel agencies|taxis/.test(label)) return { category: DEFAULT_CATEGORY, subcategory: DEFAULT_SUBCATEGORY };
+  if (/clothing/.test(label)) return { category: 'Personal needs & purchases', subcategory: 'Clothing & footwear' };
+  if (/airline/.test(label)) return { category: 'Travel', subcategory: 'Tickets & transfers' };
+  if (/accommodation|lodging/.test(label)) return { category: 'Travel', subcategory: 'Accommodation' };
+  if (/education|training/.test(label)) return { category: 'Work & learning', subcategory: 'Equipment & training' };
+  if (/software/.test(label)) return { category: 'Work & learning', subcategory: 'Software & tools' };
+  if (/telephone|mobile phone/.test(label)) return { category: 'Basic living', subcategory: 'Phone' };
+  if (/internet communication|internet services|electricity/.test(label)) return { category: 'Basic living', subcategory: 'Power & internet' };
+  if (/other entertainment|theatrical events|general entertainment/.test(label)) return { category: 'Outings & entertainment', subcategory: 'Activities & entertainment' };
   const pair = mapLegacyBankCategory(bankCategory);
   return pair ? normalizeCategoryPair(pair.category, pair.subcategory) : null;
 }
@@ -632,9 +642,9 @@ export function extractTransactions(
 
     const fromBank = mapBankCategoryToTaxonomy(bankCategory);
     const fromMerchant = suggestCategoryForMerchant(place);
-    const pair = fromMerchant?.reviewReason === 'purpose'
-      ? { category: 'Others', subcategory: 'Purpose unconfirmed' }
-      : (fromMerchant?.confidence !== 'review' ? fromMerchant : null) ?? fromBank ?? categorizeMerchant(place);
+    const conflictingEvidence = fromBank && fromMerchant && fromMerchant.confidence !== 'unknown' &&
+      (fromBank.category !== fromMerchant.category || fromBank.subcategory !== fromMerchant.subcategory);
+    const pair = conflictingEvidence ? categorizeMerchant(place) : fromBank ?? categorizeMerchant(place);
 
     return {
       id: `row-${index}-${dateIso}-${Math.abs(amount)}`,

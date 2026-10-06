@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, type ReactNode, useId, useMemo, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
@@ -17,7 +17,10 @@ import {
   getSubcategoriesForCategory,
 } from '@/constants/categories';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { suggestCategoryForMerchant, type Classification } from '@/utils/classification';
+import { getLocalizedSuggestionReason, suggestCategoryForMerchant, type ClassificationSuggestion } from '@/utils/classification';
+import { categoryReviewAvailable, CategoryReviewError, isReviewExpense, saveVerifiedCategory } from '@/utils/category-review';
+import { categoryReviewMessages } from '@/i18n/category-review-messages';
+import { SESSION_INVALIDATED } from '@/utils/client-session';
 
 const PAGE_SIZE = 20;
 
@@ -48,6 +51,7 @@ export default function TransactionsTable({
   onTransactionDeleted, searchQuery: controlledSearch, onSearchChange, scopeLabel, currency = 'NZD', movementTypes = false
 }: TransactionsTableProps) {
   const { t, locale } = useLocale();
+  const reviewCopy = categoryReviewMessages[locale];
   const isExpense = (row: Transaction) => !row.record_type || row.record_type === 'expense';
   const signedValue = (row: Transaction) => row.record_type === 'transfer' ? 0 : row.direction === 'inflow' ? row.value : -row.value;
   const displayAmount = (row: Transaction) => `${movementTypes ? row.direction === 'inflow' ? '+' : '−' : ''}${money(row.value)}`;
@@ -68,14 +72,44 @@ export default function TransactionsTable({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<ActionError | null>(null);
   const editorId = useId();
+  const [capability, setCapability] = useState<'checking' | 'ready' | 'unavailable'>('checking');
+  const [capabilityAttempt, setCapabilityAttempt] = useState(0);
+  const pendingSave = useRef<AbortController | null>(null);
+  const capabilityRequest = useRef<AbortController | null>(null);
+  const currentRows = useRef(transactions);
+  currentRows.current = transactions;
+  useEffect(() => {
+    const request = new AbortController();
+    capabilityRequest.current = request;
+    setCapability('checking');
+    void categoryReviewAvailable(request.signal).then(ready => {
+      if (!request.signal.aborted) setCapability(ready ? 'ready' : 'unavailable');
+    }).catch(() => { if (!request.signal.aborted) setCapability('unavailable'); });
+    return () => request.abort();
+  }, [capabilityAttempt]);
+  useEffect(() => {
+    const invalidate = () => {
+      pendingSave.current?.abort();
+      capabilityRequest.current?.abort();
+      setCapability('unavailable');
+      setSavingId(null);
+      setEditingId(null);
+    };
+    window.addEventListener(SESSION_INVALIDATED, invalidate);
+    return () => {
+      pendingSave.current?.abort();
+      window.removeEventListener(SESSION_INVALIDATED, invalidate);
+    };
+  }, []);
+  const reviewRows = useMemo(() => transactions.filter(isReviewExpense), [transactions]);
 
   const categorySuggestions = useMemo(() => {
-    const suggestions = new Map<number, Classification>();
+    const suggestions = new Map<number, ClassificationSuggestion>();
 
     transactions.forEach((transaction) => {
-      if (!isExpense(transaction) || transaction.category_source === 'manual') return;
+      if (!isReviewExpense(transaction) || transaction.category_source === 'manual') return;
       const suggestion = suggestCategoryForMerchant(transaction.place);
-      if (!suggestion) return;
+      if (!suggestion || suggestion.category === 'Others' || suggestion.confidence === 'review') return;
 
       const categoryMatches = suggestion.category === transaction.category;
       const subcategoryMatches = suggestion.subcategory === transaction.subcategory;
@@ -103,7 +137,7 @@ export default function TransactionsTable({
   };
 
   const filteredTransactions = transactions.filter((transaction) => {
-    if (reviewSuggestionsOnly && !categorySuggestions.has(transaction.id)) return false;
+    if (reviewSuggestionsOnly && !isReviewExpense(transaction)) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -171,12 +205,13 @@ export default function TransactionsTable({
     const primaryNames = CATEGORIES.map((c) => c.name);
     const otherCategories = new Set<string>();
     transactions.forEach((t) => {
+      if (!isExpense(t) || (t.category === 'Savings' && categoryInput !== 'Savings')) return;
       if (t.category && !primaryNames.includes(t.category)) {
         otherCategories.add(t.category);
       }
     });
     return [...primaryNames, ...Array.from(otherCategories).sort((a, b) => a.localeCompare(b))];
-  }, [transactions]);
+  }, [transactions, categoryInput]);
 
   const subcategoryOptions = useMemo(() => {
     if (!categoryInput) return [];
@@ -210,6 +245,7 @@ export default function TransactionsTable({
   };
 
   const toggleEditing = (transaction: Transaction) => {
+    if (pendingSave.current) return;
     if (!isExpense(transaction)) return;
     if (editingId === transaction.id) {
       cancelEditing();
@@ -223,64 +259,54 @@ export default function TransactionsTable({
     category: string,
     subcategory: string | undefined
   ) => {
+    if (pendingSave.current || capability !== 'ready') return;
+    const request = new AbortController();
+    pendingSave.current = request;
     try {
       setSavingId(transaction.id);
       setActionError(null);
-      const response = await fetch(`/api/transactions/${transaction.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, subcategory })
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(data?.error ?? t('table.updateFailed'));
-      }
-
-      onTransactionUpdated?.({
-        ...transaction,
-        category,
-        subcategory,
-        category_source: 'manual'
-      });
+      const stored = await saveVerifiedCategory(transaction, category, subcategory ?? '', request.signal);
+      if (request.signal.aborted) return;
+      onTransactionUpdated?.(stored);
       if (editingId === transaction.id) cancelEditing();
     } catch (err) {
-      setActionError({
+      if (!request.signal.aborted) setActionError({
         id: transaction.id,
-        message: err instanceof Error ? err.message : t('table.updateFailed')
+        message: err instanceof CategoryReviewError ? reviewCopy[err.reason] : reviewCopy.saveFailed,
       });
     } finally {
-      setSavingId(null);
+      if (pendingSave.current === request) {
+        pendingSave.current = null;
+        if (!request.signal.aborted) setSavingId(null);
+      }
     }
   };
 
   const handleSave = async (transaction: Transaction) => {
-    if (!categoryInput.trim() && !subcategoryInput.trim()) {
+    const category = categoryInput.trim();
+    const subcategory = subcategoryInput.trim();
+    if (!category) {
       setActionError({ id: transaction.id, message: t('table.setCategoryError') });
       return;
     }
-
-    const category = categoryInput.trim() || transaction.category;
-    const predefinedSubcategories = getSubcategoriesForCategory(category);
-    const requestedSubcategory = subcategoryInput.trim() || transaction.subcategory;
-    const requestedIsValid = predefinedSubcategories.some(
-      (subcategory) => subcategory.name === requestedSubcategory
-    );
-    const subcategory =
-      predefinedSubcategories.length > 0 && !requestedIsValid
-        ? predefinedSubcategories[0].name
-        : requestedSubcategory;
-
+    const changedCategory = category !== transaction.category;
+    if (changedCategory && getSubcategoriesForCategory(category).length && !subcategory) {
+      setActionError({ id: transaction.id, message: reviewCopy.chooseSubcategory });
+      return;
+    }
+    // An unchanged manual/custom pair stays literal; no first-option fallback.
     await persistCategory(transaction, category, subcategory);
   };
 
   const applySuggestion = async (transaction: Transaction) => {
+    const current = currentRows.current.find(row => row.id === transaction.id);
     const suggestion = categorySuggestions.get(transaction.id);
-    if (!suggestion) return;
-    await persistCategory(transaction, suggestion.category, suggestion.subcategory);
+    if (!current || current.category_source === 'manual' || !isReviewExpense(current) || !suggestion) return;
+    await persistCategory(current, suggestion.category, suggestion.subcategory);
   };
 
   const handleDelete = async (transaction: Transaction) => {
+    if (pendingSave.current) return;
     if (!isExpense(transaction)) return;
     if (!window.confirm(t('table.deleteConfirm'))) return;
     try {
@@ -336,10 +362,10 @@ export default function TransactionsTable({
   const renderEditor = (transaction: Transaction, screen: 'desktop' | 'mobile') => {
     const isSaving = savingId === transaction.id;
     const isDeleting = deletingId === transaction.id;
-    const isBusy = isSaving || isDeleting;
+    const isBusy = savingId !== null || isDeleting || capability !== 'ready';
 
     return (
-      <div className="space-y-3">
+      <div className="mesa-category-editor space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor={`${editorId}-${screen}-category`} className="mb-1 block text-xs font-medium text-muted">
@@ -348,10 +374,11 @@ export default function TransactionsTable({
             <div className="mesa-select"><select
               id={`${editorId}-${screen}-category`}
               value={categoryInput}
+              disabled={savingId !== null}
               onChange={(e) => {
                 const category = e.target.value;
                 setCategoryInput(category);
-                setSubcategoryInput(getSubcategoriesForCategory(category)[0]?.name ?? '');
+                setSubcategoryInput('');
               }}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-base sm:text-sm"
             >
@@ -372,6 +399,7 @@ export default function TransactionsTable({
             <div className="mesa-select"><select
               id={`${editorId}-${screen}-subcategory`}
               value={subcategoryInput}
+              disabled={savingId !== null}
               onChange={(e) => setSubcategoryInput(e.target.value)}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-base sm:text-sm"
             >
@@ -443,14 +471,18 @@ export default function TransactionsTable({
   );
   let emptyMessage = t('mesa.empty');
   if (reviewSuggestionsOnly) {
-    emptyMessage = t('table.noSuggestions');
+    emptyMessage = reviewCopy.empty;
   } else if (searchQuery) {
     emptyMessage = t('mesa.empty');
   }
 
   const renderSuggestion = (transaction: Transaction, mobile = false) => {
     const suggestion = categorySuggestions.get(transaction.id);
-    if (!suggestion) return null;
+    if (!suggestion) return isReviewExpense(transaction) ? (
+      <p className={`mesa-micro mesa-review-guidance ${mobile ? 'mesa-review-guidance--mobile' : ''}`}>
+        {transaction.category_source === 'manual' ? reviewCopy.manual : reviewCopy.unknown}
+      </p>
+    ) : null;
 
     const category = getLocalizedCategoryName(suggestion.category, locale);
     const subcategory = getLocalizedSubcategoryName(suggestion.subcategory, locale);
@@ -468,12 +500,13 @@ export default function TransactionsTable({
           <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 leading-4">
             {t('table.suggested', { category, subcategory })}
+            <small className="mt-1 block break-words font-normal">{reviewCopy.mediumConfidence} · {getLocalizedSuggestionReason(suggestion, locale)}</small>
           </span>
         </span>
         <button
           type="button"
           onClick={() => applySuggestion(transaction)}
-          disabled={isSaving}
+          disabled={savingId !== null || capability !== 'ready'}
           aria-label={t('table.useSuggested', { category, subcategory })}
           className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-amber-500/40 bg-surface px-3 font-semibold text-foreground transition-colors hover:bg-amber-500/20 focus-visible:bg-amber-500/20 disabled:opacity-60"
         >
@@ -494,6 +527,10 @@ export default function TransactionsTable({
         <div><strong>{money(sortedTransactions.reduce((sum, row) => sum + (movementTypes ? signedValue(row) : row.value), 0))}</strong><small>{t(movementTypes ? 'income.listNet' : 'mesa.listTotal')}</small></div>
       </div>
       {movementTypes && <div className="mesa-list-flows mesa-micro"><span>{t('income.incomeTotal')}: {money(sortedTransactions.filter(row => row.record_type === 'income').reduce((sum, row) => sum + row.value, 0))}</span><span>{t('income.outflowTotal')}: {money(sortedTransactions.filter(isExpense).reduce((sum, row) => sum + row.value, 0))}</span><span>{t('income.transferNote')}</span></div>}
+      {capability !== 'ready' && <div className="mesa-micro mb-3" role="status">
+        <span>{capability === 'checking' ? reviewCopy.checking : reviewCopy.unavailable}</span>
+        {capability === 'unavailable' && <button type="button" className="ml-2 min-h-11 underline" onClick={() => setCapabilityAttempt(value => value + 1)}>{reviewCopy.retry}</button>}
+      </div>}
       <form className="mesa-search" onSubmit={event => { event.preventDefault(); handleSearchChange(queryDraft ?? searchQuery); }}>
         <label className="mesa-search-input"><Search aria-hidden="true" /><input type="search" aria-label={t('mesa.searchHint')} placeholder={t('mesa.searchPlaceholder')} value={queryDraft ?? searchQuery} onChange={event => setQueryDraft(event.target.value)} /></label>
         <button type="submit">{t('mesa.search')}</button>
@@ -501,7 +538,7 @@ export default function TransactionsTable({
       </form>
       <div className="mb-3 flex flex-wrap gap-2">
         <p className="mesa-micro" role="status" aria-live="polite">{resultCountLabel}</p>
-        {(categorySuggestions.size > 0 || reviewSuggestionsOnly) && (
+        {(reviewRows.length > 0 || reviewSuggestionsOnly) && (
           <button
             type="button"
             onClick={() => {
@@ -516,7 +553,7 @@ export default function TransactionsTable({
             }`}
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {t('table.reviewSuggestions', { count: categorySuggestions.size })}
+            {reviewCopy.queue.replace('{count}', String(reviewRows.length))}
           </button>
         )}
       </div>
@@ -595,7 +632,7 @@ export default function TransactionsTable({
                             <button
                               type="button"
                               onClick={() => handleDelete(transaction)}
-                              disabled={deletingId === transaction.id}
+                              disabled={deletingId === transaction.id || savingId !== null}
                               aria-label={t('mesa.delete', { place: transaction.place })}
                               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground disabled:opacity-60"
                             >
