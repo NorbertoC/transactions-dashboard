@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   CalendarDays,
+  Goal,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -26,6 +27,7 @@ const NAV = [
   { href: '/', key: 'nav.overview' as const, icon: LayoutDashboard },
   { href: '/month', key: 'nav.month' as const, icon: CalendarDays },
   { href: '/forecast', key: 'nav.forecast' as const, icon: TrendingUp },
+  { href: '/plan', key: 'nav.plan' as const, icon: Goal },
   { href: '/recurring', key: 'nav.recurring' as const, icon: Repeat2 }
 ];
 
