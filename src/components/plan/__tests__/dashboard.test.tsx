@@ -37,18 +37,23 @@ it.each(['en', 'es', 'ja'] as const)('renders all plan copy and labeled controls
   expect(input('expense').getAttribute('aria-label')).toBe(planMessages[locale].expense);
   expect(container.querySelectorAll('.result')).toHaveLength(2);
   expect(container.textContent).toContain(planMessages[locale].fairness);
-  expect(container.querySelector('.result-invest')!.textContent).toContain(planMessages[locale].outside);
+  expect(container.querySelector('.result-invest')!.textContent).toContain(planMessages[locale].initialCapital);
 });
-it('shows distinct contributions and excludes unused surplus from the investment result while income changes', () => {
-  render(8000); change('income', '12000'); change('rate', '0');
+it('shows equal initial capital and contributions, preserving both results while the budget changes', () => {
+  render(8000); change('income', '12000'); change('savings', '50000'); change('rate', '0');
   const investment = () => container.querySelector('.result-invest')!;
-  expect(container.querySelector('.result-cash .result-time')!.textContent).toBe('6 years 3 months');
-  expect(investment().querySelector('.result-time')!.textContent).toBe('12 years 6 months');
-  expect(investment().textContent).toContain(planMessages.en.outside);
+  const time = '10 years 5 months';
+  const cash = () => container.querySelector('.result-cash .result-time')!.textContent;
+  expect(cash()).toBe(time);
+  expect(investment().querySelector('.result-time')!.textContent).toBe(time);
+  expect(investment().textContent).toContain(planMessages.en.initialCapital);
   expect(investment().textContent).not.toContain(planMessages.en.toCash);
-  change('income', '16000'); expect(investment().querySelector('.result-time')!.textContent).toBe('12 years 6 months');
-  change('expense', '14000'); expect(investment().querySelector('.result-time')!.textContent).toBe('12 years 6 months');
-  change('expense', '14001'); expect(investment().querySelector('.result-time')!.textContent).toBe(planMessages.en.overallocated);
+  change('income', '16000'); expect(investment().querySelector('.result-time')!.textContent).toBe(time); expect(cash()).toBe(time);
+  change('expense', '14000'); expect(investment().querySelector('.result-time')!.textContent).toBe(time); expect(cash()).toBe(time);
+  change('expense', '14001'); expect(investment().querySelector('.result-time')!.textContent).toBe(time); expect(cash()).toBe(time);
+  expect(container.querySelector('[role=alert]')!.textContent).toBe(planMessages.en.overAlert);
+  change('rate', '10'); expect(investment().querySelector('.result-time')!.textContent).not.toBe(time); expect(cash()).toBe(time);
+  expect(input('savings').value).toBe('50000'); expect(input('income').value).toBe('16000');
 });
 vi.mock('next-auth/react', () => ({ useSession: () => ({ status: 'authenticated', data: { user: { id: 'synthetic-A', email: 'synthetic@example.test', authorized: true } } }) }));
 vi.mock('@/components/AuthGuard', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));

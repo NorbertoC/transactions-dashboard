@@ -46,22 +46,22 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
   const useAverage = () => { expenseEdited.current = false; setManualExpense(false); setState(previous => ({ ...previous, expense: average })); };
   const reset = () => { expenseEdited.current = false; setManualExpense(false); setState({ ...planDefaults(), expense: average }); };
   const title = (path: PlanPath) => !c.valid ? m.invalid : path.status === 'reached' ? duration(path.months) : m[path.status];
-  const caption = (path: PlanPath) => !c.valid ? m.amountsError : path.status === 'reached' ? `${m.caption} · ${path.months}` : path.status === 'met' ? m.metCaption : path.status === 'overallocated' ? m.overCaption : path.status === 'beyond' ? m.beyondCaption : m.unreachableCaption;
+  const caption = (path: PlanPath) => !c.valid ? m[`${c.error}Error`] : path.status === 'reached' ? `${m.caption} · ${path.months}` : path.status === 'met' ? m.metCaption : path.status === 'beyond' ? m.beyondCaption : m.unreachableCaption;
   const result = (mixed: boolean) => {
     const path = mixed ? c.mixed : c.cash;
     return <article className={`result compact ${mixed ? 'result-invest' : 'result-cash'}`}>
       <div className="result-top"><span className="route-icon">{mixed ? 'B' : 'A'}</span><p>{mixed ? m.mixed : m.cash}</p><span className="route-tag">{mixed ? m.hypothesis : m.noInterest}</span></div>
       <h3>{mixed ? m.mixedTitle : m.cashTitle}</h3><strong className="result-time">{title(path)}</strong><p className="result-caption">{caption(path)}</p>
       <div className="route-detail">
-        {mixed && <div><span>{m.toInvest}</span><b>{money(state.invest)}</b></div>}
-        <div><span>{mixed ? m.outside : m.toCash}</span><b>{money(!c.valid || mixed && c.excess > 1e-7 ? null : Math.max(0, mixed ? c.cashRemainder! : c.surplus!))}</b></div>
-        {!mixed && <div><span>{m.annualReturn}</span><b>0%</b></div>}
+        <div><span>{m.initialCapital}</span><b>{money(state.savings)}</b></div>
+        <div><span>{mixed ? m.toInvest : m.toCash}</span><b>{money(state.invest)}</b></div>
+        <div><span>{m.annualReturn}</span><b>{mixed ? state.rate === null ? '—' : `${new Intl.NumberFormat(LOCALE_TAGS[locale]).format(state.rate)}%` : '0%'}</b></div>
       </div>
-      <p className="result-foot">{mixed && path.ending ? <>{m.ending}: {money(path.ending.reserve)} + {money(path.ending.investment)}</> : mixed ? m.mixedFoot : m.cashFoot}</p>
+      <p className="result-foot">{mixed ? m.mixedFoot : m.cashFoot}{path.ending && <span className="ending-balance">{m.ending}: {money(mixed ? path.ending.investment : path.ending.cash)}</span>}</p>
     </article>;
   };
   const difference = c.valid && c.cash.status === 'reached' && c.mixed.status === 'reached' ? c.cash.months! - c.mixed.months! : null;
-  const alert = !c.valid ? m[`${c.error}Error`] : c.cash.status === 'met' ? m.metAlert : c.excess > 1e-7 ? m.overAlert : c.surplus! < 0 ? m.deficitAlert : c.surplus === 0 ? m.zeroAlert : null;
+  const alert = !c.valid ? m[`${c.error}Error`] : c.cash.status === 'met' ? m.metAlert : c.budgetError ? c.budgetError === 'amounts' ? m.budgetIncomplete : m[`${c.budgetError}Error`] : c.surplus! < 0 ? m.deficitAlert : c.excess > 1e-7 ? m.overAlert : c.surplus === 0 ? m.zeroAlert : null;
   return <div className="purchase-plan planning design-1">
     <header className="planning-head"><div><p className="section-index">{m.kicker}</p><h1>{m.title}</h1></div><button type="button" onClick={reset}>{m.reset}</button></header>
     <section className="phrase-layout">

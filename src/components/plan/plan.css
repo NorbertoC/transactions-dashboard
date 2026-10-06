@@ -18,3 +18,17 @@
 .purchase-plan .assumption-body{padding:0 24px 24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 28px;min-width:0}
 .purchase-plan .assumption-body p{margin:0;font-size:14px;color:var(--muted);line-height:1.8;min-width:0;overflow-wrap:anywhere}
 @media(max-width:620px){.purchase-plan .assumption-body{padding:0 18px 22px;grid-template-columns:minmax(0,1fr);gap:16px}.purchase-plan .assumption-body p{font-size:14px}}
+
+.purchase-plan .result-cash{background:var(--surface);border-color:var(--line)}
+.purchase-plan .result-cash .route-icon{color:var(--muted)}
+.purchase-plan .result-invest{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.purchase-plan .result-invest .result-top>p,.purchase-plan .result-invest .route-tag,.purchase-plan .result-invest .result-caption,.purchase-plan .result-invest .route-detail span,.purchase-plan .result-invest .result-foot{color:var(--on-primary)}
+.purchase-plan .result-invest .route-icon{background:transparent;border-color:currentColor;color:var(--on-primary)}
+.purchase-plan .result-invest .route-detail{border-color:color-mix(in srgb,var(--on-primary) 45%,transparent)}
+.purchase-plan .ending-balance{display:block;margin-top:10px;font-weight:600}
+.purchase-plan .invest-inputs .field>span:first-child{min-height:40px;line-height:1.45}
+.purchase-plan .route-detail>div{align-items:baseline;line-height:1.5}
+.purchase-plan .compact h3{line-height:1.45;min-height:3em}
+.purchase-plan .result-top>p{flex:1;min-width:0}
+.purchase-plan .compact .result-top{min-height:36px}
+@media(max-width:620px){.purchase-plan .compact h3{min-height:0}.purchase-plan .route-detail>div{flex-wrap:wrap;gap:4px 10px}.purchase-plan .invest-inputs{grid-template-columns:1fr}.purchase-plan .invest-inputs .field>span:first-child{min-height:0;margin-bottom:8px}}

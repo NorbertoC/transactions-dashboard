@@ -2,77 +2,77 @@ import { describe, expect, it } from 'vitest';
 import { calculatePlan, planDefaults } from '../model';
 import { planExpenseEvidence } from '../evidence';
 import type { Transaction } from '@/types/transaction';
-const example = () => ({ ...planDefaults(), expense: 5000 });
-describe('purchase calculation on explicitly synthetic fixtures', () => {
-  it('starts with unknown expense, zero savings and tax, hypothetical editable income', () => {
-    expect(planDefaults()).toMatchObject({ expense: null, savings: 0, tax: 0, income: 10000 });
-    expect(calculatePlan(planDefaults()).valid).toBe(false);
+const example = () => ({ ...planDefaults(), savings: 50000, expense: 5000 });
+describe('equal-capital purchase comparison on synthetic fixtures', () => {
+  it('preserves defaults and unknown expense without inventing recorded spending', () => {
+    expect(planDefaults()).toMatchObject({ expense: null, savings: 0, tax: 0, income: 10000, invest: 2000, rate: 10 });
+    const c = calculatePlan(planDefaults());
+    expect(c.valid).toBe(true); expect(c.surplus).toBe(null); expect(c.budgetError).toBe('amounts');
   });
-  it('compounds only the selected end-of-month contribution at an effective annual rate', () => {
-    const c = calculatePlan(example()); expect(c.cash.months).toBe(60); expect(c.mixed.months).toBe(100);
-    expect(c.mixed.ending!.reserve).toBe(0);
-    expect(c.mixed.ending!.investment).toBeCloseTo(304179.2692493397, 6);
-    expect(c.mixed.ending!.mixed).toBeCloseTo(c.mixed.ending!.paid + c.mixed.ending!.gain, 6);
-    const rate = Math.pow(1.1, 1 / 12) - 1;
-    expect(2000 * (Math.pow(1 + rate, 99) - 1) / rate).toBeLessThan(300000);
+  it('reaches 300000 from 50000 plus 2000 per month in 125 months in both paths at zero return', () => {
+    const c = calculatePlan({ ...example(), rate: 0 });
+    expect(c.cash.months).toBe(125); expect(c.mixed.months).toBe(125);
+    expect(c.rows[124].cash).toBe(298000);
+    expect(c.cash.ending!.cash).toBe(300000); expect(c.mixed.ending!.investment).toBe(300000);
+    expect(c.rows.every(row => row.cash === row.investment && row.gain === 0)).toBe(true);
   });
-  it('keeps net income untaxed and applies selected gross tax once', () => {
+  it('compounds all initial capital and end-of-month contributions at an effective annual rate', () => {
+    const c = calculatePlan(example()), r = Math.pow(1.1, 1 / 12) - 1;
+    const balance = (month: number) => 50000 * Math.pow(1 + r, month) + 2000 * (Math.pow(1 + r, month) - 1) / r;
+    expect(c.monthlyRate).toBeCloseTo(r, 12);
+    expect(c.cash.months).toBe(125); expect(c.mixed.months).toBe(77);
+    expect(balance(c.mixed.months! - 1)).toBeLessThan(300000);
+    expect(c.mixed.ending!.investment).toBeCloseTo(balance(c.mixed.months!), 6);
+    expect(c.rows[1].investment).toBeCloseTo(50000 * (1 + r) + 2000, 8);
+    expect(c.rows[1].cash).toBe(52000);
+    expect(c.mixed.ending!.paid + c.mixed.ending!.gain).toBeCloseTo(c.mixed.ending!.investment, 6);
+  });
+  it('grows invested initial capital with zero contribution while cash stays flat', () => {
+    const c = calculatePlan({ ...example(), invest: 0 });
+    expect(c.cash.status).toBe('unreachable'); expect(c.mixed.status).toBe('reached');
+    expect(c.rows[12].cash).toBe(50000); expect(c.rows[12].investment).toBeCloseTo(55000, 7);
+    expect(c.rows.every(row => row.cash === 50000)).toBe(true);
+    expect(calculatePlan({ ...example(), invest: 0, rate: 0 }).mixed.status).toBe('unreachable');
+    expect(calculatePlan({ ...example(), invest: 0, savings: 0 }).mixed.status).toBe('unreachable');
+  });
+  it.each([0, 10, 25])('income, expenses and affordability never alter either projection at %s percent', rate => {
+    const original = calculatePlan({ ...example(), rate });
+    for (const budget of [{ income: 16000, expense: 8000 }, { income: 12000, expense: 10001 }, { income: 1000, expense: 12000 }, { income: 1000, expense: 1000 }, { income: null, expense: null }]) {
+      const next = calculatePlan({ ...example(), rate, ...budget });
+      expect(next.cash).toEqual(original.cash); expect(next.mixed).toEqual(original.mixed);
+      expect(next.rows).toEqual(original.rows);
+    }
+    expect(calculatePlan({ ...example(), income: 12000, expense: 10001 }).excess).toBe(1);
+  });
+  it('applies tax only to gross income and keeps budget validation independent of projections', () => {
     expect(calculatePlan({ ...example(), tax: 30 }).net).toBe(10000);
-    const gross = calculatePlan({ ...example(), mode: 'gross', tax: 30 }); expect(gross.net).toBe(7000); expect(gross.surplus).toBe(2000);
-    expect(calculatePlan({ ...example(), mode: 'gross', tax: 101 }).valid).toBe(false);
+    const gross = calculatePlan({ ...example(), mode: 'gross', tax: 30 });
+    expect(gross.net).toBe(7000); expect(gross.surplus).toBe(2000);
+    expect(gross.rows).toEqual(calculatePlan(example()).rows);
+    const invalid = calculatePlan({ ...example(), mode: 'gross', tax: 101 });
+    expect(invalid.budgetError).toBe('tax'); expect(invalid.valid).toBe(true); expect(invalid.surplus).toBe(null);
+    expect(invalid.rows).toEqual(gross.rows);
   });
-  it('accepts zero expenses and zero goal as valid', () => {
-    expect(calculatePlan({ ...example(), expense: 0 }).cash.months).toBe(30);
+  it.each([300000, 400000])('an initial balance of %s already meets the goal even with a budget deficit', savings => {
+    const c = calculatePlan({ ...example(), savings, expense: 12000 });
+    expect(c.cash).toMatchObject({ months: 0, status: 'met' }); expect(c.mixed).toMatchObject({ months: 0, status: 'met' });
+  });
+  it('accepts zero expenses and zero goal without changing the chosen contribution', () => {
+    expect(calculatePlan({ ...example(), expense: 0 }).cash.months).toBe(125);
     expect(calculatePlan({ ...example(), price: 0 }).mixed).toMatchObject({ months: 0, status: 'met' });
   });
-  it('does not fund a future purchase with zero or negative surplus', () => {
-    for (const expense of [10000, 12000]) {
-      const c = calculatePlan({ ...example(), expense, invest: 0 });
-      expect(c.cash.status).toBe('unreachable'); expect(c.mixed.status).toBe('unreachable');
-    }
-  });
-  it('keeps an already met goal immediate even with a deficit or excess investment', () => {
-    const c = calculatePlan({ ...example(), savings: 300000, expense: 12000 });
-    expect(c.cash.status).toBe('met'); expect(c.mixed.months).toBe(0);
-  });
-  it('refuses overallocated contributions, retaining the independent cash path', () => {
-    const c = calculatePlan({ ...example(), invest: 5001 });
-    expect(c.mixed.status).toBe('overallocated'); expect(c.cash.months).toBe(60);
-  });
-  it('keeps initial savings fixed in cash, counting them once rather than adding the surplus remainder', () => {
-    const c = calculatePlan({ ...example(), rate: 0, savings: 10000 });
-    expect(c.cash.months).toBe(58); expect(c.mixed.months).toBe(145);
-    expect(c.mixed.ending!.reserve).toBe(10000); expect(c.mixed.ending!.investment).toBe(290000);
-    expect(c.mixed.ending!.mixed).toBe(300000);
-  });
-  it('negative return can make the investment goal unreachable even with spare surplus', () => {
+  it('handles negative returns and discloses the 100-year horizon', () => {
     expect(calculatePlan({ ...example(), rate: -50, invest: 5000 }).mixed.status).toBe('unreachable');
     expect(calculatePlan({ ...example(), rate: -10 }).mixed.status).toBe('unreachable');
-    expect(calculatePlan({ ...example(), rate: -100 }).valid).toBe(false);
+    const c = calculatePlan({ ...example(), invest: 1, rate: 0 });
+    expect(c.cash.status).toBe('beyond'); expect(c.mixed.status).toBe('beyond');
+    expect(c.rows).toHaveLength(1201);
   });
-  it('bounds both paths to the disclosed 100-year horizon', () => {
-    const c = calculatePlan({ ...example(), income: 5001, invest: 1, rate: 0 }); expect(c.cash.status).toBe('beyond'); expect(c.mixed.status).toBe('beyond');
-  });
-  it('matches the requested 12000 income / 8000 expenses / 2000 contribution at zero return', () => {
-    const c = calculatePlan({ ...example(), income: 12000, expense: 8000, invest: 2000, rate: 0 });
-    expect(c.surplus).toBe(4000); expect(c.cashRemainder).toBe(2000);
-    expect(c.cash.months).toBe(75); expect(c.mixed.months).toBe(150);
-    expect(c.mixed.ending!.reserve).toBe(0); expect(c.mixed.ending!.investment).toBe(300000);
-  });
-  it.each([0, 10, 25])('income and unused surplus do not change investment time at %s percent, while affordable', rate => {
-    const original = calculatePlan({ ...example(), income: 12000, expense: 8000, rate });
-    const moreIncome = calculatePlan({ ...example(), income: 16000, expense: 8000, rate });
-    const moreExpense = calculatePlan({ ...example(), income: 12000, expense: 10000, rate });
-    expect(moreIncome.mixed).toEqual(original.mixed); expect(moreExpense.mixed).toEqual(original.mixed);
-    expect(moreIncome.cash.months).not.toBe(original.cash.months);
-    expect(calculatePlan({ ...example(), income: 12000, expense: 10001, rate }).mixed.status).toBe('overallocated');
-  });
-  it('zero contribution cannot reach an unmet goal despite a positive unused surplus', () => {
-    expect(calculatePlan({ ...example(), invest: 0 }).mixed.status).toBe('unreachable');
-    expect(calculatePlan({ ...example(), invest: 0 }).cash.months).toBe(60);
-  });
-  it('rejects missing or nonfinite values and negative initial balances', () => {
-    for (const value of [null, NaN, Infinity, -1]) expect(calculatePlan({ ...example(), savings: value }).valid).toBe(false);
+  it('rejects missing or nonfinite projection inputs and invalid returns', () => {
+    for (const key of ['price', 'savings', 'invest'] as const) {
+      for (const value of [null, NaN, Infinity, -1]) expect(calculatePlan({ ...example(), [key]: value }).valid).toBe(false);
+    }
+    for (const rate of [null, NaN, Infinity, -100, 1001]) expect(calculatePlan({ ...example(), rate }).valid).toBe(false);
   });
 });
 const row = (date_iso: string, value: number, extra: Partial<Transaction> = {}) => ({ id: 1, date_iso, value, currency: 'NZD', category: 'Housing', subcategory: 'Rent', record_type: 'expense', direction: 'outflow', ...extra }) as Transaction;
