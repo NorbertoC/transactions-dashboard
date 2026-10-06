@@ -28,13 +28,16 @@ export function calculatePlan(s: PlanState) {
     mixed: { months: null, status: 'unreachable' } as PlanPath };
   if (remaining === 0) { c.mixed = { months: 0, status: 'met' }; return c; }
   if (excess > 1e-7) { c.mixed.status = 'overallocated'; return c; }
-  if (surplus <= 0) return c;
-  let reserve = savings, investment = 0;
-  const impossible = cashRemainder === 0 && monthlyRate < 0 && remaining >= invest / -monthlyRate;
+  if (surplus <= 0 || invest === 0) return c;
+  // Only the chosen contribution funds this path. Initial savings remain
+  // fixed cash; the unused surplus never accumulates toward the goal.
+  const reserve = savings;
+  let investment = 0;
+  const impossible = monthlyRate < 0 && remaining >= invest / -monthlyRate;
   for (let month = 1; month <= 1200; month++) {
-    investment = investment * (1 + monthlyRate) + invest; reserve += cashRemainder;
+    investment = investment * (1 + monthlyRate) + invest;
     if (!impossible && reserve + investment >= price - 1e-7) {
-      c.mixed = { months: month, status: 'reached', ending: { month, cash: savings + surplus * month, reserve, investment, mixed: reserve + investment, paid: invest * month, gain: investment - invest * month } };
+      c.mixed = { months: month, status: 'reached', ending: { month, cash: reserve, reserve, investment, mixed: reserve + investment, paid: invest * month, gain: investment - invest * month } };
       return c;
     }
   }

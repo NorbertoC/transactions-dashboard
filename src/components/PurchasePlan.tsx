@@ -54,7 +54,7 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
       <h3>{mixed ? m.mixedTitle : m.cashTitle}</h3><strong className="result-time">{title(path)}</strong><p className="result-caption">{caption(path)}</p>
       <div className="route-detail">
         {mixed && <div><span>{m.toInvest}</span><b>{money(state.invest)}</b></div>}
-        <div><span>{m.toCash}</span><b>{money(!c.valid || mixed && c.excess > 1e-7 ? null : Math.max(0, mixed ? c.cashRemainder! : c.surplus!))}</b></div>
+        <div><span>{mixed ? m.outside : m.toCash}</span><b>{money(!c.valid || mixed && c.excess > 1e-7 ? null : Math.max(0, mixed ? c.cashRemainder! : c.surplus!))}</b></div>
         {!mixed && <div><span>{m.annualReturn}</span><b>0%</b></div>}
       </div>
       <p className="result-foot">{mixed && path.ending ? <>{m.ending}: {money(path.ending.reserve)} + {money(path.ending.investment)}</> : mixed ? m.mixedFoot : m.cashFoot}</p>
@@ -89,7 +89,7 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
         {difference !== null && <div className="difference"><span className="difference-symbol" aria-hidden="true">{difference > 0 ? '−' : difference < 0 ? '+' : '='}</span><div><b>{difference === 0 ? m.sameTime : `${duration(Math.abs(difference))} ${difference > 0 ? m.before : m.later}`}</b><span>{m.differenceNote}</span></div></div>}
       </aside>
     </section>
-    <div className="fairness"><span className="equal-icon" aria-hidden="true">=</span><p><b>{m.same}</b> {m.fairness}</p></div>
+    <div className="fairness"><span className="equal-icon" aria-hidden="true">↔</span><p><b>{m.same}</b> {m.fairness}</p></div>
     <details className="assumptions"><summary><span>{m.assumptions}</span><span className="chevron" aria-hidden="true" /></summary><div className="assumption-body">{[m.assumption1, m.assumption2, m.assumption3, m.assumption4].map(text => <p key={text}>{text}</p>)}</div></details>
     <p className="plan-footer">{m.hypothetical}</p>
   </div>;

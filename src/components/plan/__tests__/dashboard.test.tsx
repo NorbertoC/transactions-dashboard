@@ -36,6 +36,19 @@ it.each(['en', 'es', 'ja'] as const)('renders all plan copy and labeled controls
   expect(container.querySelector('h1')!.textContent).toBe(planMessages[locale].title);
   expect(input('expense').getAttribute('aria-label')).toBe(planMessages[locale].expense);
   expect(container.querySelectorAll('.result')).toHaveLength(2);
+  expect(container.textContent).toContain(planMessages[locale].fairness);
+  expect(container.querySelector('.result-invest')!.textContent).toContain(planMessages[locale].outside);
+});
+it('shows distinct contributions and excludes unused surplus from the investment result while income changes', () => {
+  render(8000); change('income', '12000'); change('rate', '0');
+  const investment = () => container.querySelector('.result-invest')!;
+  expect(container.querySelector('.result-cash .result-time')!.textContent).toBe('6 years 3 months');
+  expect(investment().querySelector('.result-time')!.textContent).toBe('12 years 6 months');
+  expect(investment().textContent).toContain(planMessages.en.outside);
+  expect(investment().textContent).not.toContain(planMessages.en.toCash);
+  change('income', '16000'); expect(investment().querySelector('.result-time')!.textContent).toBe('12 years 6 months');
+  change('expense', '14000'); expect(investment().querySelector('.result-time')!.textContent).toBe('12 years 6 months');
+  change('expense', '14001'); expect(investment().querySelector('.result-time')!.textContent).toBe(planMessages.en.overallocated);
 });
 vi.mock('next-auth/react', () => ({ useSession: () => ({ status: 'authenticated', data: { user: { id: 'synthetic-A', email: 'synthetic@example.test', authorized: true } } }) }));
 vi.mock('@/components/AuthGuard', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
