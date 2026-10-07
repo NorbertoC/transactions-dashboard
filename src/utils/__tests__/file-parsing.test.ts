@@ -368,16 +368,16 @@ describe('mapBankCategoryToTaxonomy', () => {
   })
 
   it.each([
-    ['Retail & Grocery-Pharmacies', 'Personal needs & purchases', 'Health'],
+    ['Retail & Grocery-Pharmacies', 'Personal purchases', 'Health'],
     ['Retail & Grocery-Groceries', 'Basic living', 'Food for home'],
-    ['Retail & Grocery-Clothing Stores', 'Personal needs & purchases', 'Clothing & footwear'],
+    ['Retail & Grocery-Clothing Stores', 'Personal purchases', 'Clothing & footwear'],
     ['Retail & Grocery-Computer Supplies', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Electronics Stores', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Sporting Goods Stores', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-General Retail', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Online Purchases', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Department Stores', 'Others', 'Miscellaneous'],
-    ['Retail & Grocery-Furnishing', 'Personal needs & purchases', 'Purchases for home'],
+    ['Retail & Grocery-Furnishing', 'Personal purchases', 'Home'],
     ['Entertainment-Restaurants', 'Meals & outings', 'Restaurants'],
     ['Entertainment-Bars & Cafés', 'Others', 'Miscellaneous'],
     ['Entertainment-Other Entertainment', 'Others', 'Miscellaneous'],

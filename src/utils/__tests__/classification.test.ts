@@ -12,10 +12,10 @@ describe('purpose-v4 explicit proposals', () => {
     ['AXBUSFARE AUCKLAND', 'Basic living', 'Transport'],
     ['CAR INSURANCE', 'Basic living', 'Transport'],
     ['BP CONNECT', 'Basic living', 'Transport'],
-    ['HEALTH INSURANCE', 'Personal needs & purchases', 'Health'],
-    ['CHEMIST WAREHOUSE', 'Personal needs & purchases', 'Health'],
-    ['TOMMY HILFIGER', 'Personal needs & purchases', 'Clothing & footwear'],
-    ['BRISCOES', 'Personal needs & purchases', 'Purchases for home'],
+    ['HEALTH INSURANCE', 'Personal purchases', 'Health'],
+    ['CHEMIST WAREHOUSE', 'Personal purchases', 'Health'],
+    ['TOMMY HILFIGER', 'Personal purchases', 'Clothing & footwear'],
+    ['BRISCOES', 'Personal purchases', 'Home'],
     ['OPENAI SUBSCRIPTION', 'Subscriptions', 'Work'],
     ['OPENAI *CHATGPT SUBSCR SAN FRANCISCO', 'Subscriptions', 'Work'],
     ['CHATGPT SUBSCRIPTION', 'Subscriptions', 'Work'],
@@ -134,14 +134,14 @@ describe('specific bank evidence without merchant assignment', () => {
   const extract = (merchant: string, bank: string) => extractTransactions([['2026-09-12', merchant, '20', bank]], columns).rows[0];
   it.each([
     ['insurance-car insurance', 'Basic living', 'Transport'],
-    ['Retail & Grocery-health insurance', 'Personal needs & purchases', 'Health'],
+    ['Retail & Grocery-health insurance', 'Personal purchases', 'Health'],
     ['Retail & Grocery-Computer Supplies', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Equipment', 'Others', 'Miscellaneous'],
     ['Communications-Telephone Telecom', 'Basic living', 'Phone'],
     ['Communications-Internet Communication', 'Basic living', 'Power & internet'],
     ['Travel & Transport-Airline', 'Travel', 'Tickets & transfers'],
     ['Travel & Transport-Accommodation', 'Travel', 'Accommodation'],
-    ['Retail & Grocery-Furnishing', 'Personal needs & purchases', 'Purchases for home'],
+    ['Retail & Grocery-Furnishing', 'Personal purchases', 'Home'],
   ])('maps evidence %s without using a misleading family prefix', (label, category, subcategory) => {
     expect(mapBankCategoryToTaxonomy(label)).toEqual({ category, subcategory });
   });

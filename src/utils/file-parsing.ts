@@ -374,9 +374,9 @@ export function mapBankCategoryToTaxonomy(bankCategory: string): { category: str
   if (!label) return null;
   // Specific evidence takes priority over broad bank families such as Retail & Grocery.
   if (/car insurance|vehicle insurance|motor insurance|fuel|parking charges|rail services/.test(label)) return { category: 'Basic living', subcategory: 'Transport' };
-  if (/health insurance|medical insurance|pharmac/.test(label)) return { category: 'Personal needs & purchases', subcategory: 'Health' };
+  if (/health insurance|medical insurance|pharmac/.test(label)) return { category: 'Personal purchases', subcategory: 'Health' };
   if (/insurance|computer supplies|electronics|equipment|sporting goods|department stores|general retail|online purchases|wholesale stores|other travel|travel agencies|taxis/.test(label)) return { category: DEFAULT_CATEGORY, subcategory: DEFAULT_SUBCATEGORY };
-  if (/clothing/.test(label)) return { category: 'Personal needs & purchases', subcategory: 'Clothing & footwear' };
+  if (/clothing/.test(label)) return { category: 'Personal purchases', subcategory: 'Clothing & footwear' };
   if (/airline/.test(label)) return { category: 'Travel', subcategory: 'Tickets & transfers' };
   if (/accommodation|lodging/.test(label)) return { category: 'Travel', subcategory: 'Accommodation' };
   if (/education|training/.test(label)) return { category: 'Work & learning', subcategory: 'Equipment & training' };

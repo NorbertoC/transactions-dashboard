@@ -9,8 +9,22 @@ const row = (id: number, category: string, subcategory: string, extra: Partial<T
 afterEach(() => vi.unstubAllGlobals());
 
 describe('seven purpose groups and preserved evidence', () => {
+  it('renames personal purchases and Home with stable keys while essentials stay in Basic living', () => {
+    expect(getTaxonomyPair('personal_purchases', 'home_purchases')).toEqual({ category: 'Personal purchases', subcategory: 'Home' });
+    expect(getLocalizedCategoryName('Personal purchases', 'es')).toBe('Compras personales');
+    expect(getLocalizedSubcategoryName('Home', 'es')).toBe('Hogar');
+    expect(getLocalizedCategoryName('Personal purchases', 'ja')).toBe('個人の買い物');
+    expect(normalizeCategoryPair('Housing', 'Household items')).toEqual({ category: 'Personal purchases', subcategory: 'Home' });
+    expect(normalizeCategoryPair('Housing', 'Rent')).toEqual({ category: 'Basic living', subcategory: 'Rent' });
+    expect(normalizeCategoryPair('Housing', 'Utilities')).toEqual({ category: 'Basic living', subcategory: 'Power & internet' });
+    expect(normalizeCategoryPair('Groceries', 'Food')).toEqual({ category: 'Basic living', subcategory: 'Food for home' });
+    expect(normalizeCategoryPair('Personal needs & purchases', 'Purchases for home')).toEqual({ category: 'Personal purchases', subcategory: 'Home' });
+    for (const [category, subcategory] of [['Personal needs & purchases', 'Purchases for home'], ['Housing', 'Household items'], ['Housing', 'My custom purpose']]) {
+      expect(normalizeCategoryPair(category, subcategory, 'manual')).toEqual({ category, subcategory });
+    }
+  });
   it('offers exactly seven purpose groups plus review and separate savings', () => {
-    expect(CATEGORIES.filter(cat => !['Others', 'Savings'].includes(cat.name)).map(cat => cat.name)).toEqual(['Basic living', 'Personal needs & purchases', 'Work & learning', 'Subscriptions', 'Meals & outings', 'Entertainment', 'Travel']);
+    expect(CATEGORIES.filter(cat => !['Others', 'Savings'].includes(cat.name)).map(cat => cat.name)).toEqual(['Basic living', 'Personal purchases', 'Work & learning', 'Subscriptions', 'Meals & outings', 'Entertainment', 'Travel']);
     expect(CATEGORIES.slice(0, 7).flatMap(group => group.subcategories)).toHaveLength(25);
     expect(new Set(CATEGORIES.map(group => group.key)).size).toBe(8);
     expect(CATEGORIES.some(cat => cat.subcategories.some(sub => sub.name === 'Subscriptions' || sub.name === 'Personal Allowance'))).toBe(false);
@@ -24,7 +38,7 @@ describe('seven purpose groups and preserved evidence', () => {
   });
   it('projects unambiguous legacy purpose and flags mixed buckets without assigning work', () => {
     expect(normalizeCategoryPair('Housing', 'Rent')).toEqual({ category: 'Basic living', subcategory: 'Rent' });
-    expect(normalizeCategoryPair('Groceries', 'Medicine & Supplements')).toEqual({ category: 'Personal needs & purchases', subcategory: 'Health' });
+    expect(normalizeCategoryPair('Groceries', 'Medicine & Supplements')).toEqual({ category: 'Personal purchases', subcategory: 'Health' });
     for (const [cat, sub] of [['Fun & Social', 'Subscriptions'], ['Personal spending', 'Hobbies & Shopping']]) {
       expect(normalizeCategoryPair(cat, sub)).toEqual({ category: 'Others', subcategory: 'Miscellaneous' });
     }
