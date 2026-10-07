@@ -9,7 +9,7 @@ import type { Transaction } from '@/types/transaction';
 
 let root: Root, container: HTMLDivElement;
 const fixture: Transaction = { id: 42, place: 'Netflix synthetic', amount: '12.00', value: 12, date: '2026-01-10', date_iso: '2026-01-10', currency: 'NZD', category: 'Others', subcategory: '', record_type: 'expense', direction: 'outflow' };
-const capability = () => ({ version: 'purpose-v3', manual_category_persistence: true,
+const capability = () => ({ version: 'purpose-v4', manual_category_persistence: true,
   categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name,
     subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
@@ -45,12 +45,12 @@ it('does not suggest over a manual label, including a manual Others label', asyn
 });
 it('clears an invalid subcategory when changing category and requires an explicit choice', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => json(capability()))); await render([{ ...fixture, category: 'Housing', subcategory: 'Rent', category_source: 'manual' }]); await edit();
-  await choose('category', 'Personal subscriptions');
+  await choose('category', 'Subscriptions');
   expect(container.querySelector<HTMLSelectElement>('select[id$="desktop-subcategory"]')!.value).toBe('');
   await act(async () => findButton('Save').click()); expect(container.textContent).toContain(categoryReviewMessages.en.chooseSubcategory);
 });
 it('preserves custom manual subcategories verbatim when saving an unchanged category', async () => {
-  const manual = { ...fixture, category: 'Personal subscriptions', subcategory: 'Custom manual subscription', category_source: 'manual' as const };
+  const manual = { ...fixture, category: '  Personal subscriptions  ', subcategory: '  Custom manual subscription  ', category_source: 'manual' as const };
   const updated = vi.fn();
   const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
     if (init?.method === 'PUT') return json({ message: 'updated' });
@@ -62,7 +62,7 @@ it('preserves custom manual subcategories verbatim when saving an unchanged cate
 });
 it('prevents repeated one-click writes while waiting and updates only after stored pair confirmation', async () => {
   let finish: (response: Response) => void = () => {};
-  const updated = vi.fn(); const stored = { ...fixture, category: 'Personal subscriptions', subcategory: 'Streaming & content', category_source: 'manual' as const };
+  const updated = vi.fn(); const stored = { ...fixture, category: 'Subscriptions', subcategory: 'Entertainment', category_source: 'manual' as const };
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PUT') return new Promise<Response>(resolve => { finish = resolve; });
     return json(url.includes('/api/transactions?') ? [stored] : capability());

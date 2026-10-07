@@ -1,6 +1,6 @@
 export const categoryReviewMessages = {
   en: {
-    queue: 'Others · {count} to review', empty: 'No expenses left in Others in this view.',
+    queue: 'Categories · {count} to review', empty: 'No categories left to review in this view.',
     unknown: 'The merchant alone does not establish the purpose. Choose the category after checking the purchase.',
     manual: 'Your manual category is protected. You can change it in Edit.',
     unavailable: 'Category editing is temporarily unavailable. You can review expenses or check again.',
@@ -13,7 +13,7 @@ export const categoryReviewMessages = {
     chooseSubcategory: 'Choose a subcategory before saving.',
   },
   es: {
-    queue: 'Otros · {count} por revisar', empty: 'Otros está vacía en esta vista.',
+    queue: 'Categorías · {count} por revisar', empty: 'No quedan categorías por revisar en esta vista.',
     unknown: 'El comercio por sí solo no confirma el propósito. Elegí la categoría después de revisar la compra.',
     manual: 'Tu categoría manual está protegida. Podés cambiarla en Editar.',
     unavailable: 'La edición de categorías no está disponible por ahora. Podés revisar los gastos o comprobar otra vez.',
@@ -26,7 +26,7 @@ export const categoryReviewMessages = {
     chooseSubcategory: 'Elegí una subcategoría antes de guardar.',
   },
   ja: {
-    queue: 'その他・要確認 {count} 件', empty: 'この表示では「その他」の支出はありません。',
+    queue: 'カテゴリ・要確認 {count} 件', empty: 'この表示では確認が必要なカテゴリはありません。',
     unknown: '店名だけでは購入目的を確定できません。購入内容を確認してカテゴリを選んでください。',
     manual: '手動で選んだカテゴリは保護されています。「編集」から変更できます。',
     unavailable: '現在カテゴリを編集できません。支出を確認するか、もう一度確認してください。',

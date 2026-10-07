@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireSession, privateJson, requestError } from '@/lib/api-upstream';
 import { readBoundedText, isIsoDate, validId } from '@/lib/api-validation';
 import { resolveImportedClassification } from '@/utils/classification';
-import { requireTaxonomyCapability } from '@/lib/taxonomy-guard';
+import { requireTaxonomyCapability, taxonomyHeaders } from '@/lib/taxonomy-guard';
 
 interface Transaction {
   id?: number;
@@ -13,7 +13,7 @@ interface Transaction {
   value: number;
   date_iso: string;
   category: string;
-  subcategory: string;
+  subcategory: string | null;
   category_source?: 'manual' | 'imported';
   statement_id: string | null;
   statement_start: string | null;
@@ -157,6 +157,10 @@ function parseValue(value: unknown, amount: unknown): number | null {
 function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
   if (entry.record_type != null && entry.record_type !== 'expense') return null;
+  // The expense API requires a nonempty category. Reject supplied null/blank
+  // evidence before writes instead of silently replacing it with Others.
+  if (Object.hasOwn(entry, 'category') && (typeof entry.category !== 'string' || !entry.category.trim() || entry.category.length > 200)) return null;
+  if (Object.hasOwn(entry, 'subcategory') && entry.subcategory !== null && (typeof entry.subcategory !== 'string' || entry.subcategory.length > 200)) return null;
   if (entry.id !== undefined && !validId(String(entry.id))) return null;
   const place = typeof entry.place === 'string' ? entry.place.trim() : '';
   const dateIso =
@@ -186,7 +190,8 @@ function normalizeTransaction(entry: IncomingTransaction): Transaction | null {
       ? entry.amount.trim()
       : `${currency}${value.toFixed(2)}`;
 
-  const { category, subcategory } = classification;
+  const category = classification.category;
+  const subcategory = entry.subcategory === null ? null : classification.subcategory;
 
   return {
     id: typeof entry.id === 'number' ? entry.id : undefined,
@@ -285,7 +290,8 @@ async function persistTransactions(transactions: Transaction[]) {
       cache: 'no-store',
     headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': apiKey
+        'X-API-Key': apiKey,
+        ...taxonomyHeaders
       },
       body: JSON.stringify(update.data)
     });
@@ -316,7 +322,8 @@ async function persistTransactions(transactions: Transaction[]) {
     cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': apiKey
+      'X-API-Key': apiKey,
+      ...taxonomyHeaders
     },
     body: JSON.stringify(newTransactions)
   });

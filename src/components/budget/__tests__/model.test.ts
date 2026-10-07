@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { budgetEvidence, calculate, defaults, SCENARIOS, validDraft, type BudgetRow } from '../model';
+import { budgetEvidence, calculate, defaults, preservePurposeV3Draft, SCENARIOS, validDraft, type BudgetRow } from '../model';
 import type { Transaction } from '@/types/transaction';
 const row = (id: string, amount: number, kind: BudgetRow['kind'] = 'want', protectedCost = false, travel = false): BudgetRow => ({ id, amount, kind, protected: protectedCost, travel, category: 'Test', name: id, observed: true, count: 1 });
 const rows = [row('rent', 2600, 'need', true), row('health', 212, 'need', true), row('home_purchases', 80, 'want', true), row('tickets_transfers', 600, 'want', false, true), row('accommodation', 650, 'want', false, true), row('food_treats', 140), row('manual', 200, 'unknown', true)];
@@ -51,4 +51,24 @@ it('reconciles observed spending exactly, isolates manual names and protects unk
   expect(e.rows).toHaveLength(2); expect(e.rows[1]).toMatchObject({ category: 'My manual group', name: 'My own purpose', kind: 'unknown', protected: true });
   expect(records[2].category).toBe('My manual group'); expect(e.partial).toBe(true); expect(e.excluded).toBe(true);
   expect(budgetEvidence([], '2026-10-07').total).toBeNull();
+});
+it('separates reviewed v4 spending and protects work subscriptions and unresolved legacy buckets from cuts', () => {
+  const records = [tx(1, 30, 'Subscriptions', 'Work'), tx(2, 40, 'Subscriptions', 'Entertainment'), tx(3, 20, 'Subscriptions', 'Other subscriptions'),
+    tx(4, 25, 'Meals & outings', 'Restaurants'), tx(5, 15, 'Entertainment', 'Video games'), tx(6, 60, 'Outings & entertainment', 'Meals & treats')];
+  const source = budgetEvidence(records, '2026-10-07');
+  expect(source.total).toBe(190); expect(source.rows.reduce((sum, item) => sum + item.amount, 0)).toBe(190);
+  expect(source.rows.find(item => item.id === 'subscription_work')).toMatchObject({ kind: 'need', protected: true });
+  expect(source.rows.find(item => item.category === 'Outings & entertainment')).toMatchObject({ kind: 'unknown', protected: true, amount: 60 });
+  const result = calculate({ ...defaults('single'), income: 0, savings: 0, auto: true }, source.rows, true);
+  expect(result.changes.map(item => item.id)).toEqual(['restaurants', 'video_games', 'subscription_entertainment', 'subscription_other']);
+  expect(result.spending).toBe(90); expect(result.gap).toBe(90);
+  expect(records[5].subcategory).toBe('Meals & treats');
+});
+it('loads old device draft amounts against literal mixed buckets without applying them to new narrower purposes', () => {
+  const draft = { ...defaults('single'), amounts: { food_treats: 123.45, streaming_content: 12, rent: 2000 }, kinds: { food_treats: 'want' as const }, lastEdited: 'food_treats' };
+  const original = structuredClone(draft), result = preservePurposeV3Draft(draft);
+  const legacyId = JSON.stringify(['Outings & entertainment', 'Meals & treats']);
+  expect(result.amounts).toEqual({ [legacyId]: 123.45, [JSON.stringify(['Personal subscriptions', 'Streaming & content'])]: 12, rent: 2000 });
+  expect(result.lastEdited).toBe(legacyId); expect(result.kinds).toEqual({ [legacyId]: 'want' });
+  expect(result.amounts).not.toHaveProperty('food_treats'); expect(draft).toEqual(original);
 });

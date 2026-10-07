@@ -14,19 +14,18 @@ export class ApiService {
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
       if (transaction.record_type === 'income' || transaction.record_type === 'transfer') return transaction;
-      // Legacy pairs (Dining, Shopping, …) are remapped on the fly so the UI
-      // always shows the canonical taxonomy even before the DB migration runs.
-      // Stored categories — including an explicit 'Others / Miscellaneous' —
-      // are preserved; the classifier only fills genuinely missing ones.
-      const storedCategory = (transaction.category ?? '').trim();
-      const pair = storedCategory
+      // V4 never silently splits historical meals, entertainment or subscriptions.
+      // Manual, custom and intentionally blank evidence stays literal on every read.
+      const storedCategory = transaction.category;
+      const suppliedPair = transaction.category_source === 'manual' || storedCategory != null;
+      const pair = suppliedPair
         ? normalizeCategoryPair(storedCategory, transaction.subcategory, transaction.category_source)
         : categorizeMerchant(transaction.place || '');
 
       const normalized: Transaction = {
         ...transaction,
         category: pair.category,
-        subcategory: storedCategory && !transaction.subcategory?.trim() ? '' : pair.subcategory
+        subcategory: transaction.subcategory == null && Object.hasOwn(transaction, 'subcategory') ? transaction.subcategory : pair.subcategory
       };
 
       if (!normalized.statement_id || !normalized.statement_start || !normalized.statement_end) {

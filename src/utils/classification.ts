@@ -22,12 +22,21 @@ const RULES = [
   {"groupKey": "personal_purchases", "subcategoryKey": "clothing_footwear", "keywords": ["adidas", "puma", "nike", "tommy hilfiger", "hallensteins", "glassons", "tnf onehunga", "h&m", "bonds onehunga"]},
   {"groupKey": "personal_purchases", "subcategoryKey": "personal_care", "keywords": ["barber", "hairdresser", "hair salon", "nails", "lash co"]},
   {"groupKey": "personal_purchases", "subcategoryKey": "home_purchases", "keywords": ["briscoes"]},
-  {"groupKey": "work_learning", "subcategoryKey": "software_tools", "keywords": ["openai", "claude", "cursor", "cloudflare", "github copilot"]},
+  {"groupKey": "work_learning", "subcategoryKey": "software_tools", "keywords": ["one-off work tool", "one-time work software", "work software purchase", "lifetime software license", "perpetual software license", "openai api credits", "openai api top up", "cloudflare domain purchase"]},
   {"groupKey": "work_learning", "subcategoryKey": "equipment_training", "keywords": ["language lesson", "music lesson", "art class", "work equipment", "work laptop", "professional training"]},
-  {"groupKey": "personal_subscriptions", "subcategoryKey": "streaming_content", "keywords": ["netflix", "spotify", "disney plus", "apple music", "paramount", "hbo", "youtube premium", "twitch"]},
-  {"groupKey": "personal_subscriptions", "subcategoryKey": "memberships_services", "keywords": ["uber one membership", "uber one", "gym membership"]},
-  {"groupKey": "outings_entertainment", "subcategoryKey": "food_treats", "keywords": ["alfajores", "uber eats", "burgerfuel", "mc donalds", "mcdonald", "sals pizza", "coffee", "cafe", "restaurant", "kfc", "burger king", "pizza hut", "kura sushi", "gong cha"]},
-  {"groupKey": "outings_entertainment", "subcategoryKey": "activities_entertainment", "keywords": ["playstation", "steam", "nintendo", "xbox", "event cinema", "cinemas", "theatre", "museum"]},
+  {"groupKey": "subscriptions", "subcategoryKey": "subscription_work", "keywords": ["chatgpt plus", "chatgpt pro", "chatgpt subscription", "chatgpt subscr", "openai subscription", "claude pro", "claude max", "cursor pro", "github copilot", "cloudflare subscription"]},
+  {"groupKey": "subscriptions", "subcategoryKey": "subscription_other", "keywords": ["apple one"]},
+  {"groupKey": "subscriptions", "subcategoryKey": "subscription_entertainment", "keywords": ["netflix", "spotify", "disney plus", "apple music", "apple tv+", "appletv+", "apple tv plus", "apple arcade", "paramount", "hbo", "youtube premium", "twitch subscription", "playstation plus", "ps plus", "psplus", "psn plus", "xbox game pass", "game pass", "gamepass", "nintendo switch online", "steam subscription"]},
+  {"groupKey": "subscriptions", "subcategoryKey": "subscription_other", "keywords": ["icloud", "uber one membership", "uber one", "gym membership"]},
+  {"groupKey": "work_learning", "subcategoryKey": "software_tools", "keywords": ["openai", "claude", "cursor", "cloudflare"]},
+  {"groupKey": "meals_outings", "subcategoryKey": "delivery", "keywords": ["uber eats", "ubereats", "doordash", "door dash", "deliveroo", "menulog"]},
+  {"groupKey": "meals_outings", "subcategoryKey": "food_treats", "keywords": ["alfajores", "food treats"]},
+  {"groupKey": "meals_outings", "subcategoryKey": "cafes", "keywords": ["coffee", "cafe", "café", "gong cha"]},
+  {"groupKey": "meals_outings", "subcategoryKey": "restaurants", "keywords": ["burgerfuel", "mc donalds", "mcdonald", "sals pizza", "restaurant", "kfc", "burger king", "pizza hut", "kura sushi"]},
+  {"groupKey": "entertainment", "subcategoryKey": "video_games", "keywords": ["playstation", "steam", "nintendo", "xbox", "video game", "videogame"]},
+  {"groupKey": "entertainment", "subcategoryKey": "cinema", "keywords": ["event cinema", "cinema", "cinemas", "movie ticket"]},
+  {"groupKey": "entertainment", "subcategoryKey": "events", "keywords": ["concert", "theatre", "theater", "ticketmaster"]},
+  {"groupKey": "entertainment", "subcategoryKey": "activities", "keywords": ["museum", "bowling", "escape room"]},
   {"groupKey": "travel", "subcategoryKey": "tickets_transfers", "keywords": ["air new zealand", "jetstar", "qantas", "airline", "flight tickets", "airport shuttle"]},
   {"groupKey": "travel", "subcategoryKey": "accommodation", "keywords": ["hotel", "airbnb", "hilton", "marriott", "motel", "accommodation"]},
   {"groupKey": "travel", "subcategoryKey": "travel_food_activities", "keywords": ["travel meal", "meal during travel", "travel activity"]},
@@ -52,7 +61,7 @@ function matchesKeyword(value: string, keyword: string): boolean {
 
 const PROCESSED_RULES = RULES.map(rule => ({ ...rule,
   normalizedKeywords: rule.keywords.map(normalize),
-  collapsedKeywords: rule.keywords.map(normalize).filter(keyword => /[^a-z0-9]/.test(keyword) && collapse(keyword).length >= 6).map(collapse)
+  collapsedKeywords: rule.keywords.map(normalize).filter(keyword => /[^a-z0-9]/.test(keyword) && !keyword.includes('+') && collapse(keyword).length >= 6).map(collapse)
 }));
 export function suggestCategoryForMerchant(place = ''): ClassificationSuggestion | null {
   const normalizedPlace = normalize(place);
@@ -83,7 +92,7 @@ export function categorizeMerchant(): Classification {
 }
 export function resolveImportedClassification(category: unknown, subcategory: unknown, _place = '', categorySource?: string | null): Classification {
   void _place;
-  const cat = typeof category === 'string' ? category.trim() : '';
+  const cat = typeof category === 'string' ? category : undefined;
   const sub = typeof subcategory === 'string' ? subcategory : undefined;
   return normalizeCategoryPair(cat, sub, categorySource);
 }

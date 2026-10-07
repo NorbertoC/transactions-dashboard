@@ -4,16 +4,16 @@ import { ChevronDown } from 'lucide-react';
 import NumericInput from '@/components/NumericInput';
 import SelectControl from '@/components/SelectControl';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { getLocalizedCategoryName, getLocalizedSubcategoryName } from '@/constants/categories';
+import { getLocalizedCategoryName, getLocalizedSubcategoryName, PURPOSE_TAXONOMY_VERSION } from '@/constants/categories';
 import { formatCurrency, formatNumber, formatPercent } from '@/utils/format';
-import { calculate, defaults, SCENARIOS, validDraft, type BudgetRow, type Draft, type Kind, type Result, type Scenario } from './budget/model';
+import { calculate, defaults, preservePurposeV3Draft, SCENARIOS, validDraft, type BudgetRow, type Draft, type Kind, type Result, type Scenario } from './budget/model';
 import { budgetMessages } from './budget/messages';
 import { forecastMessages } from './forecast/messages';
 import './budget/budget.css';
 
 type Drafts = Record<Scenario, Draft>;
 const initialDrafts = (): Drafts => Object.fromEntries(SCENARIOS.map(id => [id, defaults(id)])) as Drafts;
-const storageKey = (account: string) => `gastos.family-budget.v1:${account}`;
+const storageKey = (account: string) => `gastos.family-budget.v2:${account}`;
 export default function FamilyBudget({ rows, known, accountScope, coverage }: { rows: BudgetRow[]; known: boolean; accountScope: string | null; coverage: ReactNode }) {
   const { locale } = useLocale(), m = budgetMessages[locale], savedMessages = forecastMessages[locale];
   const [scenario, setScenario] = useState<Scenario>('current'), [drafts, setDrafts] = useState(initialDrafts);
@@ -36,13 +36,14 @@ export default function FamilyBudget({ rows, known, accountScope, coverage }: { 
     if (!accountScope) return;
     try {
       if (load) {
-        const raw = localStorage.getItem(storageKey(accountScope));
+        const raw = localStorage.getItem(storageKey(accountScope)) ?? localStorage.getItem(`gastos.family-budget.v1:${accountScope}`);
         if (!raw) { setStatus(savedMessages.none); return; }
-        const saved = JSON.parse(raw) as { version?: number; drafts?: Drafts };
-        if (saved.version !== 1 || !saved.drafts || !SCENARIOS.every(id => validDraft(saved.drafts?.[id]))) throw new Error('Invalid draft');
-        setUndos({ ...drafts }); setDrafts(saved.drafts); setStatus(savedMessages.loaded);
+        const saved = JSON.parse(raw) as { version?: number; taxonomyVersion?: string; drafts?: Drafts };
+        if (![1, 2].includes(saved.version ?? 0) || saved.version === 2 && saved.taxonomyVersion !== PURPOSE_TAXONOMY_VERSION || !saved.drafts || !SCENARIOS.every(id => validDraft(saved.drafts?.[id]))) throw new Error('Invalid draft');
+        const loaded = saved.version === 1 ? Object.fromEntries(SCENARIOS.map(id => [id, preservePurposeV3Draft(saved.drafts![id])])) as Drafts : saved.drafts;
+        setUndos({ ...drafts }); setDrafts(loaded); setStatus(savedMessages.loaded);
       } else {
-        localStorage.setItem(storageKey(accountScope), JSON.stringify({ version: 1, drafts })); setStatus(m.saved);
+        localStorage.setItem(storageKey(accountScope), JSON.stringify({ version: 2, taxonomyVersion: PURPOSE_TAXONOMY_VERSION, drafts })); setStatus(m.saved);
       }
     } catch { setStatus(m.storageFailed); }
   }

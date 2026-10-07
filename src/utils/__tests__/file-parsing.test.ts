@@ -357,8 +357,8 @@ describe('Amex NZ CSV', () => {
 describe('mapBankCategoryToTaxonomy', () => {
   it('maps known Amex labels', () => {
     expect(mapBankCategoryToTaxonomy('Restaurant-Restaurant')).toEqual({
-      category: 'Outings & entertainment',
-      subcategory: 'Meals & treats'
+      category: 'Meals & outings',
+      subcategory: 'Restaurants'
     })
   })
 
@@ -378,9 +378,9 @@ describe('mapBankCategoryToTaxonomy', () => {
     ['Retail & Grocery-Online Purchases', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Department Stores', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Furnishing', 'Personal needs & purchases', 'Purchases for home'],
-    ['Entertainment-Restaurants', 'Outings & entertainment', 'Meals & treats'],
-    ['Entertainment-Bars & Cafés', 'Outings & entertainment', 'Meals & treats'],
-    ['Entertainment-Other Entertainment', 'Outings & entertainment', 'Activities & entertainment'],
+    ['Entertainment-Restaurants', 'Meals & outings', 'Restaurants'],
+    ['Entertainment-Bars & Cafés', 'Others', 'Miscellaneous'],
+    ['Entertainment-Other Entertainment', 'Others', 'Miscellaneous'],
     ['Travel & Transport-Fuel', 'Basic living', 'Transport'],
     ['Travel & Transport-Taxis & Coach', 'Others', 'Miscellaneous'],
     ['Travel & Transport-Parking Charges', 'Basic living', 'Transport'],

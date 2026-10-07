@@ -383,7 +383,10 @@ export function mapBankCategoryToTaxonomy(bankCategory: string): { category: str
   if (/software/.test(label)) return { category: 'Work & learning', subcategory: 'Software & tools' };
   if (/telephone|mobile phone/.test(label)) return { category: 'Basic living', subcategory: 'Phone' };
   if (/internet communication|internet services|electricity/.test(label)) return { category: 'Basic living', subcategory: 'Power & internet' };
-  if (/other entertainment|theatrical events|general entertainment/.test(label)) return { category: 'Outings & entertainment', subcategory: 'Activities & entertainment' };
+  if (/restaurants?|restaurant-restaurant/.test(label)) return { category: 'Meals & outings', subcategory: 'Restaurants' };
+  // A bank's combined bars/cafés label does not prove which subcategory applies.
+  if (/bars? & caf[eé]s?|bar & cafe|other entertainment|general entertainment/.test(label)) return { category: DEFAULT_CATEGORY, subcategory: DEFAULT_SUBCATEGORY };
+  if (/theatrical events/.test(label)) return { category: 'Entertainment', subcategory: 'Events' };
   const pair = mapLegacyBankCategory(bankCategory);
   return pair ? normalizeCategoryPair(pair.category, pair.subcategory) : null;
 }

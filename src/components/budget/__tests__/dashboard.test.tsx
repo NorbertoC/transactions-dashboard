@@ -5,7 +5,7 @@ import FamilyBudget from '@/components/FamilyBudget';
 import { LocaleProvider } from '@/i18n/LocaleProvider';
 import { budgetMessages } from '../messages';
 import { forecastMessages } from '../../forecast/messages';
-import type { BudgetRow } from '../model';
+import { defaults, SCENARIOS, type BudgetRow } from '../model';
 vi.mock('../budget.css', () => ({}));
 let root: Root, container: HTMLDivElement;
 const stored = new Map<string, string>();
@@ -28,9 +28,21 @@ it('preserves income, chosen savings and category drafts across late evidence, s
 });
 it('saves new drafts by account and keeps legacy drafts untouched', () => {
   stored.set('gastos.forecast.selected11.v1', 'legacy raw draft'); render(); change(budgetMessages.en.income, '9999.123456'); click(forecastMessages.en.save);
-  const saved = JSON.parse(stored.get('gastos.family-budget.v1:synthetic-A')!); expect(saved.drafts.current.income).toBe(9999.123456);
+  const saved = JSON.parse(stored.get('gastos.family-budget.v2:synthetic-A')!); expect(saved.drafts.current.income).toBe(9999.123456);
   render(rows, true, 'synthetic-B'); click(forecastMessages.en.load); expect(input(budgetMessages.en.income).value).toBe('13525.9');
   render(rows, true, 'synthetic-A'); click(forecastMessages.en.load); expect(input(budgetMessages.en.income).value).toBe('9999.12'); expect(stored.get('gastos.forecast.selected11.v1')).toBe('legacy raw draft');
+});
+it('loads an old taxonomy draft against its original mixed bucket and preserves the raw save', () => {
+  const drafts = Object.fromEntries(SCENARIOS.map(id => [id, { ...defaults(id), income: 9000, amounts: { food_treats: 123.45 } }]));
+  const raw = JSON.stringify({ version: 1, drafts }), key = 'gastos.family-budget.v1:synthetic-A';
+  stored.set(key, raw);
+  render([{ ...rows[0], id: JSON.stringify(['Outings & entertainment', 'Meals & treats']), category: 'Outings & entertainment', name: 'Meals & treats', amount: 50, kind: 'unknown', protected: true }]);
+  click(forecastMessages.en.load); expect(input(budgetMessages.en.income).value).toBe('9000');
+  click(forecastMessages.en.save);
+  const saved = JSON.parse(stored.get('gastos.family-budget.v2:synthetic-A')!);
+  expect(saved).toMatchObject({ version: 2, taxonomyVersion: 'purpose-v4' });
+  expect(saved.drafts.current.amounts).toEqual({ [JSON.stringify(['Outings & entertainment', 'Meals & treats'])]: 123.45 });
+  expect(stored.get(key)).toBe(raw);
 });
 it.each(['en', 'es', 'ja'] as const)('renders family scenarios and unknown totals with accessible controls in %s', locale => {
   stored.set('gastos.locale', locale); render([], false); const m = budgetMessages[locale];

@@ -1,8 +1,8 @@
-import { CATEGORIES } from '@/constants/categories';
+import { CATEGORIES, PURPOSE_TAXONOMY_VERSION } from '@/constants/categories';
 import type { Transaction } from '@/types/transaction';
 import { checkSessionResponse, getClientSessionGeneration } from '@/utils/client-session';
 
-export const TAXONOMY_VERSION = 'purpose-v3';
+export const TAXONOMY_VERSION = PURPOSE_TAXONOMY_VERSION;
 export type CategoryReviewFailure = 'unavailable' | 'saveFailed' | 'unconfirmed';
 export class CategoryReviewError extends Error {
   constructor(readonly reason: CategoryReviewFailure) { super(reason); }
@@ -28,9 +28,7 @@ export function supportsCategoryReview(value: unknown): boolean {
       pairs.add(`${group.name}|${sub.name}`);
     }
   }
-  const supported = CATEGORIES.filter(group => !['Others', 'Savings'].includes(group.name));
-  return supported.length === 6 && supported.flatMap(group => group.subcategories).length === 18 &&
-    groups.length === CATEGORIES.length && pairs.size === 19 &&
+  return groups.length === CATEGORIES.length && pairs.size === CATEGORIES.flatMap(group => group.subcategories).length &&
     CATEGORIES.every(group => {
       const remote = groups.find(item => item.key === group.key && item.name === group.name);
       return remote && remote.subcategories.length === group.subcategories.length && group.subcategories.every(sub =>
@@ -39,7 +37,9 @@ export function supportsCategoryReview(value: unknown): boolean {
 }
 
 export function isReviewExpense(row: Transaction): boolean {
-  return (!row.record_type || row.record_type === 'expense') && row.category === 'Others';
+  if (row.record_type && row.record_type !== 'expense' || ['income', 'transfer', 'savings'].includes(row.category.toLowerCase())) return false;
+  if (row.category === 'Others') return true;
+  return row.category_source !== 'manual' && !CATEGORIES.some(group => group.name === row.category && group.subcategories.some(sub => sub.name === row.subcategory));
 }
 
 export async function categoryReviewAvailable(signal?: AbortSignal): Promise<boolean> {
@@ -79,7 +79,7 @@ export async function saveVerifiedCategory(row: Transaction, category: string, s
     const rows: unknown = await reload.json();
     const matches = Array.isArray(rows) ? rows.filter(item => item?.id === row.id) : [];
     const stored = matches.length === 1 ? matches[0] as Transaction : undefined;
-    if (!stored || stored.category !== category || (stored.subcategory ?? '') !== subcategory || stored.category_source !== 'manual') throw new CategoryReviewError('unconfirmed');
+    if (!stored || stored.category !== category || stored.subcategory !== subcategory || stored.category_source !== 'manual') throw new CategoryReviewError('unconfirmed');
     const fields = ['value', 'amount', 'currency', 'date', 'date_iso', 'place', 'record_type', 'direction', 'statement_id', 'statement_start', 'statement_end', 'owner', 'income_source'] as const;
     if (fields.some(field => (stored[field] ?? null) !== (row[field] ?? null))) throw new CategoryReviewError('unconfirmed');
     if (signal?.aborted || generation !== getClientSessionGeneration()) throw new CategoryReviewError('unconfirmed');

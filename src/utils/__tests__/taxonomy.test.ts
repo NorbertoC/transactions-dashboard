@@ -8,11 +8,11 @@ import type { Transaction } from '@/types/transaction';
 const row = (id: number, category: string, subcategory: string, extra: Partial<Transaction> = {}): Transaction => ({ id, category, subcategory, place: 'Synthetic fixture', value: 10, amount: '10', date: '', date_iso: '2026-01-10', currency: 'NZ$', ...extra });
 afterEach(() => vi.unstubAllGlobals());
 
-describe('six purpose groups and preserved evidence', () => {
-  it('offers exactly six purpose groups plus review and separate savings', () => {
-    expect(CATEGORIES.filter(cat => !['Others', 'Savings'].includes(cat.name)).map(cat => cat.name)).toEqual(['Basic living', 'Personal needs & purchases', 'Work & learning', 'Personal subscriptions', 'Outings & entertainment', 'Travel']);
-    expect(CATEGORIES.slice(0, 6).flatMap(group => group.subcategories)).toHaveLength(18);
-    expect(new Set(CATEGORIES.map(group => group.key)).size).toBe(7);
+describe('seven purpose groups and preserved evidence', () => {
+  it('offers exactly seven purpose groups plus review and separate savings', () => {
+    expect(CATEGORIES.filter(cat => !['Others', 'Savings'].includes(cat.name)).map(cat => cat.name)).toEqual(['Basic living', 'Personal needs & purchases', 'Work & learning', 'Subscriptions', 'Meals & outings', 'Entertainment', 'Travel']);
+    expect(CATEGORIES.slice(0, 7).flatMap(group => group.subcategories)).toHaveLength(25);
+    expect(new Set(CATEGORIES.map(group => group.key)).size).toBe(8);
     expect(CATEGORIES.some(cat => cat.subcategories.some(sub => sub.name === 'Subscriptions' || sub.name === 'Personal Allowance'))).toBe(false);
     for (const cat of CATEGORIES) {
       expect(cat.nameJa).toBeTruthy(); expect(cat.nameEs).toBeTruthy();
@@ -62,8 +62,8 @@ describe('six purpose groups and preserved evidence', () => {
 });
 
 it('retains all manual purpose subcategories on repeated client reloads without merchant fallback', async () => {
-  const pairs = CATEGORIES.slice(0, 6).flatMap(group => group.subcategories.map(sub => [group.name, sub.name]));
-  expect(pairs).toHaveLength(18);
+  const pairs = CATEGORIES.slice(0, 7).flatMap(group => group.subcategories.map(sub => [group.name, sub.name]));
+  expect(pairs).toHaveLength(25);
   pairs.push(['Dining', 'Restaurants'], ['Shopping', 'Clothing'], ['Fun & Social', 'Subscriptions'], ['Custom bucket', 'Custom purpose']);
   const rows = pairs.map(([category, subcategory], index) => row(index + 1, category, subcategory, {
     category_source: 'manual', record_type: 'expense', direction: 'outflow', place: 'NETFLIX CHEMIST WAREHOUSE',
@@ -92,8 +92,8 @@ it('keeps the dry run read-only, manual-safe and separated from actual financial
   const records = [row(1, 'Others', 'Miscellaneous', { place: 'ALFAJORES ONLINE' }), row(2, 'Others', '', { place: 'PAYPAL *ALFAJORES' }), row(3, 'Housing', 'Rent', { category_source: 'manual', place: 'OPENAI' }), row(4, 'Income', '', { place: 'NETFLIX' })];
   const snapshot = structuredClone(records);
   const preview = previewCategoryChanges(records);
-  expect(preview[0]).toMatchObject({ taxonomyVersion: 'purpose-v3', needsReview: true, requiresConfirmation: true, suggestion: { category: 'Outings & entertainment', subcategory: 'Meals & treats', requiresConfirmation: true } });
-  expect(preview[1].suggestion).toMatchObject({ confidence: 'unknown', category: 'Others' });
+  expect(preview[0]).toMatchObject({ taxonomyVersion: 'purpose-v4', needsReview: true, requiresConfirmation: true, suggestion: { category: 'Meals & outings', subcategory: 'Treats & alfajores', requiresConfirmation: true } });
+  expect(preview[1]).toMatchObject({ protectedRecord: true, changed: false, requiresConfirmation: false, suggestion: null });
   for (const protectedRow of preview.slice(2)) {
     expect(protectedRow).toMatchObject({ protectedRecord: true, changed: false, requiresConfirmation: false, suggestion: null });
   }
@@ -106,4 +106,29 @@ it('resolves stable keys to exact canonical pairs and rejects cross-group subkey
   for (const group of CATEGORIES) for (const sub of group.subcategories) expect(getTaxonomyPair(group.key, sub.key)).toEqual({ category: group.name, subcategory: sub.name });
   expect(getTaxonomyPair('basic_living', 'software_tools')).toBeNull();
   expect(getTaxonomyPair('unknown', 'rent')).toBeNull();
+});
+
+it('keeps mixed v3 and older affected pairs literal through repeated reads without guessing a split', async () => {
+  const pairs = [
+    ['Outings & entertainment', 'Meals & treats'], ['Outings & entertainment', 'Activities & entertainment'],
+    ['Personal subscriptions', 'Streaming & content'], ['Personal subscriptions', 'Memberships & other services'],
+    ['Work & learning', 'Software & tools'], ['Entertainment', 'Gaming'], ['Entertainment', 'Streaming'], ['Fun & Social', 'Eating out'],
+  ];
+  const records = pairs.map(([category, subcategory], id) => row(id + 1, category, subcategory, { place: 'OPENAI NETFLIX RESTAURANT PLAYSTATION', category_source: 'imported', statement_id: '2026-01-26', statement_start: '2025-12-27', statement_end: '2026-01-26' }));
+  const original = structuredClone(records);
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(records))));
+  for (let attempt = 0; attempt < 3; attempt++) expect(await ApiService.fetchTransactionsClient()).toEqual(original);
+  const preview = previewCategoryChanges(records);
+  expect(preview.every(item => !item.changed)).toBe(true);
+  expect(preview[0]).toMatchObject({ needsReview: true, proposed: { category: 'Outings & entertainment', subcategory: 'Meals & treats' } });
+  expect(preview[5].needsReview).toBe(true);
+  expect(records).toEqual(original);
+});
+
+it('preserves intentional blanks, null subcategories and literal whitespace in custom/manual evidence', async () => {
+  const records = [row(1, '', ''), row(2, '  My custom group  ', '  Exact purpose  '), row(3, ' Housing ', ' Rent ', { category_source: 'manual' }),
+    { ...row(4, 'Personal subscriptions', ''), subcategory: null }].map(item => ({ ...item, statement_id: '2026-01-26', statement_start: '2025-12-27', statement_end: '2026-01-26' })) as unknown as Transaction[];
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(records))));
+  expect(await ApiService.fetchTransactionsClient()).toEqual(records);
+  expect(previewCategoryChanges(records.slice(0, 1))).toMatchObject([{ protectedRecord: true, changed: false, suggestion: null }]);
 });

@@ -11,7 +11,7 @@ import { GET as transactions } from '@/app/api/transactions/route';
 import { POST as upload } from '@/app/api/upload-json/route';
 import { NextRequest } from 'next/server';
 import { CATEGORIES } from '@/constants/categories';
-const taxonomy = () => ({ version: 'purpose-v3', manual_category_persistence: true, categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name, subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
+const taxonomy = () => ({ version: 'purpose-v4', manual_category_persistence: true, categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name, subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
 
 beforeEach(() => {
   vi.stubEnv('ALLOWED_EMAIL_1', 'synthetic-a@example.test');

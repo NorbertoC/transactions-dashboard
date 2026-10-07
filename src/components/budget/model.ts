@@ -8,13 +8,24 @@ export type Scenario = typeof SCENARIOS[number];
 export type Kind = 'need' | 'want' | 'unknown';
 export interface BudgetRow { id: string; category: string; name: string; amount: number; kind: Kind; protected: boolean; travel: boolean; observed: boolean; count: number; }
 export interface Draft { income: number | null; savings: number | null; baby: number | null; auto: boolean; amounts: Record<string, number | null>; kinds: Record<string, Kind>; lastEdited: string | null; }
+/** Re-key a device draft in memory; preserve old mixed buckets instead of splitting amounts. */
+export function preservePurposeV3Draft(draft: Draft): Draft {
+  const legacyIds: Record<string, string> = {
+    food_treats: JSON.stringify(['Outings & entertainment', 'Meals & treats']),
+    activities_entertainment: JSON.stringify(['Outings & entertainment', 'Activities & entertainment']),
+    streaming_content: JSON.stringify(['Personal subscriptions', 'Streaming & content']),
+    memberships_services: JSON.stringify(['Personal subscriptions', 'Memberships & other services']),
+  };
+  const rekey = <T,>(items: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(items).map(([key, value]) => [legacyIds[key] ?? key, value]));
+  return { ...draft, amounts: rekey(draft.amounts), kinds: rekey(draft.kinds), lastEdited: draft.lastEdited === null ? null : legacyIds[draft.lastEdited] ?? draft.lastEdited };
+}
 export function defaults(scenario: Scenario): Draft {
   return { income: scenario === 'current' ? 13525.90 : 9924, savings: scenario === 'current' ? 2705.18 : 1984.80,
     baby: scenario === 'baby1' ? 800 : scenario === 'baby2' ? 1400 : 0, auto: false, amounts: {}, kinds: {}, lastEdited: null };
 }
-const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'software_tools', 'equipment_training']);
-const PROTECTED = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'home_purchases', 'software_tools', 'equipment_training']);
-const CUT_ORDER = ['tickets_transfers', 'accommodation', 'travel_food_activities', 'food_treats', 'activities_entertainment', 'streaming_content', 'memberships_services', 'clothing_footwear', 'personal_care'];
+const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'software_tools', 'equipment_training', 'subscription_work']);
+const PROTECTED = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'home_purchases', 'software_tools', 'equipment_training', 'subscription_work']);
+const CUT_ORDER = ['tickets_transfers', 'accommodation', 'travel_food_activities', 'restaurants', 'cafes', 'delivery', 'food_treats', 'video_games', 'cinema', 'events', 'activities', 'subscription_entertainment', 'subscription_other', 'clothing_footwear', 'personal_care'];
 export function budgetEvidence(transactions: Transaction[], today: string) {
   const eligible = transactions.filter(row => ['NZD', 'NZ$'].includes(row.currency) && isIsoDate(row.date_iso) && Number.isFinite(row.value) && row.value >= 0 && (!row.record_type || row.record_type === 'expense') && (!row.direction || row.direction === 'outflow') && row.category !== 'Savings');
   const period = forecastEvidence(eligible, today);

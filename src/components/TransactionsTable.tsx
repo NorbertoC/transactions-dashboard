@@ -283,9 +283,9 @@ export default function TransactionsTable({
   };
 
   const handleSave = async (transaction: Transaction) => {
-    const category = categoryInput.trim();
-    const subcategory = subcategoryInput.trim();
-    if (!category) {
+    const category = categoryInput;
+    const subcategory = subcategoryInput;
+    if (!category.trim()) {
       setActionError({ id: transaction.id, message: t('table.setCategoryError') });
       return;
     }

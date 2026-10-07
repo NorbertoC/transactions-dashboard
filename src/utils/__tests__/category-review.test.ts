@@ -4,11 +4,11 @@ import { categoryReviewAvailable, isReviewExpense, saveVerifiedCategory, support
 import type { Transaction } from '@/types/transaction';
 import { getClientSessionGeneration, setClientSessionScope } from '@/utils/client-session';
 
-export const capability = () => ({ version: 'purpose-v3', manual_category_persistence: true,
+export const capability = () => ({ version: 'purpose-v4', manual_category_persistence: true,
   categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name,
     subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
 const fixture: Transaction = { id: 42, place: 'Synthetic Netflix', amount: '12.00', value: 12, date: '2026-01-10', date_iso: '2026-01-10', currency: 'NZD', category: 'Others', subcategory: '', record_type: 'expense', direction: 'outflow' };
-const category = 'Personal subscriptions', subcategory = 'Streaming & content';
+const category = 'Subscriptions', subcategory = 'Entertainment';
 const stored = () => ({ ...fixture, category, subcategory, category_source: 'manual' as const });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 afterEach(() => vi.unstubAllGlobals());
@@ -19,9 +19,12 @@ describe('review queue and capability', () => {
     expect(isReviewExpense({ ...fixture, category_source: 'manual' })).toBe(true);
     expect(isReviewExpense({ ...fixture, record_type: 'income' })).toBe(false);
     expect(isReviewExpense({ ...fixture, record_type: 'transfer' })).toBe(false);
-    expect(isReviewExpense({ ...fixture, category })).toBe(false);
+    expect(isReviewExpense({ ...fixture, category })).toBe(true);
+    expect(isReviewExpense({ ...fixture, category, subcategory })).toBe(false);
+    expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats' })).toBe(true);
+    expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats', category_source: 'manual' })).toBe(false);
   });
-  it('requires the final six groups/eighteen pairs and exact persistence capability', () => {
+  it('requires the seven purpose groups/twenty-five pairs and exact persistence capability', () => {
     expect(supportsCategoryReview(capability())).toBe(true);
     for (const bad of [null, {}, { ...capability(), version: 'legacy' }, { ...capability(), manual_category_persistence: false }, { ...capability(), categories: [] }]) expect(supportsCategoryReview(bad)).toBe(false);
     const partial = capability(); partial.categories[0].subcategories.pop();
@@ -30,6 +33,13 @@ describe('review queue and capability', () => {
   it('treats old API404 as unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({}, 404)));
     expect(await categoryReviewAvailable()).toBe(false);
+  });
+  it('rejects v3 metadata, duplicated keys and cross-group subcategory pairs', () => {
+    expect(supportsCategoryReview({ ...capability(), version: 'purpose-v3' })).toBe(false);
+    const duplicate = capability(); duplicate.categories[1].key = duplicate.categories[0].key;
+    expect(supportsCategoryReview(duplicate)).toBe(false);
+    const crossed = capability(); [crossed.categories[3].subcategories[0], crossed.categories[4].subcategories[0]] = [crossed.categories[4].subcategories[0], crossed.categories[3].subcategories[0]];
+    expect(supportsCategoryReview(crossed)).toBe(false);
   });
 });
 describe('actual stored category confirmation', () => {
@@ -49,7 +59,7 @@ describe('actual stored category confirmation', () => {
     await expect(saveVerifiedCategory({ ...fixture, record_type }, category, subcategory)).rejects.toMatchObject({ reason: 'saveFailed' }); expect(fetch).not.toHaveBeenCalled();
   });
   it.each([
-    { category: 'Legacy category' }, { subcategory: 'Legacy subcategory' }, { category_source: 'merchant' }, { value: 999 }, { currency: 'JPY' }, { date_iso: '2026-01-11' }, { record_type: 'transfer' },
+    { category: 'Legacy category' }, { subcategory: 'Legacy subcategory' }, { subcategory: null }, { category_source: 'merchant' }, { value: 999 }, { currency: 'JPY' }, { date_iso: '2026-01-11' }, { record_type: 'transfer' },
   ])('rejects misleading200 when persisted fields changed: %j', async difference => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(capability())).mockResolvedValueOnce(json({})).mockResolvedValueOnce(json([{ ...stored(), ...difference }])));
     await expect(saveVerifiedCategory(fixture, category, subcategory)).rejects.toMatchObject({ reason: 'unconfirmed' });
