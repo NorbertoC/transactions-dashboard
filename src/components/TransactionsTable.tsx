@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
 import { transactionLabel } from '@/utils/transaction-label';
-import { formatDateFull, formatDateShort } from '@/utils/format';
+import { formatCurrency, formatDateFull, formatDateShort } from '@/utils/format';
 import { generateColorVariants } from '@/utils/color';
 import {
   CATEGORIES,
@@ -62,7 +62,7 @@ export default function TransactionsTable({
   const [localSearch, setLocalSearch] = useState('');
   const searchQuery = controlledSearch ?? localSearch;
   const [queryDraft, setQueryDraft] = useState<string | null>(null);
-  const money = (value: number) => /^[A-Z]{3}$/.test(currency) ? new Intl.NumberFormat(locale === 'en' ? 'en-NZ' : locale === 'ja' ? 'ja-JP' : 'es', { style: 'currency', currency }).format(value) : `${currency} ${value.toLocaleString()}`;
+  const money = (value: number) => formatCurrency(value, locale, currency);
   const [reviewSuggestionsOnly, setReviewSuggestionsOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingId, setEditingId] = useState<number | null>(null);

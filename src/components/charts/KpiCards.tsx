@@ -89,7 +89,7 @@ export default function KpiCards({
   periodLabel
 }: KpiCardsProps) {
   const { t, locale } = useLocale();
-  const change = formatPercentChange(totalAmount, previousTotal);
+  const change = formatPercentChange(totalAmount, previousTotal, locale);
   const { icon: changeIcon, className: changeClassName } = changeAppearance(change);
 
   return (

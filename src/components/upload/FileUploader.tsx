@@ -98,7 +98,7 @@ function columnLabel(rows: string[][], col: number): string {
 }
 
 export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const inputId = useId();
   const [tab, setTab] = useState<'file' | 'json'>('file');
 
@@ -503,10 +503,10 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                       aria-label={`Include ${row.place}`}
                       className="h-5 w-5 shrink-0 rounded accent-primary"
                     />
-                    <span className="text-sm text-muted md:hidden">{formatDateShort(row.dateIso)}</span>
+                    <span className="text-sm text-muted md:hidden">{formatDateShort(row.dateIso, locale)}</span>
                   </label>
                   <span className="hidden text-sm text-muted tabular-nums md:block">
-                    {formatDateShort(row.dateIso)}
+                    {formatDateShort(row.dateIso, locale)}
                   </span>
                   <span className="hidden truncate text-sm font-medium text-foreground md:block" title={row.place}>
                     {row.place}
@@ -516,7 +516,7 @@ export default function FileUploader({ onUploadComplete }: FileUploaderProps) {
                       row.isCredit ? 'text-muted' : 'text-foreground'
                     }`}
                   >
-                    {formatCurrency(row.value)}
+                    {formatCurrency(row.value, locale)}
                     {row.isCredit && (
                       <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
                         Credit

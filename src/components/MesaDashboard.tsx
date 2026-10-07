@@ -14,6 +14,7 @@ import type { Transaction } from '@/types/transaction';
 import type { MessageKey } from '@/i18n/messages';
 import { useIncomeSummary } from '@/hooks/useIncomeSummary';
 import { combineIncomeSummaries } from '@/utils/income';
+import { formatCurrency } from '@/utils/format';
 
 const MODULES = ['reading', 'distribution', 'index', 'evidence'] as const;
 type Module = typeof MODULES[number];
@@ -97,10 +98,7 @@ export default function MesaDashboard({ transactions, loading = false, unavailab
   const reading = detail ? categoryReading(detail.records, data.monthly) : null;
   const detailRows = (detail?.records ?? data.records).filter(row => ledgerType === 'all' || (row.record_type ?? 'expense') === ledgerType);
   const detailMonthly = data.monthly.map((row, i) => ({ ...row, total: detail?.monthly[i] ?? row.total }));
-  const money = (value: number) => {
-    if (/^[A-Z]{3}$/.test(currency)) return new Intl.NumberFormat(LOCALE_TAGS[locale], { style: 'currency', currency, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
-    return `${currency} ${new Intl.NumberFormat(LOCALE_TAGS[locale], { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
-  };
+  const money = (value: number) => formatCurrency(value, locale, currency);
   const monthLabel = (key: string, short = false) => new Intl.DateTimeFormat(LOCALE_TAGS[locale], { month: short ? 'short' : 'long', year: short ? start.slice(0, 4) !== end.slice(0, 4) ? '2-digit' : undefined : 'numeric', timeZone: 'UTC' }).format(new Date(`${key}-01T00:00:00Z`));
   const dateLabel = (date: string) => new Intl.DateTimeFormat(LOCALE_TAGS[locale], { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
   const categoryLabel = activeCategory ? getLocalizedCategoryName(activeCategory, locale) : t('mesa.allExpenses');

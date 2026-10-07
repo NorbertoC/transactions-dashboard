@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALE_TAGS } from '@/i18n/types';
 import { SectionSkeleton } from '@/components/LoadingState';
+import NumericInput from '@/components/NumericInput';
+import { formatCurrency, formatPercent } from '@/utils/format';
 import { calculatePlan, planDefaults, type PlanPath, type PlanState } from './plan/model';
 import type { PlanExpenseEvidence } from './plan/evidence';
 import { planMessages } from './plan/messages';
@@ -19,7 +21,7 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
     if (!expenseEdited.current) setState(previous => ({ ...previous, expense: average }));
   }, [average]);
   const c = calculatePlan(state);
-  const money = (value: number | null) => value !== null && Number.isFinite(value) ? new Intl.NumberFormat(LOCALE_TAGS[locale], { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(value) : '—';
+  const money = (value: number | null) => value === null ? '—' : formatCurrency(value, locale);
   const annual = (value: number | null) => money(value === null ? null : value * 12);
   const duration = (months: number | null) => {
     if (months === 0) return m.today;
@@ -35,10 +37,9 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
   const field = (key: Exclude<keyof PlanState, 'mode'>, label: string, options: { text?: boolean; inline?: boolean; prefix?: string; suffix?: string; disabled?: boolean } = {}) => (
     <label className={`field ${options.inline ? 'inline-field' : ''}`} key={key}>
       <span>{label}</span><span className="input-shell">{options.prefix && <i>{options.prefix}</i>}
-        <input data-field={key} aria-label={label} type={options.text ? 'text' : 'number'} value={state[key] ?? ''}
+        {options.text ? <input data-field={key} aria-label={label} type="text" value={state[key] ?? ''} maxLength={45} onChange={event => setField(key, event.target.value)} /> : <NumericInput data-field={key} aria-label={label} value={state[key] as number | null}
           min={key === 'rate' ? -99.99 : 0} max={key === 'tax' ? 100 : key === 'rate' ? 1000 : undefined}
-          step={key === 'rate' || key === 'tax' ? 0.1 : 1} maxLength={options.text ? 45 : undefined}
-          disabled={options.disabled} onChange={event => setField(key, event.target.value)} />
+          step="0.01" disabled={options.disabled} onValueChange={value => setField(key, value === null ? '' : String(value))} />}
         {options.suffix && <i>{options.suffix}</i>}
       </span>
     </label>
@@ -55,7 +56,7 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
       <div className="route-detail">
         <div><span>{m.initialCapital}</span><b>{money(state.savings)}</b></div>
         <div><span>{mixed ? m.toInvest : m.toCash}</span><b>{money(state.invest)}</b></div>
-        <div><span>{m.annualReturn}</span><b>{mixed ? state.rate === null ? '—' : `${new Intl.NumberFormat(LOCALE_TAGS[locale]).format(state.rate)}%` : '0%'}</b></div>
+        <div><span>{m.annualReturn}</span><b>{mixed ? state.rate === null ? '—' : formatPercent(state.rate / 100, locale) : formatPercent(0, locale)}</b></div>
       </div>
       <p className="result-foot">{mixed ? m.mixedFoot : m.cashFoot}{path.ending && <span className="ending-balance">{m.ending}: {money(mixed ? path.ending.investment : path.ending.cash)}</span>}</p>
     </article>;

@@ -30,6 +30,7 @@ import type {
   RecurringRuleInput
 } from '@/types/recurring';
 import { formatCurrency } from '@/utils/format';
+import NumericInput from '@/components/NumericInput';
 
 const EMPTY_FORM: RecurringRuleInput = {
   kind: 'expense',
@@ -436,14 +437,13 @@ function RecurringView() {
                 </label>
                 <label className="flex flex-col gap-2 text-sm">
                   <span>{t('recurring.amount')}</span>
-                  <input
+                  <NumericInput
                     required
-                    type="number"
                     min="0.01"
                     step="0.01"
                     value={form.amount}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, amount: Number(e.target.value) }))
+                    onValueChange={(value) =>
+                      setForm((f) => ({ ...f, amount: value ?? 0 }))
                     }
                     className="min-h-11 w-full rounded-xl border border-border-subtle bg-background px-3"
                   />

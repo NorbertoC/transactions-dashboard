@@ -19,9 +19,9 @@ it('keeps all assumptions editable while only expense evidence loads; finishes b
   render(null, false); expect(container.querySelector('[aria-busy=true]')).toBeNull(); expect(container.textContent).toContain(planMessages.en.unavailable);
 });
 it('late evidence fills only untouched expenses and preserves focus and manual edits', () => {
-  render(null); change('expense', '3200'); input('expense').focus(); render(4000); expect(input('expense').value).toBe('3200'); expect(document.activeElement).toBe(input('expense'));
+  render(null); change('expense', '3200'); act(() => input('expense').focus()); render(4000); expect(input('expense').value).toBe('3200'); expect(document.activeElement).toBe(input('expense'));
   const button = [...container.querySelectorAll('button')].find(el => el.textContent?.startsWith(planMessages.en.apply))!;
-  act(() => button.click()); expect(input('expense').value).toBe('4000'); render(4100); expect(input('expense').value).toBe('4100');
+  act(() => { input('expense').blur(); button.click(); }); expect(input('expense').value).toBe('4000'); render(4100); expect(input('expense').value).toBe('4100');
 });
 it('clears assumptions across account changes without persisting financial inputs', () => {
   render(4000); change('savings', '12345'); render(null, false, 'account-B'); expect(input('savings').value).toBe('0'); expect(input('expense').value).toBe(''); expect([...stored.keys()].some(key => key.includes('plan'))).toBe(false);

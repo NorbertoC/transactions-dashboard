@@ -22,7 +22,7 @@ import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALE_TAGS, type Locale } from '@/i18n/types';
 import { Transaction } from '@/types/transaction';
 import { generateColorVariants } from '@/utils/color';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, formatCompactCurrency } from '@/utils/format';
 
 interface MonthlyTrendChartProps {
   transactions: Transaction[];
@@ -63,15 +63,6 @@ function periodMonthLabel(statementEnd: string | null, key: string, locale: Loca
     return key;
   }
   return date.toLocaleDateString(LOCALE_TAGS[locale], { month: 'short', timeZone: 'UTC' });
-}
-
-function formatCompactCurrency(value: number, locale: Locale): string {
-  return new Intl.NumberFormat(LOCALE_TAGS[locale], {
-    style: 'currency',
-    currency: 'NZD',
-    notation: 'compact',
-    maximumFractionDigits: 1
-  }).format(value);
 }
 
 interface TrendTooltipProps {

@@ -8,7 +8,6 @@ import {
   ChevronDown,
   LayoutDashboard,
   LogOut,
-  Repeat2,
   TrendingUp,
   Upload
 } from 'lucide-react';
@@ -27,8 +26,7 @@ const NAV = [
   { href: '/', key: 'nav.overview' as const, icon: LayoutDashboard },
   { href: '/month', key: 'nav.month' as const, icon: CalendarDays },
   { href: '/forecast', key: 'nav.forecast' as const, icon: TrendingUp },
-  { href: '/plan', key: 'nav.plan' as const, icon: Goal },
-  { href: '/recurring', key: 'nav.recurring' as const, icon: Repeat2 }
+  { href: '/plan', key: 'nav.plan' as const, icon: Goal }
 ];
 
 export default function Header({ onUploadClick }: HeaderProps) {

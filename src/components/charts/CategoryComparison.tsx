@@ -18,13 +18,13 @@ import {
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALE_TAGS, type Locale } from '@/i18n/types';
 import type { Transaction } from '@/types/transaction';
+import { formatCurrency as sharedCurrency, formatCurrencyWhole, formatCompactCurrency } from '@/utils/format';
 import {
   buildCategoryComparison,
   type CategoryComparisonPeriod
 } from '@/utils/category-comparison';
 function formatCurrency(value: number, locale: Locale, currency: string, whole = false): string {
-  if (!/^[A-Z]{3}$/.test(currency)) return `${currency} ${value.toLocaleString(LOCALE_TAGS[locale])}`;
-  return new Intl.NumberFormat(LOCALE_TAGS[locale], { style: 'currency', currency, maximumFractionDigits: whole ? 0 : 2 }).format(value);
+  return whole ? formatCurrencyWhole(value, locale, currency) : sharedCurrency(value, locale, currency);
 }
 
 interface CategoryComparisonProps {
@@ -66,16 +66,6 @@ function formatPeriodLabel(dateIso: string, locale: Locale, long: boolean): stri
     year: long ? 'numeric' : '2-digit',
     timeZone: 'UTC'
   }).format(date);
-}
-
-function formatCompactCurrency(value: number, locale: Locale, currency: string): string {
-  return new Intl.NumberFormat(LOCALE_TAGS[locale], {
-    style: 'currency',
-    currency: /^[A-Z]{3}$/.test(currency) ? currency : 'NZD',
-    currencyDisplay: 'narrowSymbol',
-    notation: 'compact',
-    maximumFractionDigits: 1
-  }).format(value);
 }
 
 function ComparisonTooltip({ active, payload, locale, currency }: ComparisonTooltipProps) {
