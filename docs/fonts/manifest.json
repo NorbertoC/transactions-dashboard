@@ -1,0 +1,188 @@
+{
+  "googleFontsCommit": "5e8a3ba899557829a76cfdac30fa512bda91d7ca",
+  "cssUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36",
+  "families": [
+    {
+      "family": "inter",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/5e8a3ba899557829a76cfdac30fa512bda91d7ca/ofl/inter/OFL.txt"
+    },
+    {
+      "family": "dmsans",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=DM+Sans:wght@100..1000&display=swap",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/5e8a3ba899557829a76cfdac30fa512bda91d7ca/ofl/dmsans/OFL.txt"
+    },
+    {
+      "family": "manrope",
+      "cssUrl": "https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/5e8a3ba899557829a76cfdac30fa512bda91d7ca/ofl/manrope/OFL.txt"
+    }
+  ],
+  "fonts": [
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7W0Q5n-wU.woff2",
+      "file": "inter-fccca918fea40089.woff2",
+      "sha256": "fccca918fea40089dacadc7045861314d1a6bc91f1f323cc1eeb22ebcdb321b5",
+      "bytes": 25844,
+      "preload": false,
+      "baselineFiles": [
+        "ba9851c3c22cd980-s.woff2"
+      ]
+    },
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7W0Q5n-wU.woff2",
+      "file": "inter-aebf2ab4a4ce6810.woff2",
+      "sha256": "aebf2ab4a4ce6810d73c1ac7be7cafb4e5ec4cee2d6db5fb3e09691747ec4bd6",
+      "bytes": 18744,
+      "preload": false,
+      "baselineFiles": [
+        "21350d82a1f187e9-s.woff2"
+      ]
+    },
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7W0Q5n-wU.woff2",
+      "file": "inter-a2e2c783ca6f9c20.woff2",
+      "sha256": "a2e2c783ca6f9c20486e81e72a279203e86730bbf8f01ff6a5ee9dbd09e1c271",
+      "bytes": 11272,
+      "preload": false,
+      "baselineFiles": [
+        "c5fe6dc8356a8c31-s.woff2"
+      ]
+    },
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7W0Q5n-wU.woff2",
+      "file": "inter-46dd4cdca58c26ae.woff2",
+      "sha256": "46dd4cdca58c26ae87cc6927657bf83b2e8abfc39ffd0ab176e301a8d28d22bf",
+      "bytes": 19044,
+      "preload": false,
+      "baselineFiles": [
+        "19cfc7226ec3afaa-s.woff2"
+      ]
+    },
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7W0Q5n-wU.woff2",
+      "file": "inter-8db00ff46c67b22c.woff2",
+      "sha256": "8db00ff46c67b22cda8bed865acf7077651cac8d2841d5b40980556b48961931",
+      "bytes": 10280,
+      "preload": false,
+      "baselineFiles": [
+        "df0a9ae256c0569c-s.woff2"
+      ]
+    },
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7W0Q5n-wU.woff2",
+      "file": "inter-a28eb6d3ccb534ae.woff2",
+      "sha256": "a28eb6d3ccb534ae0c94ca999371df024aab60b08c3c8a5720ee9e32fa0faaa2",
+      "bytes": 85272,
+      "preload": false,
+      "baselineFiles": [
+        "8e9860b6e62d6359-s.woff2"
+      ]
+    },
+    {
+      "family": "inter",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "file": "inter-c940764593d0fe5d.woff2",
+      "sha256": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
+      "bytes": 48432,
+      "preload": true,
+      "baselineFiles": [
+        "e4af272ccee01ff0-s.p.woff2"
+      ]
+    },
+    {
+      "family": "dmsans",
+      "url": "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K6z9mXgjU0.woff2",
+      "file": "dmsans-219b02c7d8884817.woff2",
+      "sha256": "219b02c7d8884817d3d6ad4c8771f2c000ce4c5669a67ef4e2e5617ffa25c4cc",
+      "bytes": 18192,
+      "preload": false,
+      "baselineFiles": [
+        "7ab938503e4547a1-s.woff2"
+      ]
+    },
+    {
+      "family": "dmsans",
+      "url": "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K6z9mXg.woff2",
+      "file": "dmsans-468d56b6b25b05b7.woff2",
+      "sha256": "468d56b6b25b05b70190b6c233d773f6f1770e8579827ce022a57f03fa8002fb",
+      "bytes": 36980,
+      "preload": true,
+      "baselineFiles": [
+        "13971731025ec697-s.p.woff2"
+      ]
+    },
+    {
+      "family": "manrope",
+      "url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggqxSvfedN62Zw.woff2",
+      "file": "manrope-e8c0b39992f06b3d.woff2",
+      "sha256": "e8c0b39992f06b3dc9a9834494088014859f363bf6ca8792b6bb07e17c7965f3",
+      "bytes": 2592,
+      "preload": false,
+      "baselineFiles": [
+        "438aa629764e75f3-s.woff2"
+      ]
+    },
+    {
+      "family": "manrope",
+      "url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggOxSvfedN62Zw.woff2",
+      "file": "manrope-95a493061fe0a8d0.woff2",
+      "sha256": "95a493061fe0a8d0d027c2892747134ba747141112d3be4d5022e70ab7d3a1a6",
+      "bytes": 14544,
+      "preload": false,
+      "baselineFiles": [
+        "875ae681bfde4580-s.woff2"
+      ]
+    },
+    {
+      "family": "manrope",
+      "url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggSxSvfedN62Zw.woff2",
+      "file": "manrope-40af11327fe53081.woff2",
+      "sha256": "40af11327fe5308166c6cb5787808b042db6da889abf602f0a4876c49675d87e",
+      "bytes": 9360,
+      "preload": false,
+      "baselineFiles": [
+        "51251f8b9793cdb3-s.woff2"
+      ]
+    },
+    {
+      "family": "manrope",
+      "url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggixSvfedN62Zw.woff2",
+      "file": "manrope-bab757f8a0a1bc04.woff2",
+      "sha256": "bab757f8a0a1bc04055ee98cb5777f3254aab11f6d222366e1f40a36f390506a",
+      "bytes": 8492,
+      "preload": false,
+      "baselineFiles": [
+        "e857b654a2caa584-s.woff2"
+      ]
+    },
+    {
+      "family": "manrope",
+      "url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggmxSvfedN62Zw.woff2",
+      "file": "manrope-ce093b341d9c1065.woff2",
+      "sha256": "ce093b341d9c10658ee1eaa85c5f8042ff3307bc6ccfc5f405616eb437f0009e",
+      "bytes": 15240,
+      "preload": false,
+      "baselineFiles": [
+        "cc978ac5ee68c2b6-s.woff2"
+      ]
+    },
+    {
+      "family": "manrope",
+      "url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggexSvfedN4.woff2",
+      "file": "manrope-e310b55a7fd9677f.woff2",
+      "sha256": "e310b55a7fd9677f5e3555e6c6c4d064fa1f1d24393f0ddbe217cea12a8c432f",
+      "bytes": 24576,
+      "preload": true,
+      "baselineFiles": [
+        "4c9affa5bc8f420e-s.p.woff2"
+      ]
+    }
+  ]
+}

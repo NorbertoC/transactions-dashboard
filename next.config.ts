@@ -13,9 +13,10 @@ const nextConfig: NextConfig = {
   
   // Optimize for Cloudflare Pages
   compress: true,
-  
+
   // Disable webpack cache for production builds to avoid size issues
   webpack: (config, { dev }) => {
+    config.module.rules.push({ test: /\.woff2$/i, type: "asset/resource" });
     if (!dev) {
       config.cache = false;
     }

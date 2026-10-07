@@ -1,18 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, DM_Sans, Manrope } from "next/font/google";
+import "./fonts.css";
+import interLatin from "./fonts/inter-c940764593d0fe5d.woff2";
+import dmSansLatin from "./fonts/dmsans-468d56b6b25b05b7.woff2";
+import manropeLatin from "./fonts/manrope-e310b55a7fd9677f.woff2";
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
-  display: "swap",
-});
-
-const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], display: "swap" });
-const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "Transactions Dashboard",
@@ -48,9 +41,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} /></head>
+      <head>
+        <link rel="preload" href={interLatin} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={dmSansLatin} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={manropeLatin} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
+      </head>
       <body
-        className={`${inter.variable} ${dmSans.variable} ${manrope.variable} font-display bg-background text-foreground antialiased`}
+        className="font-display bg-background text-foreground antialiased"
         suppressHydrationWarning
       >
         <SessionProvider>
