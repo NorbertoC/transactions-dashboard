@@ -31,7 +31,8 @@ function ForecastView() {
   const matchingIncome = !resource.error && !incomeResponse.error && summary?.complete && summary.denominator === evidence.data.denominator && summary.cents === evidence.incomeCents ? summary.average : null;
   const known = !resource.loading && !resource.error && evidence.known;
   const coverage = <>
-    <p>{known ? `${m.coverage}: ${formatDateFull(evidence.start, locale)} – ${formatDateFull(evidence.end, locale)} · ${formatNumber(evidence.data.denominator, locale)}` : m.noCoverage}</p>
+    <p>{known ? `${m.coverage}: ${formatDateFull(evidence.start, locale)} – ${formatDateFull(evidence.end, locale)} · ${formatNumber(evidence.data.denominator, locale)} ${m.calendarMonths}` : m.noCoverage}</p>
+    <p>{m.expensePeriodNote}</p>
     {known && <p>{m.observed}: <b>{formatCurrency(evidence.total!, locale)}</b> {m.monthly}. {m.scopeNote}</p>}
     {known && evidence.partial && <p>{m.partial}</p>}
     {evidence.excluded && <p>{m.foreign}</p>}
