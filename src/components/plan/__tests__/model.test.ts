@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { calculatePlan, planDefaults } from '../model';
 import { planExpenseEvidence } from '../evidence';
 import type { Transaction } from '@/types/transaction';
-const example = () => ({ ...planDefaults(), savings: 50000, expense: 5000 });
+const example = () => ({ ...planDefaults(), savings: 50000, income: 10000, expense: 5000 });
 describe('equal-capital purchase comparison on synthetic fixtures', () => {
   it('preserves defaults and unknown expense without inventing recorded spending', () => {
-    expect(planDefaults()).toMatchObject({ expense: null, savings: 0, tax: 0, income: 10000, invest: 2000, rate: 10 });
+    expect(planDefaults()).toMatchObject({ expense: null, savings: 0, tax: 0, income: null, invest: 2000, rate: 10 });
     const c = calculatePlan(planDefaults());
     expect(c.valid).toBe(true); expect(c.surplus).toBe(null); expect(c.budgetError).toBe('amounts');
   });

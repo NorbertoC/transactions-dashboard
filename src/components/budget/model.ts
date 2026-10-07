@@ -19,8 +19,8 @@ export function preservePurposeV3Draft(draft: Draft): Draft {
   const rekey = <T,>(items: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(items).map(([key, value]) => [legacyIds[key] ?? key, value]));
   return { ...draft, amounts: rekey(draft.amounts), kinds: rekey(draft.kinds), lastEdited: draft.lastEdited === null ? null : legacyIds[draft.lastEdited] ?? draft.lastEdited };
 }
-export function defaults(scenario: Scenario): Draft {
-  return { income: scenario === 'current' ? 13525.90 : 9924, savings: scenario === 'current' ? 2705.18 : 1984.80,
+export function defaults(scenario: Scenario, income: number | null = null): Draft {
+  return { income, savings: scenario === 'current' ? 2705.18 : 1984.80,
     baby: scenario === 'baby1' ? 800 : scenario === 'baby2' ? 1400 : 0, auto: false, amounts: {}, kinds: {}, lastEdited: null };
 }
 const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'software_tools', 'equipment_training', 'subscription_work']);

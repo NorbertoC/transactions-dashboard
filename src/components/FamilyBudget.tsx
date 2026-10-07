@@ -5,22 +5,26 @@ import NumericInput from '@/components/NumericInput';
 import SelectControl from '@/components/SelectControl';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getLocalizedCategoryName, getLocalizedSubcategoryName, PURPOSE_TAXONOMY_VERSION } from '@/constants/categories';
-import { formatCurrency, formatNumber, formatPercent } from '@/utils/format';
+import { formatCurrency, formatNumber } from '@/utils/format';
 import { calculate, defaults, preservePurposeV3Draft, SCENARIOS, validDraft, type BudgetRow, type Draft, type Kind, type Result, type Scenario } from './budget/model';
 import { budgetMessages } from './budget/messages';
 import { forecastMessages } from './forecast/messages';
+import IncomeBreakdown from './budget/IncomeBreakdown';
+import { disposableIncome, type HouseholdIncomeEvidence } from './budget/income';
 import './budget/budget.css';
 
 type Drafts = Record<Scenario, Draft>;
 const initialDrafts = (): Drafts => Object.fromEntries(SCENARIOS.map(id => [id, defaults(id)])) as Drafts;
-const storageKey = (account: string) => `gastos.family-budget.v2:${account}`;
-export default function FamilyBudget({ rows, known, accountScope, coverage }: { rows: BudgetRow[]; known: boolean; accountScope: string | null; coverage: ReactNode }) {
+const storageKey = (account: string, version = 3) => `gastos.family-budget.v${version}:${account}`;
+export default function FamilyBudget({ rows, known, accountScope, coverage, incomeEvidence = null }: { rows: BudgetRow[]; known: boolean; accountScope: string | null; coverage: ReactNode; incomeEvidence?: HouseholdIncomeEvidence | null }) {
   const { locale } = useLocale(), m = budgetMessages[locale], savedMessages = forecastMessages[locale];
   const [scenario, setScenario] = useState<Scenario>('current'), [drafts, setDrafts] = useState(initialDrafts);
   const [undos, setUndos] = useState<Partial<Drafts>>({}), [status, setStatus] = useState('');
+  const [legacyIncomePreserved, setLegacyIncomePreserved] = useState(false);
   const draft = drafts[scenario];
-  const result = useMemo(() => calculate(draft, rows, known), [draft, rows, known]);
-  const baseline = useMemo(() => calculate(defaults(scenario), rows, known), [scenario, rows, known]);
+  const income = disposableIncome(incomeEvidence, scenario).income;
+  const result = useMemo(() => calculate({ ...draft, income }, rows, known), [draft, income, rows, known]);
+  const baseline = useMemo(() => calculate(defaults(scenario, income), rows, known), [scenario, income, rows, known]);
   const money = (n: number | null) => n === null ? '—' : formatCurrency(n, locale);
   const available = result.valid && result.known;
   const rowName = (id: string) => id === 'baby' ? m.baby : getLocalizedSubcategoryName(result.rows.find(row => row.id === id)?.name ?? id, locale);
@@ -36,14 +40,17 @@ export default function FamilyBudget({ rows, known, accountScope, coverage }: { 
     if (!accountScope) return;
     try {
       if (load) {
-        const raw = localStorage.getItem(storageKey(accountScope)) ?? localStorage.getItem(`gastos.family-budget.v1:${accountScope}`);
-        if (!raw) { setStatus(savedMessages.none); return; }
-        const saved = JSON.parse(raw) as { version?: number; taxonomyVersion?: string; drafts?: Drafts };
-        if (![1, 2].includes(saved.version ?? 0) || saved.version === 2 && saved.taxonomyVersion !== PURPOSE_TAXONOMY_VERSION || !saved.drafts || !SCENARIOS.every(id => validDraft(saved.drafts?.[id]))) throw new Error('Invalid draft');
-        const loaded = saved.version === 1 ? Object.fromEntries(SCENARIOS.map(id => [id, preservePurposeV3Draft(saved.drafts![id])])) as Drafts : saved.drafts;
-        setUndos({ ...drafts }); setDrafts(loaded); setStatus(savedMessages.loaded);
+        const entry = [3, 2, 1].map(version => ({ version, raw: localStorage.getItem(storageKey(accountScope, version)) })).find(item => item.raw !== null);
+        if (!entry) { setStatus(savedMessages.none); return; }
+        const saved = JSON.parse(entry.raw!) as { version?: number; taxonomyVersion?: string; drafts?: Drafts; legacyIncomePreserved?: boolean };
+        if (saved.version !== entry.version || saved.version === 3 && saved.taxonomyVersion !== PURPOSE_TAXONOMY_VERSION ||
+            saved.taxonomyVersion !== undefined && !['purpose-v3', PURPOSE_TAXONOMY_VERSION].includes(saved.taxonomyVersion) ||
+            !saved.drafts || !SCENARIOS.every(id => validDraft(saved.drafts?.[id]))) throw new Error('Invalid draft');
+        const legacyTaxonomy = saved.version === 1 || saved.taxonomyVersion === undefined || saved.taxonomyVersion === 'purpose-v3';
+        const loaded = legacyTaxonomy ? Object.fromEntries(SCENARIOS.map(id => [id, preservePurposeV3Draft(saved.drafts![id])])) as Drafts : saved.drafts;
+        setUndos({ ...drafts }); setDrafts(loaded); setLegacyIncomePreserved(entry.version < 3 || saved.legacyIncomePreserved === true); setStatus(savedMessages.loaded);
       } else {
-        localStorage.setItem(storageKey(accountScope), JSON.stringify({ version: 2, taxonomyVersion: PURPOSE_TAXONOMY_VERSION, drafts })); setStatus(m.saved);
+        localStorage.setItem(storageKey(accountScope), JSON.stringify({ version: 3, taxonomyVersion: PURPOSE_TAXONOMY_VERSION, drafts, legacyIncomePreserved })); setStatus(m.saved);
       }
     } catch { setStatus(m.storageFailed); }
   }
@@ -62,15 +69,11 @@ export default function FamilyBudget({ rows, known, accountScope, coverage }: { 
   return <div className="family-budget">
     <header className="fb-page-head"><div><p className="fb-eyebrow">{m.eyebrow}</p><h1>{m.title}</h1><p>{m.intro}</p></div><button type="button" onClick={() => edit(defaults(scenario))}>{m.reset}</button></header>
     <div className="fb-household"><div className="fb-scenarios" role="group" aria-label={m.scenarioLabel}>{SCENARIOS.map((id, i) => <button key={id} type="button" aria-pressed={scenario === id} onClick={() => { setScenario(id); setStatus(''); }}>{m.scenarios[i]}</button>)}</div><small>{m.hypotheses}</small></div>
-    <section className="fb-income" aria-label={m.income}>
-      <label className="fb-income-field"><span>{m.income}</span><div className="fb-money-input"><NumericInput min="0" max="1000000" step="0.01" aria-label={m.income} value={draft.income} onValueChange={income => edit({ income, lastEdited: null })} /><span>NZD</span></div></label>
-      <div className="fb-income-range"><input type="range" min="0" max={Math.max(20000, draft.income ?? 0)} step="100" aria-label={m.incomeSlider} aria-valuetext={money(draft.income)} value={draft.income ?? 0} onChange={event => edit({ income: Number(event.target.value), lastEdited: null })} /><div><span>{money(0)}</span><span>{money(Math.max(20000, draft.income ?? 0))}</span></div></div>
-      <div className="fb-presets">{[1, .8, .6].map(factor => <button type="button" key={factor} onClick={() => edit({ income: defaults(scenario).income! * factor, lastEdited: null })}>{factor === 1 ? m.reference : `−${formatPercent(1 - factor, locale)}`}</button>)}</div>
-      <details className="fb-income-detail"><summary>{m.incomeDetails}<ChevronDown aria-hidden="true" /></summary><p>{m.incomeNote}</p><p>{m.familyNote}</p></details>
-    </section>
+    <IncomeBreakdown evidence={incomeEvidence} scenario={scenario} />
+    {legacyIncomePreserved && <p className="fb-alert" role="status">{m.legacyIncomeNote} {draft.income !== null && <b>{money(draft.income)}</b>}</p>}
     <div className="fb-tools"><label><input type="checkbox" checked={draft.auto} onChange={event => edit({ auto: event.target.checked, lastEdited: null })} />{m.auto}</label><p>{m.autoNote}</p><button type="button" disabled={!undos[scenario]} onClick={() => { const undo = undos[scenario]; if (undo) { setDrafts(previous => ({ ...previous, [scenario]: undo })); setUndos(previous => ({ ...previous, [scenario]: undefined })); } }}>{m.undo}</button></div>
     <div className="fb-live" aria-live="polite">{[[m.committed, result.committed], [m.travelPlanned, result.travel], [result.gap > 0 && available ? m.gap : m.free, result.gap || result.unallocated]].map(([label, value]) => <span key={String(label)}>{label}<b>{available ? money(Number(value)) : '—'}</b></span>)}</div>
-    {!result.valid ? <p className="fb-alert" role="alert">{m.invalid}</p> : !known ? <p className="fb-alert" role="status">{m.noCoverage}</p> : <p className={result.gap > 0 ? 'fb-alert fb-deficit' : 'fb-status'} role="status"><b>{result.gap > 0 ? `${m.deficit} ${money(result.gap)} ${m.monthly}.` : m.closes}</b> {m.scopeNote}</p>}
+    {income === null ? <p className="fb-alert" role="status">{m.incomeUnavailable}</p> : !result.valid ? <p className="fb-alert" role="alert">{m.invalid}</p> : !known ? <p className="fb-alert" role="status">{m.noCoverage}</p> : <p className={result.gap > 0 ? 'fb-alert fb-deficit' : 'fb-status'} role="status"><b>{result.gap > 0 ? `${m.deficit} ${money(result.gap)} ${m.monthly}.` : m.closes}</b> {m.scopeNote}</p>}
     <div className="fb-compare">{card(baseline, false)}{card(result, true)}</div>
     <div className="fb-deltas">{[[m.monthlyDelta, result.capacity - baseline.capacity], [m.annualDelta, result.annualCapacity - baseline.annualCapacity]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{available ? `${Number(value) > 0 ? '+' : ''}${money(Number(value))}` : '—'}</strong></div>)}<div><span>{m.rent}</span><strong>{available ? money(result.rent) : '—'}</strong><small>{result.rent === null ? m.noRent : m.rentNote}</small></div></div>
     {result.changes.length > 0 && <details className="fb-changes" open><summary>{m.cutTitle}<ChevronDown aria-hidden="true" /></summary><div>{result.changes.map(change => <p key={change.id}><span>{rowName(change.id)}<small>{m.cutReason}</small></span><b>{money(change.from)} → {money(change.to)}</b></p>)}<p>{m.cutNote}</p></div></details>}

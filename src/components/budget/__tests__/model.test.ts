@@ -14,7 +14,7 @@ describe('family budget', () => {
     }
   });
   it('uses actual recorded expenses, keeps travel in capacity once, and updates guides without editing savings', () => {
-    const d = defaults('current'), c = calculate(d, rows, true);
+    const d = defaults('current', 13525.90), c = calculate(d, rows, true);
     expect(c.capacity).toBeCloseTo(c.travel + c.unallocated); expect(c.capacity).toBeCloseTo(c.income - c.costs - c.savings);
     d.income = 8000; expect(calculate(d, rows, true).savingsGuide).toBe(1600); expect(calculate(d, rows, true).savings).toBe(2705.18);
   });
