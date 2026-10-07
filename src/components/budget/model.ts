@@ -8,8 +8,8 @@ export type Scenario = typeof SCENARIOS[number];
 export type Kind = 'need' | 'want' | 'unknown';
 export interface BudgetRow { id: string; category: string; name: string; amount: number; kind: Kind; protected: boolean; travel: boolean; observed: boolean; count: number; }
 export interface Draft { income: number | null; savings: number | null; baby: number | null; auto: boolean; amounts: Record<string, number | null>; kinds: Record<string, Kind>; lastEdited: string | null; }
-export function defaults(scenario: Scenario): Draft {
-  return { income: scenario === 'current' ? 13525.90 : 9924, savings: scenario === 'current' ? 2705.18 : 1984.80,
+export function defaults(scenario: Scenario, income: number | null = null): Draft {
+  return { income, savings: scenario === 'current' ? 2705.18 : 1984.80,
     baby: scenario === 'baby1' ? 800 : scenario === 'baby2' ? 1400 : 0, auto: false, amounts: {}, kinds: {}, lastEdited: null };
 }
 const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'software_tools', 'equipment_training']);

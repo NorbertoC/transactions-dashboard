@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALE_TAGS } from '@/i18n/types';
 import { SectionSkeleton } from '@/components/LoadingState';
@@ -9,17 +9,18 @@ import { formatCurrency, formatPercent } from '@/utils/format';
 import { calculatePlan, planDefaults, type PlanPath, type PlanState } from './plan/model';
 import type { PlanExpenseEvidence } from './plan/evidence';
 import { planMessages } from './plan/messages';
+import { disposableIncome, type HouseholdIncomeEvidence } from './budget/income';
 import './plan/plan.css';
 
-export default function PurchasePlan({ evidence, loading = false }: { evidence: PlanExpenseEvidence; loading?: boolean }) {
+export default function PurchasePlan({ evidence, loading = false, incomeEvidence = null, incomeLoading = false }: { evidence: PlanExpenseEvidence; loading?: boolean; incomeEvidence?: HouseholdIncomeEvidence | null; incomeLoading?: boolean }) {
   const { locale } = useLocale(), m = planMessages[locale];
-  const [state, setState] = useState<PlanState>(planDefaults);
+  const [draft, setState] = useState<PlanState>(planDefaults);
   const [manualExpense, setManualExpense] = useState(false);
-  const expenseEdited = useRef(false);
-  const average = evidence.average;
-  useEffect(() => {
-    if (!expenseEdited.current) setState(previous => ({ ...previous, expense: average }));
-  }, [average]);
+  const [manualIncome, setManualIncome] = useState(false);
+  const average = loading ? null : evidence.average;
+  const household = disposableIncome(incomeEvidence, 'current');
+  const defaultIncome = incomeLoading ? null : household.income;
+  const state = { ...draft, income: manualIncome ? draft.income : defaultIncome, expense: manualExpense ? draft.expense : average };
   const c = calculatePlan(state);
   const money = (value: number | null) => value === null ? '—' : formatCurrency(value, locale);
   const annual = (value: number | null) => money(value === null ? null : value * 12);
@@ -31,7 +32,8 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
   };
   const date = (value: string) => value ? new Intl.DateTimeFormat(LOCALE_TAGS[locale], { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(value + 'T12:00:00Z')) : '—';
   const setField = (key: keyof PlanState, value: string) => {
-    if (key === 'expense') { expenseEdited.current = true; setManualExpense(true); }
+    if (key === 'expense') setManualExpense(true);
+    if (key === 'income') setManualIncome(true);
     setState(previous => ({ ...previous, [key]: key === 'item' ? value : value.trim() === '' ? null : Number(value) }));
   };
   const field = (key: Exclude<keyof PlanState, 'mode'>, label: string, options: { text?: boolean; inline?: boolean; prefix?: string; suffix?: string; disabled?: boolean } = {}) => (
@@ -44,8 +46,8 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
       </span>
     </label>
   );
-  const useAverage = () => { expenseEdited.current = false; setManualExpense(false); setState(previous => ({ ...previous, expense: average })); };
-  const reset = () => { expenseEdited.current = false; setManualExpense(false); setState({ ...planDefaults(), expense: average }); };
+  const useAverage = () => setManualExpense(false);
+  const reset = () => { setManualExpense(false); setManualIncome(false); setState(previous => ({ ...previous, income: null, expense: null, mode: 'net', tax: 0 })); };
   const title = (path: PlanPath) => !c.valid ? m.invalid : path.status === 'reached' ? duration(path.months) : m[path.status];
   const caption = (path: PlanPath) => !c.valid ? m[`${c.error}Error`] : path.status === 'reached' ? `${m.caption} · ${path.months}` : path.status === 'met' ? m.metCaption : path.status === 'beyond' ? m.beyondCaption : m.unreachableCaption;
   const result = (mixed: boolean) => {
@@ -71,6 +73,9 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
         <div className="phrase-budget">
           <div className="sentence-block"><p className="section-index">{m.inSection}</p><div className="sentence">{m.incomeSentence}{field('income', m.income, { prefix: 'NZ$', suffix: m.month, inline: true })}</div>
             <div className="income-meta"><span>{annual(state.income)} {m.year}</span><div className="segmented" role="group" aria-label={m.incomeMode}>{(['net', 'gross'] as const).map(mode => <button type="button" key={mode} className={state.mode === mode ? 'active' : ''} aria-pressed={state.mode === mode} onClick={() => setState(previous => ({ ...previous, mode }))}>{m[mode]}</button>)}</div></div>
+            <p className="example-badge">{manualIncome ? m.manual : defaultIncome === null ? incomeLoading ? m.incomeLoading : m.incomeUnavailable : m.calculatedIncome}</p>
+            {incomeLoading && <SectionSkeleton label={m.incomeLoading} className="plan-expense-skeleton" />}
+            <div className="plan-evidence"><p>{m.incomeDefaultNote}</p>{household.income !== null && <p>{money(household.receipts)} − {money(household.tax)} {m.taxReserve} − {money(household.acc)} ACC = {money(household.income)}. {m.incomeRounding}</p>}{incomeEvidence?.window && <p>{m.incomeCoverage}: {date(incomeEvidence.window.start)} — {date(incomeEvidence.window.end)} · 6 {m.incomeMonths}</p>}</div>
             <div className="tax-line">{field('tax', m.tax, { suffix: '%', disabled: state.mode === 'net' })}<p>{state.mode === 'net' ? m.taxNet : <>{m.taxGross}: {money(c.tax)} / {money(c.net)}</>}</p></div>
           </div>
           <div className="sentence-block"><p className="section-index">{m.outSection}</p><div className="sentence">{m.expenseSentence}{field('expense', m.expense, { prefix: 'NZ$', inline: true })}</div>
@@ -91,6 +96,7 @@ export default function PurchasePlan({ evidence, loading = false }: { evidence: 
       </aside>
     </section>
     <div className="fairness"><span className="equal-icon" aria-hidden="true">↔</span><p><b>{m.same}</b> {m.fairness}</p></div>
+    <p className="small-copy plan-reset-note">{m.resetNote}</p>
     <details className="assumptions"><summary><span>{m.assumptions}</span><span className="chevron" aria-hidden="true" /></summary><div className="assumption-body">{[m.assumption1, m.assumption2, m.assumption3, m.assumption4].map(text => <p key={text}>{text}</p>)}</div></details>
     <p className="plan-footer">{m.hypothetical}</p>
   </div>;

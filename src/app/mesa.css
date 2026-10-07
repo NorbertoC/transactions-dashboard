@@ -66,6 +66,39 @@
 .mesa-reading h2 { font: 34px/1.2 Georgia, serif; margin: 12px 0 22px; letter-spacing: -1px; }
 .mesa-reading h2 > span { display: block; font-size: 45px; }
 .mesa-reading h2 em { display: block; font-size: 25px; font-weight: 400; }
+.mesa-reading .mesa-reading-title { margin: 10px 0 12px; font: 700 24px/1.3 var(--font-manrope), sans-serif; letter-spacing: -.6px; overflow-wrap: anywhere; }
+.mesa-reading-meaning { margin: 0 0 18px; font-size: 15px; line-height: 1.7; }
+.mesa-reading-period { padding: 14px 16px; border: 1px solid var(--mesa-line); border-radius: 9px; background: var(--mesa-card); font-size: 12px; line-height: 1.7; }
+.mesa-reading-period p { margin: 0 0 5px; color: var(--muted); }
+.mesa-reading-period ul { list-style: none; margin: 0; padding: 0; }
+.mesa-reading-period li { overflow-wrap: anywhere; font-weight: 600; }
+.mesa-reading-period li + li { margin-top: 6px; }
+.mesa-reading-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0 24px; }
+.mesa-reading-metrics span, .mesa-reading-metrics small { display: block; font-size: 11px; line-height: 1.6; color: var(--muted); }
+.mesa-reading-metrics strong { display: block; margin: 8px 0 3px; font: 700 25px/1.3 var(--font-manrope), sans-serif; letter-spacing: -.7px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.mesa-reading-breakdown-title { margin: 0 0 12px; font-size: 13px; font-weight: 700; }
+.mesa-reading-breakdown { margin: 0; }
+.mesa-reading-breakdown > div { --mesa-reading-base: #1e40af; --mesa-reading-tone: color-mix(in srgb, var(--primary) 25%, var(--mesa-reading-base)); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 16px; margin-top: 8px; border-left: 3px solid var(--mesa-reading-tone); border-radius: 8px; background: var(--mesa-card); color: var(--mesa-reading-tone); }
+.mesa-reading-breakdown > div[data-tone='1'] { --mesa-reading-base: #6b21a8; }
+.mesa-reading-breakdown > div[data-tone='2'] { --mesa-reading-base: #0e5964; }
+.mesa-reading-breakdown > div[data-tone='3'] { --mesa-reading-base: #854d0e; }
+.mesa-reading-breakdown > div[data-tone='4'] { --mesa-reading-base: #9d174d; }
+.mesa-reading-breakdown > div[data-tone='5'] { --mesa-reading-base: #166534; }
+.mesa-reading-breakdown > div[data-tone='6'] { --mesa-reading-base: #475569; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div { --mesa-reading-base: #bfdbfe; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div[data-tone='1'] { --mesa-reading-base: #e9d5ff; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div[data-tone='2'] { --mesa-reading-base: #a5f3fc; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div[data-tone='3'] { --mesa-reading-base: #fde68a; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div[data-tone='4'] { --mesa-reading-base: #fbcfe8; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div[data-tone='5'] { --mesa-reading-base: #bbf7d0; }
+:root:not([data-theme='light']) .mesa-reading-breakdown > div[data-tone='6'] { --mesa-reading-base: #e2e8f0; }
+.mesa-reading-breakdown dt { font-size: 13px; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
+.mesa-reading-breakdown dd { margin: 0; text-align: right; min-width: 0; }
+.mesa-reading-breakdown strong { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mesa-reading-breakdown small { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.mesa-reading-basis { border-top: 1px solid var(--mesa-line); padding-top: 16px; margin: 20px 0 0; }
+.mesa-reading-rounding { margin: 8px 0 0; }
+@media (max-width: 800px) { .mesa-reading-metrics strong { font-size: 22px; } .mesa-reading-breakdown > div { padding: 12px; gap: 12px; } }
 .mesa-narrative { font: 19px/1.55 Georgia, serif; }
 .mesa-reading-foot { display: flex; gap: 16px; border-top: 1px solid var(--mesa-line); padding-top: 20px; margin-top: 25px; }
 .mesa-reading-foot > div { flex: 1; min-width: 0; }

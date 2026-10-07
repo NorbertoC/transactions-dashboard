@@ -6,7 +6,7 @@ export type PlanStatus = 'met' | 'reached' | 'unreachable' | 'beyond';
 export interface PlanRow { month: number; cash: number; investment: number; paid: number; gain: number }
 export interface PlanPath { months: number | null; status: PlanStatus; ending?: PlanRow }
 export function planDefaults(): PlanState {
-  return { item: 'house', price: 300000, income: 10000, mode: 'net', tax: 0, expense: null, savings: 0, invest: 2000, rate: 10 };
+  return { item: 'house', price: 300000, income: null, mode: 'net', tax: 0, expense: null, savings: 0, invest: 2000, rate: 10 };
 }
 export function calculatePlan(s: PlanState) {
   const base = { valid: false, error: 'amounts' as 'amounts' | 'rate', budgetError: null as 'amounts' | 'tax' | 'mode' | null, net: null as number | null,
