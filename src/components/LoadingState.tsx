@@ -33,8 +33,10 @@ export function DashboardSkeleton({ modules, unavailable = false }: { unavailabl
   return <div className={unavailable ? "dashboard-unavailable" : "dashboard-skeleton"}>
     <Placeholder label={t('mesa.monthByMonth')} className="skeleton-months" />
     <div className="mesa-board-layout"><aside><Placeholder label={t('mesa.categoryAverage')} className="mesa-category-rail" /></aside><div className="mesa-board">
+      <div className="mesa-detail-panel"><div className="mesa-detail-content">
       {modules.reading && <Placeholder label={t('mesa.reading')} className="mesa-reading" />}
       {modules.distribution && <Placeholder label={t('mesa.trend')} className="mesa-bars" />}
+      </div></div>
       {modules.index && <Placeholder label={t('mesa.index')} className="mesa-index" />}
       {modules.evidence && <Placeholder label={t('mesa.evidence')} className="mesa-ledger" />}
     </div></div>

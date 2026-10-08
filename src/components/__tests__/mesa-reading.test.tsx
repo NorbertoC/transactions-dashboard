@@ -8,7 +8,7 @@ import { mesaReadingMessages } from '@/i18n/mesa-reading-messages';
 import { formatCurrency } from '@/utils/format';
 import type { Transaction } from '@/types/transaction';
 
-vi.mock('@/components/TransactionsTable', () => ({ default: () => <div data-testid="mock-ledger" /> }));
+vi.mock('@/components/TransactionsTable', () => ({ default: ({ transactions }: { transactions: Transaction[] }) => <div data-testid="mock-ledger" data-count={transactions.length} /> }));
 vi.mock('@/components/charts/CategoryComparison', () => ({ default: () => <div /> }));
 vi.mock('@/hooks/useIncomeSummary', () => ({ useIncomeSummary: () => ({ summaries: null, loading: false, updating: false, slow: false, error: false, retry: vi.fn() }) }));
 
@@ -80,6 +80,46 @@ it('leaves monthly average unknown when no years are selected', async () => {
   expect(reading().textContent).toContain(mesaReadingMessages.en.noMonths);
   expect(reading().querySelectorAll('.mesa-reading-metrics strong')[1].textContent).toBe('—');
   expect(reading().querySelectorAll('dl > div')).toHaveLength(0);
+});
+it('keeps distribution at the full filtered scope while category and month select the detail and ledger', async () => {
+  const original = structuredClone(rows);
+  await render();
+  const summary = container.querySelector('[data-testid="summary"]')!.textContent;
+  const distribution = () => container.querySelector('.mesa-category-distribution')!;
+  const shares = [...distribution().querySelectorAll('.mesa-distribution-legend strong')].map(row => row.textContent);
+  expect(shares).toEqual(['94.44%', '5.56%']);
+  await act(async () => distribution().querySelectorAll<HTMLButtonElement>('button')[1].click());
+  expect(reading().querySelector('.mesa-reading-title')!.textContent).toBe('Travel');
+  expect(container.querySelector('[data-testid="summary"]')!.textContent).toBe(summary);
+  expect(container.querySelector('[data-testid="mock-ledger"]')!.getAttribute('data-count')).toBe('1');
+  await act(async () => container.querySelector<HTMLButtonElement>('.mesa-chart button')!.click());
+  expect([...distribution().querySelectorAll('.mesa-distribution-legend strong')].map(row => row.textContent)).toEqual(shares);
+  expect(reading().querySelector('.mesa-reading-metrics')!.textContent).toContain(formatCurrency(20));
+  await act(async () => container.querySelector<HTMLInputElement>('.mesa-period-options input')!.click());
+  expect([...distribution().querySelectorAll('.mesa-distribution-legend strong')].map(row => row.textContent)).toEqual(['66.67%', '33.33%']);
+  expect(rows).toEqual(original);
+});
+it('keeps custom categories directly selectable without adding category or subcategory assumptions', async () => {
+  const records = [tx(1, '2026-01-05', 30, 'A custom manual category', 'Only the recorded custom purpose'), tx(2, '2026-03-05', 90, 'Travel')];
+  await render('en', records);
+  expect(container.querySelectorAll('.mesa-category-rail button')).toHaveLength(3);
+  expect(container.querySelector('.mesa-category-rail select')).toBeNull();
+  await chooseCategory(2);
+  expect(reading().querySelectorAll('dl > div')).toHaveLength(1);
+  expect(reading().querySelector('dl')!.textContent).toContain('Only the recorded custom purpose');
+  expect(container.querySelector('.mesa-detail-panel')!.contains(reading())).toBe(true);
+  expect(container.querySelector('.mesa-detail-panel')!.contains(container.querySelector('.mesa-bars'))).toBe(true);
+});
+it('does not invent a percentage or chart segment for missing or zero recorded spending', async () => {
+  await render('en', [tx(1, '2026-01-05', 0, 'Travel')]);
+  expect(container.querySelector('.mesa-category-distribution')!.textContent).not.toMatch(/NaN|Infinity/);
+  expect(container.querySelector('.mesa-distribution-stack')).toBeNull();
+  expect(reading().querySelectorAll('dl > div')).toHaveLength(1);
+  localStorage.setItem('gastos.mesa.years.v1', JSON.stringify({ version: 1, selection: [] }));
+  await act(async () => root.unmount()); root = createRoot(container);
+  await render();
+  expect(container.querySelector('.mesa-distribution-stack')).toBeNull();
+  expect(reading().querySelectorAll('.mesa-reading-metrics strong')[1].textContent).toBe('—');
 });
 it.each(['en', 'es', 'ja'] as const)('explains pending approved category labels accurately in %s', async locale => {
   for (const [category, key] of [['Personal purchases', 'personal'], ['Subscriptions', 'subscriptionsGeneral'], ['Meals & outings', 'meals'], ['Entertainment', 'entertainment']] as const) {
