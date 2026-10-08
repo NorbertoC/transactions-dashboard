@@ -84,9 +84,10 @@ describe('observed expenses', () => {
     const e = planExpenseEvidence(data, '2026-04-04'); expect(e.months).toBe(3); expect(e.average).toBeCloseTo(400 / 3); expect(e.partial).toBe(true); expect(e.excluded).toBe(true);
     expect(e.start).toBe('2026-01-01'); expect(e.end).toBe('2026-03-31');
   });
-  it('supports different years without fixing the denominator to 2026', () => {
+  it('uses the current year without carrying earlier-year amounts or months forward', () => {
     const e = planExpenseEvidence([row('2025-12-01', 100), row('2026-01-31', 300)], '2026-02-10');
-    expect(e.months).toBe(2); expect(e.average).toBe(200);
+    expect(e.months).toBe(1); expect(e.average).toBe(300);
+    expect(e.start).toBe('2026-01-01'); expect(e.end).toBe('2026-01-31');
   });
   it('does not extend the NZD expense denominator for older foreign currency, income, savings or transfers', () => {
     const eligible = [row('2026-01-01', 100), row('2026-03-31', 300)];

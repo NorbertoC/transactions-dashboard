@@ -1,11 +1,11 @@
 # Transactions Dashboard
 
-An interactive Next.js application for visualizing financial transactions with pie charts and detailed tables. Features smooth animations and responsive design.
+An interactive Next.js dashboard for exploring transactions, category averages, and household planning. It includes Mesa analysis, Plan and Forecast simulations, and responsive charts and tables.
 
 ## Features
 
 - **🔐 Secure Authentication**: NextAuth.js with credentials-based login for 2 users
-- **📊 Interactive Pie Chart**: Click on any category to drill down into specific transaction details
+- **📊 Category Analysis**: Select a category to inspect its recorded transactions and averages
 - **📅 Date Range Filtering**: Custom date picker with "Last Month" and "Last Statement" presets
 - **🔄 Dynamic Table Sorting**: Sort by amount, date, place, or category with visual indicators
 - **📱 Responsive Design**: Works seamlessly on desktop and mobile devices
@@ -85,17 +85,17 @@ The application expects transaction data in the following format:
   "currency": "NZ$",
   "value": 4.99,
   "date_iso": "2025-09-16",
-  "category": "Other"
+  "category": "Others",
+  "subcategory": "Miscellaneous"
 }
 ```
 
 ## API Integration
 
-The application supports both live API data and fallback to sample data:
+The application uses the live API for transaction data:
 
 - **Live Data**: Configure API credentials in `.env.local`
-- **Sample Data**: Falls back to `data.json` if API is unavailable
-- **Error Handling**: Graceful degradation with user-friendly error messages
+- **Unavailable API**: The dashboard displays its unavailable or error state; it does not fall back to `data.json`
 
 ## Development
 

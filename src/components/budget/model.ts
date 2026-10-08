@@ -1,7 +1,7 @@
 import { CATEGORIES, normalizeCategoryPair } from '@/constants/categories';
 import { isIsoDate } from '@/lib/api-validation';
 import type { Transaction } from '@/types/transaction';
-import { forecastEvidence } from '@/components/forecast/evidence';
+import { currentYearExpenseEvidence } from '@/utils/expense-evidence';
 
 export const SCENARIOS = ['current', 'single', 'baby1', 'baby2'] as const;
 export type Scenario = typeof SCENARIOS[number];
@@ -27,9 +27,7 @@ const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phon
 const PROTECTED = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'home_purchases', 'software_tools', 'equipment_training', 'subscription_work']);
 const CUT_ORDER = ['tickets_transfers', 'accommodation', 'travel_food_activities', 'restaurants', 'cafes', 'delivery', 'food_treats', 'video_games', 'cinema', 'events', 'activities', 'subscription_entertainment', 'subscription_other', 'clothing_footwear', 'personal_care'];
 export function budgetEvidence(transactions: Transaction[], today: string) {
-  const eligible = transactions.filter(row => ['NZD', 'NZ$'].includes(row.currency) && isIsoDate(row.date_iso) && Number.isFinite(row.value) && row.value >= 0 && (!row.record_type || row.record_type === 'expense') && (!row.direction || row.direction === 'outflow') && row.category !== 'Savings');
-  const period = forecastEvidence(eligible, today);
-  const data = forecastEvidence(transactions.filter(row => row.date_iso >= period.start && row.date_iso <= period.end), today);
+  const period = currentYearExpenseEvidence(transactions, today);
   // Reuse the expense-derived calendar window for receipts too.
   const incomeCents = transactions.filter(row => ['NZD', 'NZ$'].includes(row.currency) && isIsoDate(row.date_iso) && row.date_iso >= period.start && row.date_iso <= period.end && row.record_type === 'income' && row.direction === 'inflow' && Number.isFinite(row.value) && row.value >= 0).reduce((sum, row) => sum + Math.round(row.value * 100), 0);
   const groups = new Map<string, BudgetRow>();
@@ -45,7 +43,7 @@ export function budgetEvidence(transactions: Transaction[], today: string) {
       protected: PROTECTED.has(id) || !sub || category?.key === 'others', travel: category?.key === 'travel', observed: true, count: 1 });
   }
   const rows = [...groups.values()].map(row => ({ ...row, amount: row.amount / period.data.denominator }));
-  return { ...period, incomeCents, excluded: data.excluded || transactions.some(row => !['NZD', 'NZ$'].includes(row.currency)), rows,
+  return { ...period, incomeCents, rows,
     known: period.expense !== null, total: period.expense };
 }
 export function calculate(draft: Draft, source: BudgetRow[], known: boolean) {

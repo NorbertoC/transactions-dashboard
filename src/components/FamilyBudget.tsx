@@ -70,6 +70,7 @@ export default function FamilyBudget({ rows, known, accountScope, coverage, inco
     <header className="fb-page-head"><div><p className="fb-eyebrow">{m.eyebrow}</p><h1>{m.title}</h1><p>{m.intro}</p></div><button type="button" onClick={() => edit(defaults(scenario))}>{m.reset}</button></header>
     <div className="fb-household"><div className="fb-scenarios" role="group" aria-label={m.scenarioLabel}>{SCENARIOS.map((id, i) => <button key={id} type="button" aria-pressed={scenario === id} onClick={() => { setScenario(id); setStatus(''); }}>{m.scenarios[i]}</button>)}</div><small>{m.hypotheses}</small></div>
     <IncomeBreakdown evidence={incomeEvidence} scenario={scenario} />
+    <section className="fb-expense-source" aria-label={m.expenses}>{coverage}</section>
     {legacyIncomePreserved && <p className="fb-alert" role="status">{m.legacyIncomeNote} {draft.income !== null && <b>{money(draft.income)}</b>}</p>}
     <div className="fb-tools"><label><input type="checkbox" checked={draft.auto} onChange={event => edit({ auto: event.target.checked, lastEdited: null })} />{m.auto}</label><p>{m.autoNote}</p><button type="button" disabled={!undos[scenario]} onClick={() => { const undo = undos[scenario]; if (undo) { setDrafts(previous => ({ ...previous, [scenario]: undo })); setUndos(previous => ({ ...previous, [scenario]: undefined })); } }}>{m.undo}</button></div>
     <div className="fb-live" aria-live="polite">{[[m.committed, result.committed], [m.travelPlanned, result.travel], [result.gap > 0 && available ? m.gap : m.free, result.gap || result.unallocated]].map(([label, value]) => <span key={String(label)}>{label}<b>{available ? money(Number(value)) : '—'}</b></span>)}</div>
@@ -86,7 +87,7 @@ export default function FamilyBudget({ rows, known, accountScope, coverage, inco
     <section className="fb-guide"><h2>{m.guide}</h2><p>{m.guideNote}</p><div>{[[m.needs, result.needsGuide], [m.wants, result.wantsGuide], [m.savings, result.savingsGuide]].map(([label, value]) => <p key={String(label)}><span>{label}</span><b>{result.valid ? money(Number(value)) : '—'}</b></p>)}</div><p>{m.rentGuide}: <b>{available ? money(result.rentMax) : '—'}</b></p></section>
     <div className="fb-review"><span>{m.expenses} {available ? money(result.spending) : '—'} + {m.savings} {available ? money(result.savings) : '—'}</span><b>{available ? result.gap > 0 ? `${m.gap}: ${money(result.gap)}` : `+ ${m.free} ${money(result.unallocated)} = ${money(result.income)}` : '—'}</b></div>
     <p className="fb-note">{m.unknownNote} {m.annualNote}</p>
-    <details className="fb-source"><summary>{m.source}<ChevronDown aria-hidden="true" /></summary><div className="fb-details-body">{coverage}<p>{m.incomeNote}</p><p>{m.savingsNote}</p><p>{m.babyNote}</p><p>{m.capacityNote} {m.scopeNote}</p></div></details>
+    <details className="fb-source"><summary>{m.source}<ChevronDown aria-hidden="true" /></summary><div className="fb-details-body"><p>{m.incomeNote}</p><p>{m.savingsNote}</p><p>{m.babyNote}</p><p>{m.capacityNote} {m.scopeNote}</p></div></details>
     <div className="fb-draft-tools"><button type="button" disabled={!accountScope} onClick={() => persist(false)}>{savedMessages.save}</button><button type="button" disabled={!accountScope} onClick={() => persist(true)}>{savedMessages.load}</button></div><p className="fb-note" role="status">{status}</p>
   </div>;
 }
