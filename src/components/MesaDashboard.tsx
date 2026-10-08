@@ -116,6 +116,7 @@ export default function MesaDashboard({ transactions, loading = false, unavailab
     try { localStorage.setItem('gastos.mesa.years.v1', JSON.stringify({ version: 1, selection })); } catch { /* Filtering remains usable without storage. */ }
   };
   const maxBar = Math.max(...detailMonthly.map(row => row.total), 1);
+  const maxAverage = Math.max(...reading.rows.map(row => row.average ?? 0), 0);
   const metricLabels: MessageKey[] = ['mesa.income', 'mesa.expenses', 'mesa.balance', 'mesa.average'];
 
   const changeAmount = (value: number) => `${value >= 0 ? '+' : '−'}${money(Math.abs(value))}`;
@@ -147,9 +148,6 @@ export default function MesaDashboard({ transactions, loading = false, unavailab
     <div className="mesa-appbar"><h1>{t('mesa.title')}</h1><span>{t('mesa.yearScope', { years: selectedYears.join(', ') || '—' })} · {periodLabel} · {currency}</span></div>
     <div className="mesa-workspace">
       <DataFeedback slow={incomeResponse.slow} loading={incomeResponse.loading} updating={incomeResponse.updating} error={incomeResponse.error} retry={incomeResponse.retry} />
-      {loading || unavailable ? <MetricsSkeleton unavailable={unavailable && !loading} /> : <div className="mesa-metrics" data-testid="summary">
-        {metricLabels.map((label, i) => <div key={label} aria-busy={(i === 0 || i === 2) && incomeResponse.loading}><span>{t(label)}</span>{(i === 0 || i === 2) && incomeResponse.loading ? <strong className="skeleton-line skeleton-metric" aria-hidden="true">&nbsp;</strong> : <strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : i === 0 ? incomeKnown ? money(incomeSummary!.total) : '—' : recordedNet !== null ? money(recordedNet) : '—'}</strong>}<small>{i === 0 ? t(incomeKnown ? 'income.basis' : incomeResponse.loading ? 'income.loading' : 'income.unavailable') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
-      </div>}
       <fieldset className="mesa-visibility"><legend>{t('mesa.organize')}</legend>
         <div className="mesa-years" role="group" aria-label={t('mesa.years')}><strong>{t('mesa.years')}</strong>
           <label className="mesa-checkbox"><input type="checkbox" disabled={loading || !availableYears.length} checked={availableYears.length > 0 && selectedYears.length === availableYears.length} onChange={event => chooseYears(event.target.checked ? 'all' : [])} />{t('mesa.allYears')}</label>
@@ -161,44 +159,58 @@ export default function MesaDashboard({ transactions, loading = false, unavailab
         <button type="button" onClick={() => setModules(ALL_MODULES)}>{t('mesa.showAll')}</button><p className="mesa-micro">{t('mesa.visibilityNote')}</p>
       </fieldset>
       {loading || unavailable ? <DashboardSkeleton unavailable={unavailable && !loading} modules={modules} /> : <>
-      <section className="mesa-months"><div className="mesa-section-heading"><div><p className="mesa-eyebrow">{t('mesa.monthByMonth')}</p><h2>{categoryLabel}</h2></div><button type="button" aria-pressed={!activeMonth} onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button></div>
-        <div className="mesa-month-strip">{!data.denominator && <p className="mesa-micro">{t('mesa.noMonths')}</p>}{[...detailMonthly].reverse().map(row => <button type="button" className="mesa-month-card" key={row.key} aria-pressed={activeMonth === row.key} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><span>{monthLabel(row.key)}</span><strong>{money(row.total)}</strong><small>{t('mesa.monthExpense')}{row.partial && ` · ${t('mesa.partialLabel')}`}</small></button>)}</div>
-        <p className="mesa-micro">{t('mesa.monthNote')}</p>
-      </section>
       <div className="mesa-board-layout"><aside>
         <section className="mesa-panel mesa-category-rail"><h2>{t('mesa.categoryAverage')}</h2><p className="mesa-micro">{t('mesa.denominator', { currency, count: data.denominator })}</p>
           <button type="button" aria-pressed={activeCategory === null} onClick={() => setCategory(null)}><span>{t('mesa.allExpenses')}</span><strong>{data.denominator ? money(data.average) : '—'}</strong></button>
           {data.categories.map(row => <button type="button" key={row.name} aria-pressed={activeCategory === row.name} onClick={() => setCategory(row.name)}><span>{categoryName(row.name)}</span><strong>{money(row.average)}</strong></button>)}
         </section>
-        <div className="mesa-scope"><span>{t('mesa.detail')}: <strong>{categoryLabel}</strong> · <strong>{activeMonth ? monthLabel(activeMonth) : t('mesa.fullPeriod')}</strong></span><button type="button" onClick={resetDetail}>{t('mesa.reset')}</button><p>{t('mesa.scope')}</p></div>
       </aside><div className="mesa-board">
         <div className="mesa-detail-panel"><div className="mesa-detail-content">
         {modules.reading && <section className="mesa-reading" aria-live="polite" data-testid="period-reading">
-          <p className="mesa-eyebrow">{t('mesa.periodReading')}</p>
-          <h2 className="mesa-reading-title">{categoryLabel}</h2>
-          <p className="mesa-reading-meaning">{readingText(mesaCategoryMeaning(activeCategory), { category: categoryLabel })}</p>
-          <div className="mesa-reading-period">
-            <p>{readingText('scope', { count: reading.denominator, currency })}</p>
-            <ul aria-label={readingText('scope', { count: reading.denominator, currency })}>{readingPeriods.map(period => <li key={period.start}>{dateLabel(period.start)} – {dateLabel(period.end)}{data.monthly.some(month => period.months.includes(month.key) && month.partial) ? ' *' : ''}</li>)}</ul>
-          </div>
-          <p className="mesa-micro">{t(includeRent ? 'mesa.rentIncluded' : 'mesa.rentExcluded')}</p>
-          <div className="mesa-reading-metrics">
-            <div><span>{readingText('total')}</span><strong>{money(reading.total)}</strong></div>
+          <div className="mesa-reading-header"><div className="mesa-reading-intro">
+            <p className="mesa-eyebrow">{t('mesa.periodReading')}</p>
+            <h2 className="mesa-reading-title">{categoryLabel}</h2>
+            <p className="mesa-reading-meaning">{readingText(mesaCategoryMeaning(activeCategory), { category: categoryLabel })}</p>
+            <div className="mesa-reading-period"><p>{readingText('scope', { count: reading.denominator, currency })}</p>
+              <ul aria-label={readingText('scope', { count: reading.denominator, currency })}>{readingPeriods.map(period => <li key={period.start}>{dateLabel(period.start)} – {dateLabel(period.end)}{data.monthly.some(month => period.months.includes(month.key) && month.partial) ? ' *' : ''}</li>)}</ul>
+            </div>
+            <p className="mesa-micro mesa-reading-rent">{t(includeRent ? 'mesa.rentIncluded' : 'mesa.rentExcluded')}</p>
+          </div><div className="mesa-reading-metrics">
+            <div><span>{readingText('total')}</span><strong>{money(reading.total)}</strong><small>{t('mesa.fullPeriod')}</small></div>
             <div><span>{readingText('average')}</span><strong>{reading.average === null ? '—' : money(reading.average)}</strong><small>{t('mesa.perMonth')}</small></div>
-          </div>
-          <h3 className="mesa-reading-breakdown-title">{readingText(activeCategory === null ? 'categoryRows' : 'subcategoryRows')}</h3>
-          {reading.rows.length ? <dl className="mesa-reading-breakdown">{reading.rows.map((row, index) => <div key={JSON.stringify(row.name)} data-tone={index % 7}>
-            <dt>{row.name === null ? readingText(activeCategory === null ? 'missingCategory' : 'missingSubcategory') : activeCategory === null ? categoryName(row.name) : getLocalizedSubcategoryName(row.name, locale)}</dt>
-            <dd><strong>{row.average === null ? '—' : money(row.average)}</strong><small>{t('mesa.perMonth')}</small></dd>
-          </div>)}</dl> : <p className="mesa-micro">{readingText(reading.denominator ? 'empty' : 'noMonths')}</p>}
-          <p className="mesa-micro mesa-reading-basis">{readingText('denominator', { count: reading.denominator })} {readingText('coverage')}{reading.partial && <> {readingText('partial')}</>}</p>
-          {reading.rows.length > 1 && <p className="mesa-micro mesa-reading-rounding">{readingText('rounding')}</p>}
+          </div></div>
         </section>}
-        {modules.distribution && <div className="mesa-detail-charts"><section className="mesa-bars"><div className="mesa-panel-title"><div><p className="mesa-eyebrow">{t('charts.trend')}</p><h2>{categoryLabel}</h2><p className="mesa-micro">{currency} · {t('mesa.barsHint')}</p></div><div><strong>{data.denominator ? money(detail?.average ?? data.average) : '—'}</strong><small>{t('mesa.perMonth')}</small></div></div><div className={`mesa-chart ${detailMonthly.length > 12 ? 'mesa-chart-many' : ''}`}>{detailMonthly.map(row => <button type="button" key={row.key} aria-pressed={activeMonth === row.key} aria-label={`${monthLabel(row.key)} · ${money(row.total)}${row.partial ? ` · ${t('mesa.partialLabel')}` : ''}`} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><b title={money(row.total)}>{new Intl.NumberFormat(LOCALE_TAGS[locale], { maximumFractionDigits: 0, notation: row.total >= 10000 ? 'compact' : 'standard' }).format(row.total)}</b><span style={{ height: `${row.total / maxBar * 135 + 4}px` }} /><small><span>{new Intl.DateTimeFormat(LOCALE_TAGS[locale], { month: 'short', timeZone: 'UTC' }).format(new Date(`${row.key}-01T00:00:00Z`))}{row.partial && '*'}</span>{start.slice(0, 4) !== end.slice(0, 4) && <span>{row.key.slice(2, 4)}</span>}</small></button>)}</div><p className="mesa-micro">{t('mesa.partialNote')}</p><details className="mesa-month-breakdown" key={`${activeCategory ?? 'all'}-${start}-${end}-${selectedYears.join(',')}-${includeRent}-${currency}`}><summary>{t('reading.monthlyDetail')}</summary><p className="mesa-micro">{t('reading.changeBasis')}</p><dl>{graphReading.monthly.map(row => { const change = graphReading.changes.find(change => change.to === row.key); return <div key={row.key}><dt>{monthLabel(row.key)}{row.partial ? ' *' : ''}</dt><dd><strong>{row.count ? money(row.total) : t('reading.noRecordsShort')}</strong>{change && <small>{t('reading.changeFrom', { month: monthLabel(change.from), amount: changeAmount(change.difference) })}</small>}</dd></div>; })}</dl></details></section>
-          <MesaCategoryDistribution rows={data.categories.map(row => ({ name: row.name, label: categoryName(row.name), total: row.total }))} total={data.total} currency={currency} selected={activeCategory} onSelect={setCategory} />
+        {modules.distribution && <div className="mesa-detail-charts">
+          <section className="mesa-average-bars" aria-label={readingText(activeCategory === null ? 'categoryRows' : 'subcategoryRows')} data-testid="period-average-bars">
+            <h2>{readingText(activeCategory === null ? 'categoryRows' : 'subcategoryRows')}</h2>
+            <p className="mesa-micro">{t('mesa.denominator', { currency, count: reading.denominator })}</p>
+            {reading.rows.length ? <dl className="mesa-reading-breakdown">{reading.rows.map((row, index) => <div key={JSON.stringify(row.name)} data-tone={index % 7}>
+              <dt>{row.name === null ? readingText(activeCategory === null ? 'missingCategory' : 'missingSubcategory') : activeCategory === null ? categoryName(row.name) : getLocalizedSubcategoryName(row.name, locale)}</dt>
+              <dd><span className="mesa-average-value"><strong>{row.average === null ? '—' : money(row.average)}</strong></span>
+                <span className="mesa-average-track" aria-hidden="true"><span className="mesa-average-fill" style={{ width: `${maxAverage > 0 && row.average !== null ? row.average / maxAverage * 100 : 0}%` }} /></span>
+              </dd>
+            </div>)}</dl> : <p className="mesa-micro">{readingText(reading.denominator ? 'empty' : 'noMonths')}</p>}
+            <p className="mesa-micro mesa-average-scale">{readingText('barScale')}</p>
+          </section>
+          <section className="mesa-bars"><div className="mesa-panel-title"><div><p className="mesa-eyebrow">{t('charts.trend')}</p><h2>{t('mesa.monthByMonth')}</h2><p className="mesa-micro">{currency} · {t('mesa.barsHint')}</p></div></div><div className={`mesa-chart ${detailMonthly.length > 12 ? 'mesa-chart-many' : ''}`}>{detailMonthly.map(row => <button type="button" key={row.key} aria-pressed={activeMonth === row.key} aria-label={`${monthLabel(row.key)} · ${money(row.total)}${row.partial ? ` · ${t('mesa.partialLabel')}` : ''}`} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><b title={money(row.total)}>{new Intl.NumberFormat(LOCALE_TAGS[locale], { maximumFractionDigits: 0, notation: row.total >= 10000 ? 'compact' : 'standard' }).format(row.total)}</b><span style={{ height: `${row.total / maxBar * 135 + 4}px` }} /><small><span>{new Intl.DateTimeFormat(LOCALE_TAGS[locale], { month: 'short', timeZone: 'UTC' }).format(new Date(`${row.key}-01T00:00:00Z`))}{row.partial && '*'}</span>{start.slice(0, 4) !== end.slice(0, 4) && <span>{row.key.slice(2, 4)}</span>}</small></button>)}</div><p className="mesa-micro mesa-chart-period">{periodLabel}</p><p className="mesa-micro">{t('mesa.partialNote')}</p><details className="mesa-month-breakdown" key={`${activeCategory ?? 'all'}-${start}-${end}-${selectedYears.join(',')}-${includeRent}-${currency}`}><summary>{t('reading.monthlyDetail')}</summary><p className="mesa-micro">{t('reading.changeBasis')}</p><dl>{graphReading.monthly.map(row => { const change = graphReading.changes.find(change => change.to === row.key); return <div key={row.key}><dt>{monthLabel(row.key)}{row.partial ? ' *' : ''}</dt><dd><strong>{row.count ? money(row.total) : t('reading.noRecordsShort')}</strong>{change && <small>{t('reading.changeFrom', { month: monthLabel(change.from), amount: changeAmount(change.difference) })}</small>}</dd></div>; })}</dl></details></section>
+        </div>}
+        {modules.reading && <div className="mesa-reading-method"><p className="mesa-micro mesa-reading-basis">{readingText('denominator', { count: reading.denominator })} {readingText('coverage')}{reading.partial && <> {readingText('partial')}</>}</p>
+          {reading.rows.length > 1 && <p className="mesa-micro mesa-reading-rounding">{readingText('rounding')}</p>}
         </div>}
         {!modules.reading && !modules.distribution && <p className="mesa-micro">{t('mesa.visibilityNote')}</p>}
         </div></div>
+      </div></div>
+        <div className="mesa-scope"><span>{t('mesa.detail')}: <strong>{categoryLabel}</strong> · <strong>{activeMonth ? monthLabel(activeMonth) : t('mesa.fullPeriod')}</strong></span><button type="button" onClick={resetDetail}>{t('mesa.reset')}</button><p>{t('mesa.scope')}</p></div>
+      {loading || unavailable ? <MetricsSkeleton unavailable={unavailable && !loading} /> : <div className="mesa-metrics" data-testid="summary">
+        {metricLabels.map((label, i) => <div key={label} aria-busy={(i === 0 || i === 2) && incomeResponse.loading}><span>{t(label)}</span>{(i === 0 || i === 2) && incomeResponse.loading ? <strong className="skeleton-line skeleton-metric" aria-hidden="true">&nbsp;</strong> : <strong>{i === 1 ? money(data.total) : i === 3 ? data.denominator ? money(data.average) : '—' : i === 0 ? incomeKnown ? money(incomeSummary!.total) : '—' : recordedNet !== null ? money(recordedNet) : '—'}</strong>}<small>{i === 0 ? t(incomeKnown ? 'income.basis' : incomeResponse.loading ? 'income.loading' : 'income.unavailable') : i === 2 ? t('mesa.balanceNote') : i === 3 ? t('mesa.denominator', { currency, count: data.denominator }) : t('mesa.fullPeriod')}</small></div>)}
+      </div>}
+      <section className="mesa-months"><div className="mesa-section-heading"><div><p className="mesa-eyebrow">{t('mesa.monthByMonth')}</p><h2>{categoryLabel}</h2></div><button type="button" aria-pressed={!activeMonth} onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button></div>
+        <div className="mesa-month-strip">{!data.denominator && <p className="mesa-micro">{t('mesa.noMonths')}</p>}{[...detailMonthly].reverse().map(row => <button type="button" className="mesa-month-card" key={row.key} aria-pressed={activeMonth === row.key} onClick={() => setMonth(activeMonth === row.key ? null : row.key)}><span>{monthLabel(row.key)}</span><strong>{money(row.total)}</strong><small>{t('mesa.monthExpense')}{row.partial && ` · ${t('mesa.partialLabel')}`}</small></button>)}</div>
+        <p className="mesa-micro">{t('mesa.monthNote')}</p>
+      </section>
+      {modules.distribution && <details className="mesa-global-distribution"><summary>{t('charts.categories')} · {t('mesa.fullPeriod')}</summary>
+        <MesaCategoryDistribution rows={data.categories.map(row => ({ name: row.name, label: categoryName(row.name), total: row.total }))} total={data.total} currency={currency} selected={activeCategory} onSelect={setCategory} />
+      </details>}
         {modules.index && <section className="mesa-panel mesa-wide mesa-index"><h2>{t('mesa.indexTitle')}</h2><p className="mesa-micro">{t('mesa.indexHint')} {t('mesa.denominator', { currency, count: data.denominator })}</p><div className="mesa-index-head"><span>{t('mesa.category')}</span><span>{t('mesa.average')}</span><span>{t('mesa.trend')}</span><span>{t('mesa.periodTotal')}</span></div>
           {data.categories.map(row => <Fragment key={row.name}><button type="button" className="mesa-index-row" aria-expanded={indexOpen === row.name} onClick={() => setIndexOpen(indexOpen === row.name ? null : row.name)}><span><ChevronDown aria-hidden="true" className={indexOpen === row.name ? 'mesa-open' : ''} />{categoryName(row.name)}</span><strong>{money(row.average)}</strong><Sparkline values={row.monthly} label={`${categoryName(row.name)} · ${t('mesa.trend')} · ${row.monthly.map(money).join(', ')}`} /><strong>{money(row.total)}</strong></button>
             {indexOpen === row.name && <div className="mesa-index-detail"><div className="mesa-detail-heading"><strong>{categoryName(row.name)} · {t('mesa.fullPeriod')}</strong><span>{t(row.records.length === 1 ? 'mesa.record' : 'mesa.records', { count: row.records.length })} · {money(row.total)}</span></div><button type="button" aria-expanded={comparisonOpen === row.name} onClick={() => { setComparisonOpen(comparisonOpen === row.name ? null : row.name); setComparisonSubcategory(null); }}>{t(comparisonOpen === row.name ? 'comparison.hide' : 'comparison.show')}</button>{comparisonOpen === row.name && <div className="mesa-comparison"><CategoryComparison transactions={data.expenses} category={row.name} currency={currency} subcategory={comparisonSubcategory} onSubcategoryChange={setComparisonSubcategory} /><p className="mesa-micro">{t('mesa.comparisonNote')}</p></div>}<div className="mesa-index-scroll"><table><thead><tr><th>{t('table.date')}</th><th>{t('mesa.concept')}</th><th>{currency}</th></tr></thead><tbody>{[...row.records].sort((a, b) => b.date_iso.localeCompare(a.date_iso)).map(tx => <tr key={tx.id}><td>{dateLabel(tx.date_iso)}</td><td>{tx.place}<small>{getLocalizedCategoryName(tx.category, locale)}</small></td><td>{money(tx.value)}</td></tr>)}</tbody></table></div><p className="mesa-micro">{t('mesa.indexNote')}</p></div>}
@@ -206,7 +218,6 @@ export default function MesaDashboard({ transactions, loading = false, unavailab
         </section>}
         {modules.evidence && <section className="mesa-panel mesa-wide mesa-ledger"><div className="mesa-movement-filter" role="group" aria-label={t('income.movements')}>{(['all', 'expense', 'income'] as const).map(type => <button type="button" key={type} aria-pressed={ledgerType === type} onClick={() => { setLedgerType(type); setCategory(null); setResetVersion(version => version + 1); }}>{t(`income.${type}`)}</button>)}</div>{!incomeAvailable && <p className="mesa-micro">{t('income.unavailable')}</p>}<TransactionsTable movementTypes={incomeAvailable} key={resetVersion} transactions={detailRows.filter(tx => !activeMonth || tx.date_iso.startsWith(activeMonth))} onTransactionUpdated={onTransactionUpdated} onTransactionDeleted={onTransactionDeleted} searchQuery={search} onSearchChange={setSearch} scopeLabel={`${activeCategory !== null ? categoryLabel : t(`income.${ledgerType}`)} · ${activeMonth ? monthLabel(activeMonth) : t('mesa.fullPeriod')}`} currency={currency} />{activeMonth && <button type="button" onClick={() => setMonth(null)}>{t('mesa.fullPeriod')}</button>}<p className="mesa-micro">{t('mesa.ledgerNote')}</p></section>}
         {MODULES.every(key => !modules[key]) && <section className="mesa-panel mesa-wide"><h2>{t('mesa.emptyBoard')}</h2><p>{t('mesa.emptyBoardHint')}</p><button type="button" onClick={() => setModules(ALL_MODULES)}>{t('mesa.showAll')}</button></section>}
-      </div></div>
       {!transactions.length && <p className="mesa-panel">{t('mesa.noData')}</p>}
       <section className="mesa-methodology"><h2>{t('mesa.methodology')}</h2><p>{t(incomeAvailable ? 'income.directions' : 'mesa.directionNote')}</p><p><strong>{t('mesa.outflow')}: {money(data.outflow)}</strong> · {t('mesa.expenses')}: {money(data.total)} · {t('mesa.savings')}: {money(data.savings)}</p>{data.unsupported > 0 && <p>{t('mesa.unsupported', { count: data.unsupported })}</p>}</section>
       </>}

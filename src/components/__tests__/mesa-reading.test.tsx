@@ -28,20 +28,21 @@ const render = async (locale: Locale = 'en', transactions = rows) => {
   await act(async () => root.render(<LocaleProvider><MesaDashboard transactions={transactions} onTransactionUpdated={vi.fn()} onTransactionDeleted={vi.fn()} /></LocaleProvider>));
 };
 const reading = () => container.querySelector<HTMLElement>('[data-testid="period-reading"]')!;
+const breakdown = () => container.querySelector<HTMLElement>('[data-testid="period-average-bars"]')!;
 const chooseCategory = async (index: number) => act(async () => container.querySelectorAll<HTMLButtonElement>('.mesa-category-rail button')[index].click());
 
 it.each(['en', 'es', 'ja'] as const)('shows localized scope and per-category/subcategory averages in %s', async locale => {
   await render(locale);
   expect(reading().textContent).toContain(mesaReadingMessages[locale].all);
-  expect(reading().textContent).toContain(mesaReadingMessages[locale].categoryRows);
-  expect(reading().querySelectorAll('dl > div')).toHaveLength(2);
+  expect(breakdown().textContent).toContain(mesaReadingMessages[locale].categoryRows);
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(2);
   expect(reading().querySelector('.mesa-reading-metrics')!.textContent).toContain(formatCurrency(360, locale));
   const summary = container.querySelector('[data-testid="summary"]')!.textContent;
   await chooseCategory(1);
   expect(reading().textContent).toContain(mesaReadingMessages[locale].basic);
-  expect(reading().textContent).toContain(mesaReadingMessages[locale].subcategoryRows);
-  expect(reading().querySelectorAll('dl > div')).toHaveLength(3);
-  expect(reading().textContent).toContain(mesaReadingMessages[locale].missingSubcategory);
+  expect(breakdown().textContent).toContain(mesaReadingMessages[locale].subcategoryRows);
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(3);
+  expect(breakdown().textContent).toContain(mesaReadingMessages[locale].missingSubcategory);
   expect(reading().querySelector('.mesa-reading-metrics')!.textContent).toContain(formatCurrency(340, locale));
   expect(container.querySelector('[data-testid="summary"]')!.textContent).toBe(summary);
 });
@@ -52,8 +53,8 @@ it('updates breakdown when rent is excluded, retaining the same selected month d
   expect(reading().querySelector('.mesa-reading-metrics')!.textContent).toContain(formatCurrency(60));
   expect(reading().querySelector('.mesa-reading-period')!.textContent).toContain('3 calendar months');
   await chooseCategory(1);
-  expect(reading().querySelectorAll('dl > div')).toHaveLength(2);
-  expect(reading().querySelector('dl')!.textContent).not.toContain('Rent');
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(2);
+  expect(breakdown().querySelector('dl')!.textContent).not.toContain('Rent');
 });
 it('shows separated selected years and keeps month detail selection out of the reading scope', async () => {
   localStorage.setItem('gastos.mesa.years.v1', JSON.stringify({ version: 1, selection: ['2024', '2026'] }));
@@ -71,15 +72,15 @@ it('supports an explicitly selected blank category and its custom subcategory', 
   await chooseCategory(2);
   expect(reading().textContent).toContain(mesaReadingMessages.en.missingCategory);
   expect(reading().textContent).toContain(mesaReadingMessages.en.unclassified);
-  expect(reading().querySelector('dl')!.textContent).toContain('Custom manual purpose');
+  expect(breakdown().querySelector('dl')!.textContent).toContain('Custom manual purpose');
   expect(reading().querySelector('.mesa-reading-metrics')!.textContent).toContain(formatCurrency(10));
 });
 it('leaves monthly average unknown when no years are selected', async () => {
   localStorage.setItem('gastos.mesa.years.v1', JSON.stringify({ version: 1, selection: [] }));
   await render();
-  expect(reading().textContent).toContain(mesaReadingMessages.en.noMonths);
+  expect(breakdown().textContent).toContain(mesaReadingMessages.en.noMonths);
   expect(reading().querySelectorAll('.mesa-reading-metrics strong')[1].textContent).toBe('—');
-  expect(reading().querySelectorAll('dl > div')).toHaveLength(0);
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(0);
 });
 it('keeps distribution at the full filtered scope while category and month select the detail and ledger', async () => {
   const original = structuredClone(rows);
@@ -105,8 +106,8 @@ it('keeps custom categories directly selectable without adding category or subca
   expect(container.querySelectorAll('.mesa-category-rail button')).toHaveLength(3);
   expect(container.querySelector('.mesa-category-rail select')).toBeNull();
   await chooseCategory(2);
-  expect(reading().querySelectorAll('dl > div')).toHaveLength(1);
-  expect(reading().querySelector('dl')!.textContent).toContain('Only the recorded custom purpose');
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(1);
+  expect(breakdown().querySelector('dl')!.textContent).toContain('Only the recorded custom purpose');
   expect(container.querySelector('.mesa-detail-panel')!.contains(reading())).toBe(true);
   expect(container.querySelector('.mesa-detail-panel')!.contains(container.querySelector('.mesa-bars'))).toBe(true);
 });
@@ -114,11 +115,49 @@ it('does not invent a percentage or chart segment for missing or zero recorded s
   await render('en', [tx(1, '2026-01-05', 0, 'Travel')]);
   expect(container.querySelector('.mesa-category-distribution')!.textContent).not.toMatch(/NaN|Infinity/);
   expect(container.querySelector('.mesa-distribution-stack')).toBeNull();
-  expect(reading().querySelectorAll('dl > div')).toHaveLength(1);
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(1);
   localStorage.setItem('gastos.mesa.years.v1', JSON.stringify({ version: 1, selection: [] }));
   await act(async () => root.unmount()); root = createRoot(container);
   await render();
   expect(container.querySelector('.mesa-distribution-stack')).toBeNull();
+  expect(reading().querySelectorAll('.mesa-reading-metrics strong')[1].textContent).toBe('—');
+});
+it('renders proportional horizontal monthly-average bars for categories and selected subcategories', async () => {
+  const original = structuredClone(rows);
+  await render();
+  const widths = () => [...breakdown().querySelectorAll<HTMLElement>('.mesa-average-fill')].map(bar => parseFloat(bar.style.width));
+  expect(widths()).toHaveLength(2);
+  expect(widths()[0]).toBe(100);
+  expect(widths()[1]).toBeCloseTo(20 / 340 * 100, 8);
+  expect(breakdown().querySelectorAll('strong')[0].textContent).toBe(formatCurrency(340));
+  await chooseCategory(1);
+  expect(widths()).toHaveLength(3);
+  expect(widths()[0]).toBe(100);
+  expect(widths()[1]).toBe(10);
+  expect(widths()[2]).toBeCloseTo(10 / 300 * 100, 8);
+  const before = breakdown().textContent;
+  await act(async () => container.querySelector<HTMLButtonElement>('.mesa-chart button')!.click());
+  expect(breakdown().textContent).toBe(before);
+  expect(rows).toEqual(original);
+});
+it('places the two metrics beside the explanation and the horizontal distribution before the monthly trend', async () => {
+  await render();
+  const header = reading().querySelector('.mesa-reading-header')!;
+  expect(header.children[0].classList.contains('mesa-reading-intro')).toBe(true);
+  expect(header.children[1].classList.contains('mesa-reading-metrics')).toBe(true);
+  const body = container.querySelector('.mesa-detail-charts')!;
+  expect(body.children[0]).toBe(breakdown());
+  expect(body.children[1].classList.contains('mesa-bars')).toBe(true);
+  expect(container.querySelector('.mesa-board-layout')!.children).toHaveLength(2);
+  expect(container.querySelector('.mesa-global-distribution')!.hasAttribute('open')).toBe(false);
+});
+it('uses an empty bar for a recorded zero average and draws no bars for an unknown denominator', async () => {
+  await render('en', [tx(1, '2026-01-05', 0, 'Travel', 'Accommodation')]);
+  expect(breakdown().querySelector<HTMLElement>('.mesa-average-fill')!.style.width).toBe('0%');
+  expect(breakdown().querySelector('strong')!.textContent).toBe(formatCurrency(0));
+  expect(breakdown().innerHTML).not.toMatch(/NaN|Infinity/);
+  await act(async () => container.querySelector<HTMLInputElement>('.mesa-years input')!.click());
+  expect(breakdown().querySelectorAll('.mesa-average-fill')).toHaveLength(0);
   expect(reading().querySelectorAll('.mesa-reading-metrics strong')[1].textContent).toBe('—');
 });
 it.each(['en', 'es', 'ja'] as const)('explains pending approved category labels accurately in %s', async locale => {
@@ -126,6 +165,6 @@ it.each(['en', 'es', 'ja'] as const)('explains pending approved category labels 
     await render(locale, [tx(1, '2026-01-05', 30, category, 'Custom recorded purpose')]);
     await chooseCategory(1);
     expect(reading().querySelector('.mesa-reading-meaning')!.textContent).toBe(mesaReadingMessages[locale][key]);
-    expect(reading().querySelector('dl')!.textContent).toContain('Custom recorded purpose');
+    expect(breakdown().querySelector('dl')!.textContent).toContain('Custom recorded purpose');
   }
 });

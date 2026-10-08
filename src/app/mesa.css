@@ -203,23 +203,60 @@
 
 .mesa-comparison { margin: 20px 0; padding: 16px; border: 1px solid var(--mesa-line); border-radius: 8px; }
 
-/* The selected summary and charts share one continuous surface. The row
-   grows with the category list; chart geometry keeps its own natural height. */
-.mesa-detail-panel { min-width: 0; padding: 24px; border: 1px solid var(--mesa-line); border-radius: 12px; background: var(--mesa-card); }
-.mesa-detail-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-.mesa-detail-content:not(:has(.mesa-reading)), .mesa-detail-content:not(:has(.mesa-detail-charts)) { grid-template-columns: minmax(0, 1fr); }
+/* Mesa 04: one divided surface, a compact horizontal header, then
+   category/subcategory averages on the left and monthly trend on the right. */
+.mesa-main { padding: 20px; }
+.mesa-workspace { padding: 0; border: 0; border-radius: 0; }
+.mesa-appbar { border: 0; padding: 24px 0; }
+.mesa-global-controls { border-radius: 12px; }
+.mesa-board-layout { display: grid; grid-template-columns: 245px minmax(0, 1fr); gap: 0; align-items: stretch; border: 1px solid var(--mesa-line); border-radius: 12px; overflow: hidden; }
+.mesa-board-layout > aside, .mesa-board { display: contents; }
+.mesa-category-rail { grid-column: 1; grid-row: 1; align-self: start; border: 0; border-radius: 0; padding: 22px 18px; background: transparent; }
+.mesa-category-rail h2 { font-size: 14px; }
+.mesa-category-rail > .mesa-micro { margin-bottom: 18px; }
+.mesa-dashboard .mesa-category-rail > button { flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px; min-height: 68px; padding: 14px 12px; }
+.mesa-category-rail > button span { font-size: 13px; line-height: 1.5; }
+.mesa-category-rail > button strong { font-size: 14px; line-height: 1.5; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.mesa-detail-panel { grid-column: 2; grid-row: 1; align-self: stretch; min-width: 0; padding: 26px 25px; border: 0; border-left: 1px solid var(--mesa-line); border-radius: 0; background: var(--mesa-card); }
+.mesa-detail-content { display: block; min-width: 0; }
 .mesa-detail-panel .mesa-reading { padding: 0; background: transparent; border-radius: 0; }
-.mesa-detail-panel .mesa-reading-meaning { font-size: 14px; line-height: 1.65; margin-bottom: 14px; }
-.mesa-detail-panel .mesa-reading-period { background: var(--surface-2); padding: 12px 14px; }
-.mesa-detail-panel .mesa-reading-metrics { margin: 16px 0 20px; }
-.mesa-detail-panel .mesa-reading-breakdown > div { background: var(--mesa-card); padding: 12px 14px; border-bottom: 1px solid var(--mesa-line); }
-.mesa-detail-charts { display: grid; gap: 24px; min-width: 0; align-content: start; }
-.mesa-detail-panel .mesa-panel-title { flex-direction: row; justify-content: space-between; align-items: start; gap: 14px; }
-.mesa-detail-panel .mesa-panel-title > div:last-child:not(:first-child) { text-align: right; }
-.mesa-detail-panel .mesa-panel-title h2 { font-size: 16px; }
-.mesa-detail-panel .mesa-panel-title strong { font-size: 20px; }
-.mesa-detail-panel .mesa-bars { min-width: 0; padding-bottom: 18px; border-bottom: 1px solid var(--mesa-line); }
-.mesa-detail-panel .mesa-chart { height: 235px; margin-top: 0; }
+.mesa-reading-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, .92fr); gap: 28px; align-items: start; }
+.mesa-reading-intro { min-width: 0; }
+.mesa-detail-panel .mesa-reading-title { font-size: 26px; margin: 9px 0 12px; }
+.mesa-detail-panel .mesa-reading-meaning { font-size: 14px; line-height: 1.65; margin-bottom: 13px; }
+.mesa-detail-panel .mesa-reading-period { background: transparent; padding: 0; border: 0; border-radius: 0; }
+.mesa-reading-period p { font-size: 11px; }
+.mesa-reading-rent { margin: 9px 0 0; font-size: 11px; }
+.mesa-detail-panel .mesa-reading-metrics { margin: 0; gap: 0; padding: 4px 0; }
+.mesa-reading-metrics > div { min-width: 0; border-left: 1px solid var(--mesa-line); padding: 0 18px; }
+.mesa-reading-metrics > div:last-child { padding-right: 0; }
+.mesa-detail-panel .mesa-reading-metrics strong { margin: 13px 0 7px; font-size: 28px; line-height: 1.3; }
+.mesa-detail-charts { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.2fr); gap: 30px; min-width: 0; align-items: start; border-top: 1px solid var(--mesa-line); margin-top: 25px; padding-top: 25px; }
+.mesa-detail-panel .mesa-panel-title { flex-direction: row; align-items: start; gap: 14px; }
+.mesa-detail-panel .mesa-panel-title h2, .mesa-average-bars h2 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.5; }
+.mesa-detail-panel .mesa-bars { min-width: 0; padding: 0; border: 0; }
+.mesa-detail-panel .mesa-chart { height: 235px; margin-top: 14px; border-bottom: 1px solid var(--mesa-line); }
+.mesa-detail-panel .mesa-chart button b { display: block; }
+.mesa-chart-period { margin: 12px 0 0; font-size: 11px; }
+.mesa-average-bars { min-width: 0; }
+.mesa-average-bars > .mesa-micro { font-size: 11px; }
+.mesa-average-bars .mesa-reading-breakdown > div { padding: 0; border: 0; border-radius: 0; background: transparent; gap: 9px 12px; margin-top: 19px; grid-template-columns: minmax(0, 1fr) auto; }
+.mesa-average-bars .mesa-reading-breakdown dt { grid-column: 1; grid-row: 1; font-size: 12px; }
+.mesa-average-bars .mesa-reading-breakdown dd { display: contents; }
+.mesa-average-value { grid-column: 2; grid-row: 1; min-width: 0; text-align: right; }
+.mesa-average-bars .mesa-average-value strong { font-size: 14px; line-height: 1.6; }
+.mesa-average-track { display: block; grid-column: 1 / -1; grid-row: 2; width: 100%; height: 14px; border-radius: 4px; background: color-mix(in srgb, var(--mesa-reading-tone) 12%, var(--mesa-card)); overflow: hidden; }
+.mesa-average-fill { display: block; height: 100%; border-radius: 4px; background: var(--mesa-reading-tone); }
+.mesa-average-scale { margin-bottom: 0; }
+.mesa-reading-method .mesa-reading-basis { margin-top: 26px; padding-top: 18px; font-size: 11px; }
+.mesa-reading-method .mesa-reading-rounding { font-size: 11px; margin-bottom: 0; }
+.mesa-workspace > .mesa-scope { margin: 18px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.mesa-workspace > .mesa-scope p { flex-basis: 100%; }
+.mesa-workspace > .mesa-metrics { margin-top: 25px; padding: 24px 0; border-top: 1px solid var(--mesa-line); }
+.mesa-workspace > .mesa-months { margin-top: 25px; }
+.mesa-workspace > .mesa-index, .mesa-workspace > .mesa-ledger { margin-top: 24px; }
+.mesa-global-distribution { padding: 20px 24px; margin: 24px 0; border: 1px solid var(--mesa-line); border-radius: 12px; background: var(--mesa-card); }
+.mesa-global-distribution > summary { cursor: pointer; min-height: 44px; font-size: 13px; font-weight: 600; line-height: 1.6; }
 .mesa-category-distribution { min-width: 0; }
 .mesa-distribution-stack { display: flex; overflow: hidden; height: 18px; border-radius: 5px; margin: 16px 0 10px; background: var(--surface-2); }
 .mesa-distribution-stack > span, .mesa-distribution-legend > button { --distribution-base: #1e40af; --distribution-tone: color-mix(in srgb, var(--primary) 25%, var(--distribution-base)); }
@@ -232,26 +269,38 @@
 .mesa-distribution-label i { width: 8px; height: 8px; border-radius: 2px; background: var(--distribution-tone); flex-shrink: 0; }
 .mesa-distribution-legend strong { flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .mesa-category-distribution > .mesa-micro { margin-bottom: 0; }
-@media (min-width: 801px) {
-  .mesa-board-layout { grid-template-columns: 260px minmax(0, 1fr); align-items: stretch; }
-  .mesa-board-layout > aside, .mesa-board { display: contents; }
-  .mesa-category-rail { grid-column: 1; grid-row: 1; align-self: start; }
-  .mesa-scope { grid-column: 1; grid-row: 2; align-self: start; }
-  .mesa-detail-panel { grid-column: 2; grid-row: 1; align-self: stretch; }
-  .mesa-index, .mesa-ledger { grid-column: 2; }
-  .mesa-board > section:last-child:not(.mesa-index):not(.mesa-ledger) { grid-column: 2; }
-}
-@media (max-width: 1100px) {
-  .mesa-detail-content { grid-template-columns: minmax(0, 1fr); }
+.dashboard-skeleton .mesa-detail-panel .mesa-reading, .dashboard-unavailable .mesa-detail-panel .mesa-reading { min-height: 130px; }
+.mesa-detail-panel .mesa-reading .skeleton-chart { display: none; }
+@media (max-width: 1150px) {
+  .mesa-detail-charts { grid-template-columns: minmax(0, 1fr); }
+  .mesa-reading-header { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .mesa-reading-metrics { width: 100%; max-width: 520px; }
+  .mesa-reading-metrics > div:first-child { padding-left: 0; border-left: 0; }
 }
 @media (max-width: 800px) {
-  .mesa-detail-panel { padding: 20px; }
-  .mesa-detail-content { gap: 24px; }
-  .mesa-detail-panel .mesa-panel-title { flex-direction: column; }
-  .mesa-detail-panel .mesa-panel-title > div:last-child:not(:first-child) { text-align: left; }
+  .mesa-main { padding: 16px 10px 28px; }
+  .mesa-board-layout { grid-template-columns: minmax(0, 1fr); }
+  .mesa-category-rail { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; padding: 18px; }
+  .mesa-category-rail > h2, .mesa-category-rail > .mesa-micro { grid-column: 1 / -1; }
+  .mesa-dashboard .mesa-category-rail > button { margin: 0; padding: 14px 10px; min-width: 0; }
+  .mesa-detail-panel { grid-column: 1; grid-row: 2; padding: 22px 18px; border-left: 0; border-top: 1px solid var(--mesa-line); }
+  .mesa-reading-header { gap: 18px; }
+  .mesa-detail-panel .mesa-reading-metrics strong { font-size: 25px; }
+  .mesa-reading-metrics > div { padding: 0 12px; }
+  .mesa-detail-panel .mesa-reading-title { font-size: 24px; }
+  .mesa-detail-charts { gap: 28px; margin-top: 22px; padding-top: 22px; }
+  .mesa-global-distribution { padding: 18px; }
+}
+@media (max-width: 480px) {
+  .mesa-detail-panel .mesa-reading-metrics { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .mesa-reading-metrics > div { border-left: 0; padding: 0; }
+  .mesa-reading-metrics > div + div { border-top: 1px solid var(--mesa-line); padding-top: 18px; }
 }
 @media (max-width: 380px) {
-  .mesa-detail-panel { padding: 14px; }
+  .mesa-category-rail { padding: 14px; gap: 4px 6px; }
+  .mesa-detail-panel { padding: 20px 14px; }
+  .mesa-detail-panel .mesa-reading-metrics strong { font-size: 21px; }
+  .mesa-average-bars .mesa-reading-breakdown > div { gap: 8px 10px; }
   .mesa-distribution-legend { grid-template-columns: minmax(0, 1fr); }
 }
 .mesa-movement-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }

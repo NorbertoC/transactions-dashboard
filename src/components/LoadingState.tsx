@@ -31,14 +31,14 @@ export function DashboardSkeleton({ modules, unavailable = false }: { unavailabl
   const { t } = useLocale();
   const Placeholder = unavailable ? SectionUnavailable : SectionSkeleton;
   return <div className={unavailable ? "dashboard-unavailable" : "dashboard-skeleton"}>
-    <Placeholder label={t('mesa.monthByMonth')} className="skeleton-months" />
     <div className="mesa-board-layout"><aside><Placeholder label={t('mesa.categoryAverage')} className="mesa-category-rail" /></aside><div className="mesa-board">
       <div className="mesa-detail-panel"><div className="mesa-detail-content">
       {modules.reading && <Placeholder label={t('mesa.reading')} className="mesa-reading" />}
-      {modules.distribution && <Placeholder label={t('mesa.trend')} className="mesa-bars" />}
+      {modules.distribution && <div className="mesa-detail-charts"><Placeholder label={t('mesa.distribution')} className="mesa-average-bars" /><Placeholder label={t('mesa.trend')} className="mesa-bars" /></div>}
       </div></div>
+    </div></div>
+    <Placeholder label={t('mesa.monthByMonth')} className="skeleton-months" />
       {modules.index && <Placeholder label={t('mesa.index')} className="mesa-index" />}
       {modules.evidence && <Placeholder label={t('mesa.evidence')} className="mesa-ledger" />}
-    </div></div>
   </div>;
 }
