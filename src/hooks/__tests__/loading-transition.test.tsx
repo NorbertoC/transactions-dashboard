@@ -23,13 +23,38 @@ describe('production loading transitions', () => {
     await act(async () => root.render(createElement(LocaleProvider, null, createElement(Home))));
     const menus = container.querySelectorAll<HTMLSelectElement>('.mesa-global-controls select');
     expect(menus[1].disabled).toBe(true); expect(menus[1].selectedOptions[0].textContent).toBe('Loading…'); expect(menus[2].options).toHaveLength(1);
+    const skeleton = container.querySelector('.dashboard-skeleton')!;
+    const sections = [...skeleton.children];
+    expect(sections.findIndex(section => section.classList.contains('mesa-metrics'))).toBeLessThan(sections.findIndex(section => section.classList.contains('mesa-months')));
+    expect(skeleton.querySelector('.mesa-reading-header .mesa-reading-metrics')).not.toBeNull();
+    expect(skeleton.querySelector('.mesa-average-placeholder')).not.toBeNull();
+    expect(skeleton.querySelector('.mesa-chart-placeholder')).not.toBeNull();
+    expect(skeleton.querySelector('.mesa-month-strip .mesa-month-card')).not.toBeNull();
+    expect(skeleton.querySelector('.skeleton-chart')).toBeNull();
     await act(async () => first.resolve([row])); expect(container.querySelector('.dashboard-skeleton')).toBeNull(); expect(container.querySelector('[aria-busy="true"]')).toBeNull(); expect(container.querySelector('[data-testid="summary"]')).not.toBeNull();
     await act(async () => root.render(createElement(LocaleProvider, null, createElement(Home)))); expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it('keeps module controls usable during loading and preserves their selection after the data arrives', async () => {
+    const first = deferred<Transaction[]>(); vi.spyOn(ApiService, 'fetchTransactionsClient').mockReturnValue(first.promise);
+    await act(async () => root.render(createElement(LocaleProvider, null, createElement(Home))));
+    const visibility = [...container.querySelectorAll<HTMLInputElement>('.mesa-visibility > label input')];
+    await act(async () => { visibility[0].click(); visibility[2].click(); visibility[3].click(); });
+    expect(container.querySelector('.dashboard-skeleton .mesa-reading')).toBeNull();
+    expect(container.querySelector('.dashboard-skeleton .mesa-index')).toBeNull();
+    expect(container.querySelector('.dashboard-skeleton .mesa-ledger')).toBeNull();
+    expect(container.querySelector('.dashboard-skeleton .mesa-bars')).not.toBeNull();
+    await act(async () => first.resolve([row]));
+    expect(container.querySelector('.mesa-reading')).toBeNull();
+    expect(container.querySelector('.mesa-index')).toBeNull();
+    expect(container.querySelector('.mesa-ledger')).toBeNull();
+    expect(container.querySelector('.mesa-bars')).not.toBeNull();
+    expect(visibility.map(input => input.checked)).toEqual([false, true, false, false]);
   });
   it('ends busy semantics on failure and restores loading then content on retry', async () => {
     const retry = deferred<Transaction[]>(); vi.spyOn(ApiService, 'fetchTransactionsClient').mockRejectedValueOnce(new Error('connection failed')).mockReturnValueOnce(retry.promise);
     await act(async () => root.render(createElement(LocaleProvider, null, createElement(Home))));
     expect(container.querySelector('[aria-busy="true"]')).toBeNull(); expect(container.querySelector('.dashboard-skeleton')).toBeNull(); expect(container.querySelector('.dashboard-unavailable')).not.toBeNull();
+    expect(container.querySelector('.dashboard-unavailable .skeleton-line')).toBeNull();
     expect(container.querySelector<HTMLSelectElement>('.mesa-global-controls select:nth-of-type(1)')).not.toBeNull();
     expect(container.querySelectorAll<HTMLSelectElement>('.mesa-global-controls select')[1].selectedOptions[0].textContent).toBe('Unavailable');
     await act(async () => (container.querySelector('.data-feedback button') as HTMLButtonElement).click()); expect(container.querySelector('.dashboard-skeleton')).not.toBeNull();
