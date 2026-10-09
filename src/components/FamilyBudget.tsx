@@ -7,6 +7,8 @@ import { useLocale } from '@/i18n/LocaleProvider';
 import { getLocalizedCategoryName, getLocalizedSubcategoryName, PURPOSE_TAXONOMY_VERSION } from '@/constants/categories';
 import { formatCurrency, formatNumber } from '@/utils/format';
 import { calculate, defaults, preservePurposeV3Draft, preservePurposeV4Draft, SCENARIOS, validDraft, type BudgetRow, type Draft, type Kind, type Result, type Scenario } from './budget/model';
+import { resolveCategoryView } from '@/utils/category-view';
+import { categoryReviewMessages } from '@/i18n/category-review-messages';
 import { budgetMessages } from './budget/messages';
 import { forecastMessages } from './forecast/messages';
 import IncomeBreakdown from './budget/IncomeBreakdown';
@@ -69,7 +71,15 @@ export default function FamilyBudget({ rows, known, accountScope, coverage, inco
       <dl className="fb-receipt">{[[m.needs, c.needs], [m.wants, c.otherWants], [m.unknown, c.unknown], [m.travelPlanned, c.travel], [m.savings, c.savings]].map(([label, value]) => <div key={String(label)}><dt>{label}</dt><dd>{ready ? money(Number(value)) : '—'}{label === m.travelPlanned && <small>{ready ? money(c.annualTravel) : '—'} {m.yearly}</small>}</dd></div>)}<div className={`fb-receipt-total ${ready && c.gap > 0 ? 'fb-deficit' : ''}`}><dt>{ready && c.gap > 0 ? m.gap : m.free}</dt><dd>{ready ? money(c.gap || c.unallocated) : '—'}</dd></div></dl>
     </article>;
   }
-  const groups = [...new Set(result.rows.map(row => row.category))];
+  // Reconcile section identity while each editable row keeps its original draft ID.
+  const groupMap = new Map<string, { id: string; category: string; rows: typeof result.rows }>();
+  for (const row of result.rows) {
+    const view = resolveCategoryView({ category: row.category, subcategory: row.name });
+    const group = groupMap.get(view.groupId) ?? { id: view.groupId, category: view.category, rows: [] };
+    group.rows.push(row);
+    groupMap.set(view.groupId, group);
+  }
+  const groups = [...groupMap.values()];
   return <div className="family-budget">
     <header className="fb-page-head"><div><p className="fb-eyebrow">{m.eyebrow}</p><h1>{m.title}</h1><p>{m.intro}</p></div><button type="button" onClick={() => edit(defaults(scenario))}>{m.reset}</button></header>
     <div className="fb-household"><div className="fb-scenarios" role="group" aria-label={m.scenarioLabel}>{SCENARIOS.map((id, i) => <button key={id} type="button" aria-pressed={scenario === id} onClick={() => { setScenario(id); setStatus(''); }}>{m.scenarios[i]}</button>)}</div><small>{m.hypotheses}</small></div>
@@ -82,8 +92,8 @@ export default function FamilyBudget({ rows, known, accountScope, coverage, inco
     <div className="fb-compare">{card(baseline, false)}{card(result, true)}</div>
     <div className="fb-deltas">{[[m.monthlyDelta, result.capacity - baseline.capacity], [m.annualDelta, result.annualCapacity - baseline.annualCapacity]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{available ? `${Number(value) > 0 ? '+' : ''}${money(Number(value))}` : '—'}</strong></div>)}<div><span>{m.rent}</span><strong>{available ? money(result.rent) : '—'}</strong><small>{result.rent === null ? m.noRent : m.rentNote}</small></div></div>
     {result.changes.length > 0 && <details className="fb-changes" open><summary>{m.cutTitle}<ChevronDown aria-hidden="true" /></summary><div>{result.changes.map(change => <p key={change.id}><span>{rowName(change.id)}<small>{m.cutReason}</small></span><b>{money(change.from)} → {money(change.to)}</b></p>)}<p>{m.cutNote}</p></div></details>}
-    <details className="fb-categories"><summary>{m.categories}<ChevronDown aria-hidden="true" /></summary><div className="fb-details-body"><p>{m.categoryNote}</p>{groups.map(category => <details key={category} className="fb-group" open={['Basic living', 'Travel', 'family'].includes(category)}><summary><span>{category === 'family' ? m.family : getLocalizedCategoryName(category, locale)}</span><small>{known ? money(result.rows.filter(row => row.category === category).reduce((sum, row) => sum + row.proposed, 0)) : '—'} {m.monthly}</small><ChevronDown aria-hidden="true" /></summary>{result.rows.filter(row => row.category === category).map(row => <div className="fb-row" key={row.id}>
-      <div className="fb-row-name"><b>{rowName(row.id)}</b><small>{row.observed ? `${m.observed} · ${formatNumber(row.count, locale)} ${m.count}` : m.babyNote}{row.protected ? ` · ${m.protected}` : ''}</small></div>
+    <details className="fb-categories"><summary>{m.categories}<ChevronDown aria-hidden="true" /></summary><div className="fb-details-body"><p>{m.categoryNote}</p>{groups.map(({ id, category, rows: groupRows }) => <details key={id} className="fb-group" open={['Basic living', 'Travel', 'family'].includes(category)}><summary><span>{category === 'family' ? m.family : getLocalizedCategoryName(category, locale)}</span><small>{known ? money(groupRows.reduce((sum, row) => sum + row.proposed, 0)) : '—'} {m.monthly}</small><ChevronDown aria-hidden="true" /></summary>{groupRows.map(row => <div className="fb-row" key={row.id}>
+      <div className="fb-row-name"><b>{rowName(row.id)}</b><small>{row.observed ? `${m.observed} · ${formatNumber(row.count, locale)} ${m.count}` : m.babyNote}{row.protected ? ` · ${m.protected}` : ''}</small>{row.id.startsWith('[') && <small>{categoryReviewMessages[locale].draftBucket}: {row.category} · {row.name}</small>}</div>
       <label className="fb-row-money"><span>{m.requested}</span><NumericInput aria-label={`${rowName(row.id)} · ${m.requested}`} min="0" max="1000000" step="0.01" value={row.id === 'baby' ? draft.baby : Object.hasOwn(draft.amounts, row.id) ? draft.amounts[row.id] : row.amount} onValueChange={value => amount(row.id, value)} /></label>
       <label className="fb-row-type"><span>{m.type}</span><SelectControl aria-label={`${rowName(row.id)} · ${m.type}`} value={row.kind} disabled={row.protected || row.travel || !row.observed} onChange={event => edit({ kinds: { ...draft.kinds, [row.id]: event.target.value as Kind }, lastEdited: null })}><option value="need">{m.need}</option><option value="want">{m.want}</option><option value="unknown">{m.review}</option></SelectControl></label>
       <div className="fb-row-range"><input type="range" min="0" max={Math.max(row.id === 'rent' || row.travel ? 6000 : 2500, row.amount)} step="10" aria-label={`${rowName(row.id)} · ${m.editable}`} aria-valuetext={money(row.amount)} value={row.amount} onChange={event => amount(row.id, Number(event.target.value))} /><small>{m.proposed}: {result.valid ? money(row.proposed) : '—'}</small></div>

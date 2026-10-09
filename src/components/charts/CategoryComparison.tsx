@@ -1,5 +1,7 @@
 'use client';
 
+import { categoryViewOptions, resolveCategoryView, viewSubcategoryLabel } from '@/utils/category-view';
+
 import { useId, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import {
@@ -12,8 +14,7 @@ import {
   YAxis
 } from 'recharts';
 import {
-  getLocalizedCategoryName,
-  getLocalizedSubcategoryName
+  getLocalizedCategoryName
 } from '@/constants/categories';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LOCALE_TAGS, type Locale } from '@/i18n/types';
@@ -109,21 +110,10 @@ export default function CategoryComparison({
   const { t, locale } = useLocale();
   const scopeId = useId();
 
-  const localizedCategory = getLocalizedCategoryName(category, locale);
-  const availableSubcategories = useMemo(() => {
-    const names = new Set<string>();
-    for (const transaction of transactions) {
-      if (transaction.category === category && transaction.subcategory) {
-        names.add(transaction.subcategory);
-      }
-    }
-    return [...names].sort((a, b) =>
-      getLocalizedSubcategoryName(a, locale).localeCompare(
-        getLocalizedSubcategoryName(b, locale),
-        LOCALE_TAGS[locale]
-      )
-    );
-  }, [category, locale, transactions]);
+  const matching = categoryViewOptions(transactions, category);
+  const categoryName = matching[0]?.category ?? transactions.map(resolveCategoryView).find(view => view.groupId === category)?.category ?? category;
+  const localizedCategory = getLocalizedCategoryName(categoryName, locale);
+  const availableSubcategories = useMemo(() => categoryViewOptions(transactions, category).sort((a, b) => viewSubcategoryLabel(a, locale).localeCompare(viewSubcategoryLabel(b, locale), LOCALE_TAGS[locale])), [category, locale, transactions]);
 
   const rows = useMemo(() => {
     const todayIso = getLocalTodayIso();
@@ -136,7 +126,7 @@ export default function CategoryComparison({
   }, [category, locale, subcategory, transactions]);
 
   const selectedLabel = subcategory
-    ? getLocalizedSubcategoryName(subcategory, locale)
+    ? viewSubcategoryLabel(availableSubcategories.find(view => view.subcategoryId === subcategory) ?? resolveCategoryView({ category: categoryName, subcategory }), locale)
     : localizedCategory;
   const total = rows.reduce((sum, row) => sum + row.total, 0);
   const average = rows.length > 0 ? total / rows.length : 0;
@@ -177,8 +167,8 @@ export default function CategoryComparison({
                 {t('comparison.allCategory', { category: localizedCategory })}
               </option>
               {availableSubcategories.map((subcategory) => (
-                <option key={subcategory} value={subcategory}>
-                  {getLocalizedSubcategoryName(subcategory, locale)}
+                <option key={subcategory.subcategoryId} value={subcategory.subcategoryId}>
+                  {viewSubcategoryLabel(subcategory, locale)}
                 </option>
               ))}
             </select>

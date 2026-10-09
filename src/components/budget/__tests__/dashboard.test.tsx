@@ -55,6 +55,20 @@ it.each(['en', 'es', 'ja'] as const)('renders localized read-only income and unk
   expect(container.textContent).toContain(m.incomeUnavailable); expect(container.innerHTML).not.toMatch(/Solo Nor|Mana|Norberto/);
   expect(container.querySelectorAll('input[type=range]')).toHaveLength(2);
 });
+it.each(['en', 'es', 'ja'] as const)('unifies translated work sections while preserving separate original draft controls in %s', locale => {
+  stored.set('gastos.locale', locale);
+  const source = [
+    { ...rows[0], id: JSON.stringify(['Work & learning', 'Software & tools']), category: 'Work & learning', name: 'Software & tools', amount: 10 },
+    { ...rows[0], id: 'api_usage', category: 'Work & Study', name: 'API usage', amount: 20 },
+    { ...rows[0], id: JSON.stringify(['Trabajo y estudio', 'Consumo de API']), category: 'Trabajo y estudio', name: 'Consumo de API', amount: 30 },
+  ];
+  const before = structuredClone(source); render(source);
+  const groups = [...container.querySelectorAll('.fb-group > summary > span')].map(node => node.textContent);
+  expect(groups).toHaveLength(2); expect(new Set(groups).size).toBe(2);
+  expect(container.querySelectorAll('.fb-row-money input')).toHaveLength(4);
+  expect(container.textContent).toContain('Work & learning · Software & tools');
+  expect(source).toEqual(before);
+});
 it('retains requested amounts and visibly reports automatic changes and infeasible deficits', () => {
   render(); change(budgetMessages.en.savings, '0'); change('Rent · Requested', '14000');
   const toggle = container.querySelector<HTMLInputElement>('[type=checkbox]')!; act(() => toggle.click());

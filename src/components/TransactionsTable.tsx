@@ -6,21 +6,18 @@ import { ChevronDown, ChevronUp, Pencil, Search, Sparkles, Trash2 } from 'lucide
 import { Transaction } from '@/types/transaction';
 import { transactionLabel } from '@/utils/transaction-label';
 import { formatCurrency, formatDateFull, formatDateShort } from '@/utils/format';
-import { generateColorVariants } from '@/utils/color';
 import {
   CATEGORIES,
-  DEFAULT_CATEGORY,
-  getCategoryBadgeStyles,
   getCategoryHexColor,
   getLocalizedCategoryName,
   getLocalizedSubcategoryName,
-  getSubcategoriesForCategory,
   getSubcategoryPurposeHint,
 } from '@/constants/categories';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getLocalizedSuggestionReason, suggestCategoryForMerchant, type ClassificationSuggestion } from '@/utils/classification';
 import { categoryReviewAvailable, CategoryReviewError, isReviewExpense, saveVerifiedCategory } from '@/utils/category-review';
 import { categoryReviewMessages } from '@/i18n/category-review-messages';
+import { editorPair, resolveCategoryView, viewCategoryLabel, viewSubcategoryLabel } from '@/utils/category-view';
 import { SESSION_INVALIDATED } from '@/utils/client-session';
 
 const PAGE_SIZE = 20;
@@ -47,7 +44,6 @@ interface ActionError {
 
 export default function TransactionsTable({
   transactions,
-  categoryColors,
   onTransactionUpdated,
   onTransactionDeleted, searchQuery: controlledSearch, onSearchChange, scopeLabel, currency = 'NZD', movementTypes = false
 }: TransactionsTableProps) {
@@ -57,7 +53,7 @@ export default function TransactionsTable({
   const signedValue = (row: Transaction) => row.record_type === 'transfer' ? 0 : row.direction === 'inflow' ? row.value : -row.value;
   const displayAmount = (row: Transaction) => `${movementTypes ? row.direction === 'inflow' ? '+' : '−' : ''}${money(row.value)}`;
   const movementLabel = (row: Transaction) => t(`income.${row.record_type ?? 'expense'}`);
-  const badges = (row: Transaction) => isExpense(row) ? <>{renderCategoryBadge(row.category || DEFAULT_CATEGORY)}{renderSubcategoryBadge(row.category, row.subcategory)}</> : <span className="mesa-micro">{movementLabel(row)}{row.record_type !== 'income' && row.income_source ? ` · ${row.income_source}` : ''}</span>;
+  const badges = (row: Transaction) => isExpense(row) ? renderExpenseBadges(row) : <span className="mesa-micro">{movementLabel(row)}{row.record_type !== 'income' && row.income_source ? ` · ${row.income_source}` : ''}</span>;
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [localSearch, setLocalSearch] = useState('');
@@ -69,6 +65,7 @@ export default function TransactionsTable({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [categoryInput, setCategoryInput] = useState('');
   const [subcategoryInput, setSubcategoryInput] = useState('');
+  const [selectionTouched, setSelectionTouched] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<ActionError | null>(null);
@@ -141,7 +138,10 @@ export default function TransactionsTable({
     if (reviewSuggestionsOnly && !isReviewExpense(transaction)) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
+    const view = resolveCategoryView(transaction);
     return (
+      viewCategoryLabel(view, locale).toLowerCase().includes(query) ||
+      viewSubcategoryLabel(view, locale).toLowerCase().includes(query) ||
       transactionLabel(transaction).toLowerCase().includes(query) ||
       transaction.place.toLowerCase().includes(query) ||
       transaction.category.toLowerCase().includes(query) ||
@@ -171,70 +171,20 @@ export default function TransactionsTable({
   const visibleTransactions = sortedTransactions.slice(0, visibleCount);
   const remainingCount = sortedTransactions.length - visibleTransactions.length;
 
-  // Generate subcategory color mapping: variants of the category base color,
-  // assigned by descending spend per subcategory.
-  const subcategoryColorMap = useMemo(() => {
-    const colorMap: Record<string, string> = {};
-    const categorySubcategories: Record<string, Array<{ name: string; value: number }>> = {};
-
-    transactions.forEach((transaction) => {
-      const { category, subcategory } = transaction;
-      if (!category || !subcategory) return;
-
-      categorySubcategories[category] ??= [];
-      const existing = categorySubcategories[category].find((s) => s.name === subcategory);
-      if (existing) {
-        existing.value += transaction.value;
-        return;
-      }
-      categorySubcategories[category].push({ name: subcategory, value: transaction.value });
-    });
-
-    Object.entries(categorySubcategories).forEach(([category, subcategories]) => {
-      const baseColor = categoryColors?.[category] ?? getCategoryHexColor(category);
-      const sortedSubcategories = [...subcategories].sort((a, b) => b.value - a.value);
-      const colorVariants = generateColorVariants(baseColor, sortedSubcategories.length, true);
-      sortedSubcategories.forEach((subcategory, index) => {
-        colorMap[`${category}:${subcategory.name}`] = colorVariants[index];
-      });
-    });
-
-    return colorMap;
-  }, [transactions, categoryColors]);
-
-  const categoryOptions = useMemo(() => {
-    const primaryNames = CATEGORIES.map((c) => c.name);
-    const otherCategories = new Set<string>();
-    transactions.forEach((t) => {
-      if (!isExpense(t) || (t.category === 'Savings' && categoryInput !== 'Savings')) return;
-      if (t.category && !primaryNames.includes(t.category)) {
-        otherCategories.add(t.category);
-      }
-    });
-    return [...primaryNames, ...Array.from(otherCategories).sort((a, b) => a.localeCompare(b))];
-  }, [transactions, categoryInput]);
-
-  const subcategoryOptions = useMemo(() => {
-    if (!categoryInput) return [];
-    const predefined = getSubcategoriesForCategory(categoryInput);
-    const existingSubcategories = new Set<string>();
-    transactions.forEach((t) => {
-      if (t.category === categoryInput && t.subcategory) {
-        existingSubcategories.add(t.subcategory);
-      }
-    });
-    const predefinedNames = predefined.map((s) => s.name);
-    const otherSubcategories = Array.from(existingSubcategories).filter((s) => !predefinedNames.includes(s));
-    return [
-      ...predefined.map((s) => ({ name: s.name, nameJa: s.nameJa })),
-      ...otherSubcategories.map((s) => ({ name: s, nameJa: undefined as string | undefined }))
-    ];
-  }, [categoryInput, transactions]);
+  const editingRow = transactions.find(row => row.id === editingId);
+  const originalView = editingRow ? resolveCategoryView(editingRow) : null;
+  const categoryOptions = CATEGORIES;
+  const selectedGroup = CATEGORIES.find(group => group.key === categoryInput);
+  const subcategoryOptions = selectedGroup?.subcategories ?? [];
+  const retainCategory = originalView !== null && !CATEGORIES.some(group => group.key === originalView.groupId);
+  const retainSubcategory = originalView !== null && categoryInput === originalView.groupId && !subcategoryOptions.some(sub => sub.key === originalView.subcategoryId);
 
   const startEditing = (transaction: Transaction) => {
     setEditingId(transaction.id);
-    setCategoryInput(transaction.category || '');
-    setSubcategoryInput(transaction.subcategory ?? '');
+    const view = resolveCategoryView(transaction);
+    setCategoryInput(view.groupId);
+    setSubcategoryInput(view.subcategoryId);
+    setSelectionTouched(false);
     setActionError(null);
   };
 
@@ -284,19 +234,17 @@ export default function TransactionsTable({
   };
 
   const handleSave = async (transaction: Transaction) => {
-    const category = categoryInput;
-    const subcategory = subcategoryInput;
-    if (!category.trim()) {
-      setActionError({ id: transaction.id, message: t('table.setCategoryError') });
+    const original = resolveCategoryView(transaction);
+    if ((!selectionTouched || transaction.subcategory == null) && categoryInput === original.groupId && subcategoryInput === original.subcategoryId) {
+      cancelEditing();
       return;
     }
-    const changedCategory = category !== transaction.category;
-    if (changedCategory && getSubcategoriesForCategory(category).length && !subcategory) {
+    const pair = editorPair(transaction, categoryInput, subcategoryInput, selectionTouched);
+    if (!pair || !pair.category.trim()) {
       setActionError({ id: transaction.id, message: reviewCopy.chooseSubcategory });
       return;
     }
-    // An unchanged manual/custom pair stays literal; no first-option fallback.
-    await persistCategory(transaction, category, subcategory);
+    await persistCategory(transaction, pair.category, pair.subcategory);
   };
 
   const applySuggestion = async (transaction: Transaction) => {
@@ -330,34 +278,17 @@ export default function TransactionsTable({
     }
   };
 
-  const renderCategoryBadge = (category: string) => {
-    const colors = getCategoryBadgeStyles(category);
-    return (
-      <span
-        className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-        style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', borderLeft: `3px solid ${colors.style.color}` }}
-        title={category}
-      >
-        {getLocalizedCategoryName(category, locale)}
+  const renderExpenseBadges = (transaction: Transaction) => {
+    const view = resolveCategoryView(transaction);
+    const color = getCategoryHexColor(view.category);
+    return <>
+      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', borderLeft: `3px solid ${color}` }} title={transaction.category}>
+        {viewCategoryLabel(view, locale)}
       </span>
-    );
-  };
-
-  const renderSubcategoryBadge = (category: string, subcategory: string | undefined) => {
-    if (!subcategory) return null;
-    const color =
-      subcategoryColorMap[`${category}:${subcategory}`] ??
-      categoryColors?.[category] ??
-      getCategoryHexColor(category);
-    return (
-      <span
-        className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-        style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', borderLeft: `3px solid ${color}` }}
-        title={subcategory}
-      >
-        {getLocalizedSubcategoryName(subcategory, locale)}
-      </span>
-    );
+      {view.subcategory && <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', borderLeft: `3px solid ${color}` }} title={transaction.subcategory}>
+        {viewSubcategoryLabel(view, locale)}
+      </span>}
+    </>;
   };
 
   const renderEditor = (transaction: Transaction, screen: 'desktop' | 'mobile') => {
@@ -380,17 +311,13 @@ export default function TransactionsTable({
                 const category = e.target.value;
                 setCategoryInput(category);
                 setSubcategoryInput('');
+                setSelectionTouched(true);
               }}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-base sm:text-sm"
             >
               <option value="">{t('table.selectCategory')}</option>
-              {categoryOptions.map((cat) => {
-                return (
-                  <option key={cat} value={cat}>
-                    {getLocalizedCategoryName(cat, locale)}
-                  </option>
-                );
-              })}
+              <optgroup label={reviewCopy.currentPurposes}>{categoryOptions.map(cat => <option key={cat.key} value={cat.key}>{getLocalizedCategoryName(cat.name, locale)}</option>)}</optgroup>
+              {retainCategory && originalView && <optgroup label={reviewCopy.retainOriginal}><option value={originalView.groupId}>{editingRow?.category}</option></optgroup>}
             </select><ChevronDown aria-hidden="true" /></div>
           </div>
           <div>
@@ -401,19 +328,17 @@ export default function TransactionsTable({
               id={`${editorId}-${screen}-subcategory`}
               value={subcategoryInput}
               disabled={savingId !== null}
-              onChange={(e) => setSubcategoryInput(e.target.value)}
+              onChange={(e) => { setSubcategoryInput(e.target.value); setSelectionTouched(true); }}
               className="min-h-11 w-full rounded-xl border border-border-subtle bg-surface px-3 text-base sm:text-sm"
             >
               <option value="">{t('table.selectSubcategory')}</option>
-              {subcategoryOptions.map((sub) => (
-                <option key={sub.name} value={sub.name}>
-                  {getLocalizedSubcategoryName(sub.name, locale)}
-                </option>
-              ))}
+              <optgroup label={reviewCopy.currentPurposes}>{subcategoryOptions.map(sub => <option key={sub.key} value={sub.key}>{locale === 'ja' ? sub.nameJa : locale === 'es' ? sub.nameEs : sub.name}</option>)}</optgroup>
+              {retainSubcategory && originalView && <optgroup label={reviewCopy.retainOriginal}><option value={originalView.subcategoryId}>{editingRow?.subcategory || '—'} · {originalView.status === 'historical' ? reviewCopy.historical : reviewCopy.retainOriginal}</option></optgroup>}
             </select><ChevronDown aria-hidden="true" /></div>
           </div>
         </div>
-        {getSubcategoryPurposeHint(subcategoryInput, locale) && <p className="mesa-micro">{getSubcategoryPurposeHint(subcategoryInput, locale)}</p>}
+        <p className="mesa-micro">{reviewCopy.storedPair}: {transaction.category || '—'} · {transaction.subcategory || '—'}</p>
+        {getSubcategoryPurposeHint(selectedGroup?.subcategories.find(sub => sub.key === subcategoryInput)?.name ?? '', locale) && <p className="mesa-micro">{getSubcategoryPurposeHint(selectedGroup?.subcategories.find(sub => sub.key === subcategoryInput)?.name ?? '', locale)}</p>}
         {actionError?.id === transaction.id && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {actionError.message}

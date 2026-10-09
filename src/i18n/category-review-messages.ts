@@ -11,6 +11,7 @@ export const categoryReviewMessages = {
     mediumConfidence: 'Medium confidence',
     uncertain: 'Purpose is uncertain. Review the purchase before choosing.',
     chooseSubcategory: 'Choose a subcategory before saving.',
+    historical: 'Previous · review', currentPurposes: 'Current purposes', retainOriginal: 'Keep this original value', storedPair: 'Stored category', draftBucket: 'Original budget entry',
   },
   es: {
     queue: 'Categorías · {count} por revisar', empty: 'No quedan categorías por revisar en esta vista.',
@@ -24,6 +25,7 @@ export const categoryReviewMessages = {
     mediumConfidence: 'Confianza media',
     uncertain: 'El propósito no está confirmado. Revisá la compra antes de elegir.',
     chooseSubcategory: 'Elegí una subcategoría antes de guardar.',
+    historical: 'Anterior · por revisar', currentPurposes: 'Propósitos actuales', retainOriginal: 'Conservar este valor original', storedPair: 'Categoría guardada', draftBucket: 'Entrada original del presupuesto',
   },
   ja: {
     queue: 'カテゴリ・要確認 {count} 件', empty: 'この表示では確認が必要なカテゴリはありません。',
@@ -37,5 +39,6 @@ export const categoryReviewMessages = {
     mediumConfidence: '確信度：中',
     uncertain: '目的は未確認です。購入内容を確認してから選んでください。',
     chooseSubcategory: '保存する前にサブカテゴリを選んでください。',
+    historical: '旧分類・要確認', currentPurposes: '現在の購入目的', retainOriginal: 'この元の値を維持', storedPair: '保存済みカテゴリ', draftBucket: '元の予算項目',
   },
 } as const;

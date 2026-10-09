@@ -1,4 +1,5 @@
 import type { Transaction } from '@/types/transaction';
+import { matchesCategoryView, matchesSubcategoryView } from '@/utils/category-view';
 
 export interface CategoryComparisonPeriod {
   key: string;
@@ -38,8 +39,8 @@ export function buildCategoryComparison(
       existing.sortDate = statementEnd;
     }
 
-    const matchesCategory = transaction.category === category;
-    const matchesSubcategory = subcategory === null || transaction.subcategory === subcategory;
+    const matchesCategory = matchesCategoryView(transaction, category);
+    const matchesSubcategory = subcategory === null || matchesSubcategoryView(transaction, subcategory);
     if (matchesCategory && matchesSubcategory) {
       existing.total += transaction.value;
       existing.count += 1;

@@ -26,9 +26,9 @@ describe('Mesa reading shares dashboard scope and denominator', () => {
     const data = dashboard(rows);
     const reading = buildMesaReading(data.expenses, data.monthly, 'Basic living');
     expect(reading.rows).toEqual([
-      { name: 'Rent', total: 90, average: 30, count: 1 },
-      { name: null, total: 30, average: 10, count: 3 },
-      { name: 'Custom manual', total: 30, average: 10, count: 1 },
+      { id: 'rent', historical: false, name: 'Rent', total: 90, average: 30, count: 1 },
+      { id: 'missing', historical: false, name: null, total: 30, average: 10, count: 3 },
+      { id: 'subcategory:"Custom manual"', historical: false, name: 'Custom manual', total: 30, average: 10, count: 1 },
     ]);
     expect(reading.rows.reduce((sum, row) => sum + row.total, 0)).toBe(reading.total);
     expect(rows).toEqual(before);
@@ -40,7 +40,7 @@ describe('Mesa reading shares dashboard scope and denominator', () => {
       tx(8, 40, 'Basic living', 'Phone', { direction: 'inflow' })], false);
     const reading = buildMesaReading(data.expenses, data.monthly, null);
     expect(reading.total).toBe(60);
-    expect(reading.rows).toEqual([{ name: 'Basic living', total: 60, average: 20, count: 1 }]);
+    expect(reading.rows).toEqual([{ id: 'basic_living', historical: false, name: 'Basic living', total: 60, average: 20, count: 1 }]);
   });
   it('represents noncontiguous selected years as separate exact periods', () => {
     const data = buildDashboard([tx(1, 30, 'Travel', '', { date_iso: '2024-10-15' }), tx(2, 999, 'Travel', '', { date_iso: '2025-02-10' }), tx(3, 90, 'Travel', '', { date_iso: '2026-03-10' })], '2024-10-01', '2026-03-31', true, 'NZD', '2026-04-01', ['2024', '2026']);

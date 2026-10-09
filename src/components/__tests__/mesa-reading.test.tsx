@@ -168,3 +168,19 @@ it.each(['en', 'es', 'ja'] as const)('explains pending approved category labels 
     expect(breakdown().querySelector('dl')!.textContent).toContain('Custom recorded purpose');
   }
 });
+
+it.each(['en', 'es', 'ja'] as const)('keeps equivalent category selection and ledger scope after a refreshed label change in %s', async locale => {
+  const records = [tx(1, '2026-01-05', 30, 'Work & learning', 'Software & tools'), tx(2, '2026-01-06', 30, 'Trabajo y estudio', 'Consumo de API'), tx(3, '2026-01-07', 30, '仕事・学習', 'APIの使用量'), tx(4, '2026-01-08', 10, 'Meals & outings', 'Cafés')];
+  await render(locale, records);
+  const rail = () => [...container.querySelectorAll('.mesa-category-rail button span')].map(node => node.textContent);
+  expect(rail()).toHaveLength(3); expect(new Set(rail()).size).toBe(3);
+  await chooseCategory(1);
+  expect(container.querySelector('[data-testid="mock-ledger"]')!.getAttribute('data-count')).toBe('3');
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(2);
+  const summary = container.querySelector('[data-testid="summary"]')!.textContent;
+  await render(locale, records.map(row => row.id === 1 ? { ...row, category: 'Work & Study', subcategory: 'API usage', category_source: 'manual' } : row));
+  expect(container.querySelector('[data-testid="mock-ledger"]')!.getAttribute('data-count')).toBe('3');
+  expect(breakdown().querySelectorAll('dl > div')).toHaveLength(1);
+  expect(container.querySelector('[data-testid="summary"]')!.textContent).toBe(summary);
+  expect(container.querySelector('.mesa-category-rail button[aria-pressed="true"]')).not.toBeNull();
+});

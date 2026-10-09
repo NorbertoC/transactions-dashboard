@@ -22,7 +22,7 @@ describe('review queue and capability', () => {
     expect(isReviewExpense({ ...fixture, category })).toBe(true);
     expect(isReviewExpense({ ...fixture, category, subcategory })).toBe(false);
     expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats' })).toBe(true);
-    expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats', category_source: 'manual' })).toBe(false);
+    expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats', category_source: 'manual' })).toBe(true);
   });
   it('requires the eight groups/thirty-three pairs and exact persistence capability', () => {
     expect(supportsCategoryReview(capability())).toBe(true);

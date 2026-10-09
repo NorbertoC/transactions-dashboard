@@ -1,17 +1,20 @@
 import type { Transaction } from '@/types/transaction';
 import { monthEnd, type DashboardMonth } from '@/utils/dashboard';
+import { matchesCategoryView, resolveCategoryView } from '@/utils/category-view';
 
 /** Read the dashboard's already-filtered expenses; never introduce another scope. */
 export function buildMesaReading(expenses: readonly Transaction[], months: readonly DashboardMonth[], category: string | null) {
-  const records = category === null ? expenses : expenses.filter(row => row.category === category);
-  const groups = new Map<string | null, { total: number; count: number }>();
+  const records = category === null ? expenses : expenses.filter(row => matchesCategoryView(row, category));
+  const groups = new Map<string, { name: string | null; historical: boolean; total: number; count: number }>();
   for (const row of records) {
-    const raw = category === null ? row.category : row.subcategory;
+    const view = resolveCategoryView(row);
+    const raw = category === null ? view.category : view.subcategory;
     const name = typeof raw === 'string' && raw.trim() ? raw : null;
-    const group = groups.get(name) ?? { total: 0, count: 0 };
+    const id = category === null ? view.groupId : name === null ? 'missing' : view.subcategoryId;
+    const group = groups.get(id) ?? { name, historical: category !== null && view.status === 'historical', total: 0, count: 0 };
     group.total += row.value;
     group.count++;
-    groups.set(name, group);
+    groups.set(id, group);
   }
   const total = records.reduce((sum, row) => sum + row.value, 0);
   return {
@@ -20,7 +23,7 @@ export function buildMesaReading(expenses: readonly Transaction[], months: reado
     denominator: months.length,
     count: records.length,
     partial: months.some(month => month.partial),
-    rows: [...groups].map(([name, group]) => ({ name, ...group, average: months.length ? group.total / months.length : null }))
+    rows: [...groups].map(([id, group]) => ({ id, ...group, average: months.length ? group.total / months.length : null }))
       .sort((a, b) => b.total - a.total || (a.name ?? '').localeCompare(b.name ?? '')),
   };
 }

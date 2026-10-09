@@ -5,6 +5,7 @@ import { Transaction, ChartDataPoint } from '@/types/transaction';
 import { ApiService, IncomeCapabilityUnavailable, type RecordScope } from '@/services/api';
 
 import { useScopedResource } from '@/hooks/useScopedResource';
+import { matchesCategoryView, resolveCategoryView } from '@/utils/category-view';
 
 export function useTransactions(scope: RecordScope = 'expense') {
   const fetcher = useCallback(async (signal: AbortSignal) => {
@@ -44,7 +45,7 @@ export function useFilteredTransactions(
     }
 
     // Filter by category
-    if (selectedCategory && transaction.category !== selectedCategory) {
+    if (selectedCategory !== null && !matchesCategoryView(transaction, selectedCategory)) {
       return false;
     }
 
@@ -70,8 +71,9 @@ export function useChartData(transactions: Transaction[]): ChartHierarchy {
       continue;
     }
 
-    const category = transaction.category || DEFAULT_CATEGORY;
-    const subcategory = transaction.subcategory || DEFAULT_SUBCATEGORY;
+    const view = resolveCategoryView(transaction);
+    const category = view.category || DEFAULT_CATEGORY;
+    const subcategory = view.subcategory || DEFAULT_SUBCATEGORY;
 
     if (!categoryTotals[category]) {
       categoryTotals[category] = { value: 0, count: 0 };

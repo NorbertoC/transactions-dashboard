@@ -1,5 +1,6 @@
 import { isIsoDate } from '@/lib/api-validation';
 import type { Transaction } from '@/types/transaction';
+import { resolveCategoryView } from '@/utils/category-view';
 
 export interface DashboardMonth {
   key: string;
@@ -29,7 +30,8 @@ export function currencyCode(currency: string): string {
 }
 
 export function isRent(transaction: Transaction): boolean {
-  return ['Housing', 'Home & daily living', 'Basic living'].includes(transaction.category) && transaction.subcategory === 'Rent';
+  const view = resolveCategoryView(transaction);
+  return view.groupId === 'basic_living' && view.subcategoryId === 'rent';
 }
 
 export function buildDashboard(
@@ -50,10 +52,16 @@ export function buildDashboard(
   const savings = spending.filter(tx => tx.category === 'Savings')
     .reduce((sum, tx) => sum + tx.value, 0);
   const total = expenses.reduce((sum, tx) => sum + tx.value, 0);
-  const categories = [...new Set(expenses.map(tx => tx.category))].map(name => {
-    const rows = expenses.filter(tx => tx.category === name);
+  const categoryGroups = new Map<string, { name: string; rows: Transaction[] }>();
+  for (const row of expenses) {
+    const view = resolveCategoryView(row);
+    const group = categoryGroups.get(view.groupId) ?? { name: view.category, rows: [] };
+    group.rows.push(row);
+    categoryGroups.set(view.groupId, group);
+  }
+  const categories = [...categoryGroups].map(([id, { name, rows }]) => {
     const total = rows.reduce((sum, tx) => sum + tx.value, 0);
-    return { name, total, average: months.length ? total / months.length : 0, records: rows,
+    return { id, name, total, average: months.length ? total / months.length : 0, records: rows,
       monthly: months.map(key => rows.filter(tx => tx.date_iso.startsWith(key)).reduce((sum, tx) => sum + tx.value, 0)) };
   }).sort((a, b) => b.total - a.total);
   const monthly: DashboardMonth[] = months.map(key => ({ key,

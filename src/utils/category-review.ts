@@ -1,6 +1,7 @@
 import { CATEGORIES, PURPOSE_TAXONOMY_VERSION } from '@/constants/categories';
 import type { Transaction } from '@/types/transaction';
 import { checkSessionResponse, getClientSessionGeneration } from '@/utils/client-session';
+import { resolveCategoryView } from '@/utils/category-view';
 
 export const TAXONOMY_VERSION = PURPOSE_TAXONOMY_VERSION;
 export type CategoryReviewFailure = 'unavailable' | 'saveFailed' | 'unconfirmed';
@@ -38,8 +39,9 @@ export function supportsCategoryReview(value: unknown): boolean {
 
 export function isReviewExpense(row: Transaction): boolean {
   if (row.record_type && row.record_type !== 'expense' || ['income', 'transfer', 'savings'].includes(row.category.toLowerCase())) return false;
-  if (row.category === 'Others') return true;
-  return row.category_source !== 'manual' && !CATEGORIES.some(group => group.name === row.category && group.subcategories.some(sub => sub.name === row.subcategory));
+  const view = resolveCategoryView(row);
+  if (view.groupId === 'others' || view.status === 'historical') return true;
+  return row.category_source !== 'manual' && view.status === 'custom';
 }
 
 export async function categoryReviewAvailable(signal?: AbortSignal): Promise<boolean> {
@@ -53,6 +55,8 @@ export async function categoryReviewAvailable(signal?: AbortSignal): Promise<boo
 /** Never invent a successful local row: confirm the actual stored manual pair. */
 export async function saveVerifiedCategory(row: Transaction, category: string, subcategory: string, signal?: AbortSignal): Promise<Transaction> {
   if (row.record_type && row.record_type !== 'expense') throw new CategoryReviewError('saveFailed');
+  const unchanged = category === row.category && subcategory === row.subcategory;
+  if (!unchanged && !CATEGORIES.some(group => group.name === category && group.subcategories.some(sub => sub.name === subcategory))) throw new CategoryReviewError('saveFailed');
   const generation = getClientSessionGeneration();
   if (!await categoryReviewAvailable(signal)) throw new CategoryReviewError('unavailable');
   signal?.throwIfAborted();

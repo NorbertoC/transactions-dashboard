@@ -1,6 +1,5 @@
 import { Transaction } from '@/types/transaction';
 import { categorizeMerchant } from '@/utils/classification';
-import { normalizeCategoryPair } from '@/constants/categories';
 
 import { checkSessionResponse, getClientSessionGeneration, HttpError } from '@/utils/client-session';
 
@@ -14,12 +13,10 @@ export class ApiService {
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
       if (transaction.record_type === 'income' || transaction.record_type === 'transfer') return transaction;
-      // The negotiated catalog never silently splits historical expense purposes.
-      // Manual, custom and intentionally blank evidence stays literal on every read.
-      const storedCategory = transaction.category;
-      const suppliedPair = transaction.category_source === 'manual' || storedCategory != null;
-      const pair = suppliedPair
-        ? normalizeCategoryPair(storedCategory, transaction.subcategory, transaction.category_source)
+      // Reconcile in the view, before any lossy legacy normalization. Supplied
+      // labels and manual/custom/blank evidence stay literal on every read.
+      const pair = transaction.category != null || transaction.category_source === 'manual'
+        ? { category: transaction.category, subcategory: transaction.subcategory }
         : categorizeMerchant(transaction.place || '');
 
       const normalized: Transaction = {
