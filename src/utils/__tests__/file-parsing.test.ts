@@ -321,7 +321,7 @@ describe('Amex NZ CSV', () => {
 
     const fuel = rows.find((row) => row.place === 'BP CONNECT GREENLANE')
     expect(fuel?.category).toBe('Basic living')
-    expect(fuel?.subcategory).toBe('Transport')
+    expect(fuel?.subcategory).toBe('Fuel')
   })
 
   it('keeps software purpose unconfirmed despite a coarse bank food category', () => {
@@ -358,7 +358,7 @@ describe('mapBankCategoryToTaxonomy', () => {
   it('maps known Amex labels', () => {
     expect(mapBankCategoryToTaxonomy('Restaurant-Restaurant')).toEqual({
       category: 'Meals & outings',
-      subcategory: 'Restaurants'
+      subcategory: 'Eating out'
     })
   })
 
@@ -378,20 +378,20 @@ describe('mapBankCategoryToTaxonomy', () => {
     ['Retail & Grocery-Online Purchases', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Department Stores', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Furnishing', 'Personal purchases', 'Home'],
-    ['Entertainment-Restaurants', 'Meals & outings', 'Restaurants'],
+    ['Entertainment-Restaurants', 'Meals & outings', 'Eating out'],
     ['Entertainment-Bars & Cafés', 'Others', 'Miscellaneous'],
     ['Entertainment-Other Entertainment', 'Others', 'Miscellaneous'],
-    ['Travel & Transport-Fuel', 'Basic living', 'Transport'],
+    ['Travel & Transport-Fuel', 'Basic living', 'Fuel'],
     ['Travel & Transport-Taxis & Coach', 'Others', 'Miscellaneous'],
-    ['Travel & Transport-Parking Charges', 'Basic living', 'Transport'],
-    ['Travel & Transport-Airline', 'Travel', 'Tickets & transfers'],
+    ['Travel & Transport-Parking Charges', 'Personal purchases', 'Occasional mobility'],
+    ['Travel & Transport-Airline', 'Travel', 'Tickets'],
     ['Travel & Transport-Travel Agencies', 'Others', 'Miscellaneous'],
     ['Travel & Transport-Accommodation', 'Travel', 'Accommodation'],
     ['Travel & Transport-Other Travel', 'Others', 'Miscellaneous'],
     ['Communications-Internet Communication', 'Basic living', 'Power & internet'],
     ['Finance-Government Services', 'Others', 'Miscellaneous'],
     ['Business Services-Other Services', 'Others', 'Miscellaneous'],
-    ['Miscellaneous-Education', 'Work & learning', 'Equipment & training'],
+    ['Miscellaneous-Education', 'Work & Study', 'Courses & study'],
     ['Miscellaneous-Other', 'Others', 'Miscellaneous']
   ])(
     'maps the current Amex label %s without being confused by its family prefix',

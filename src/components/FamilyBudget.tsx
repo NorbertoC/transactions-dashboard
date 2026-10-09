@@ -6,7 +6,7 @@ import SelectControl from '@/components/SelectControl';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getLocalizedCategoryName, getLocalizedSubcategoryName, PURPOSE_TAXONOMY_VERSION } from '@/constants/categories';
 import { formatCurrency, formatNumber } from '@/utils/format';
-import { calculate, defaults, preservePurposeV3Draft, SCENARIOS, validDraft, type BudgetRow, type Draft, type Kind, type Result, type Scenario } from './budget/model';
+import { calculate, defaults, preservePurposeV3Draft, preservePurposeV4Draft, SCENARIOS, validDraft, type BudgetRow, type Draft, type Kind, type Result, type Scenario } from './budget/model';
 import { budgetMessages } from './budget/messages';
 import { forecastMessages } from './forecast/messages';
 import IncomeBreakdown from './budget/IncomeBreakdown';
@@ -43,11 +43,15 @@ export default function FamilyBudget({ rows, known, accountScope, coverage, inco
         const entry = [3, 2, 1].map(version => ({ version, raw: localStorage.getItem(storageKey(accountScope, version)) })).find(item => item.raw !== null);
         if (!entry) { setStatus(savedMessages.none); return; }
         const saved = JSON.parse(entry.raw!) as { version?: number; taxonomyVersion?: string; drafts?: Drafts; legacyIncomePreserved?: boolean };
-        if (saved.version !== entry.version || saved.version === 3 && saved.taxonomyVersion !== PURPOSE_TAXONOMY_VERSION ||
-            saved.taxonomyVersion !== undefined && !['purpose-v3', PURPOSE_TAXONOMY_VERSION].includes(saved.taxonomyVersion) ||
+        if (saved.version !== entry.version || saved.version === 3 && !['purpose-v4', PURPOSE_TAXONOMY_VERSION].includes(saved.taxonomyVersion ?? '') ||
+            saved.taxonomyVersion !== undefined && !['purpose-v3', 'purpose-v4', PURPOSE_TAXONOMY_VERSION].includes(saved.taxonomyVersion) ||
             !saved.drafts || !SCENARIOS.every(id => validDraft(saved.drafts?.[id]))) throw new Error('Invalid draft');
         const legacyTaxonomy = saved.version === 1 || saved.taxonomyVersion === undefined || saved.taxonomyVersion === 'purpose-v3';
-        const loaded = legacyTaxonomy ? Object.fromEntries(SCENARIOS.map(id => [id, preservePurposeV3Draft(saved.drafts![id])])) as Drafts : saved.drafts;
+        const olderCatalog = legacyTaxonomy || saved.taxonomyVersion === 'purpose-v4';
+        const loaded = olderCatalog ? Object.fromEntries(SCENARIOS.map(id => {
+          const original = saved.drafts![id];
+          return [id, preservePurposeV4Draft(legacyTaxonomy ? preservePurposeV3Draft(original) : original)];
+        })) as Drafts : saved.drafts;
         setUndos({ ...drafts }); setDrafts(loaded); setLegacyIncomePreserved(entry.version < 3 || saved.legacyIncomePreserved === true); setStatus(savedMessages.loaded);
       } else {
         localStorage.setItem(storageKey(accountScope), JSON.stringify({ version: 3, taxonomyVersion: PURPOSE_TAXONOMY_VERSION, drafts, legacyIncomePreserved })); setStatus(m.saved);

@@ -9,7 +9,7 @@ import type { Transaction } from '@/types/transaction';
 
 let root: Root, container: HTMLDivElement;
 const fixture: Transaction = { id: 42, place: 'Netflix synthetic', amount: '12.00', value: 12, date: '2026-01-10', date_iso: '2026-01-10', currency: 'NZD', category: 'Others', subcategory: '', record_type: 'expense', direction: 'outflow' };
-const capability = () => ({ version: 'purpose-v4', manual_category_persistence: true,
+const capability = () => ({ version: 'purpose-v5', manual_category_persistence: true,
   categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name,
     subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });

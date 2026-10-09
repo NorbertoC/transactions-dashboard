@@ -5,30 +5,27 @@ import { extractTransactions, mapBankCategoryToTaxonomy } from '@/utils/file-par
 const review = { category: 'Others', subcategory: 'Miscellaneous' };
 afterEach(() => vi.unstubAllGlobals());
 
-describe('purpose-v4 explicit proposals', () => {
+describe('purpose-v5 explicit proposals', () => {
   it.each([
     ['KOGAN MOBILE', 'Basic living', 'Phone'],
     ['MERCURY ENERGY', 'Basic living', 'Power & internet'],
-    ['AXBUSFARE AUCKLAND', 'Basic living', 'Transport'],
-    ['CAR INSURANCE', 'Basic living', 'Transport'],
-    ['BP CONNECT', 'Basic living', 'Transport'],
+    ['AXBUSFARE AUCKLAND', 'Basic living', 'Public transport'],
+        ['BP CONNECT', 'Basic living', 'Fuel'],
     ['HEALTH INSURANCE', 'Personal purchases', 'Health'],
     ['CHEMIST WAREHOUSE', 'Personal purchases', 'Health'],
     ['TOMMY HILFIGER', 'Personal purchases', 'Clothing & footwear'],
     ['BRISCOES', 'Personal purchases', 'Home'],
-    ['OPENAI SUBSCRIPTION', 'Subscriptions', 'Work'],
-    ['OPENAI *CHATGPT SUBSCR SAN FRANCISCO', 'Subscriptions', 'Work'],
-    ['CHATGPT SUBSCRIPTION', 'Subscriptions', 'Work'],
-    ['CURSOR PRO', 'Subscriptions', 'Work'],
-    ['OPENAI', 'Work & learning', 'Software & tools'],
-    ['CURSOR', 'Work & learning', 'Software & tools'],
-    ['WORK LAPTOP', 'Work & learning', 'Equipment & training'],
+    ['OPENAI SUBSCRIPTION', 'Subscriptions', 'Work tools'],
+    ['OPENAI *CHATGPT SUBSCR SAN FRANCISCO', 'Subscriptions', 'Work tools'],
+    ['CHATGPT SUBSCRIPTION', 'Subscriptions', 'Work tools'],
+    ['CURSOR PRO', 'Subscriptions', 'Work tools'],
+    ['WORK LAPTOP', 'Work & Study', 'Equipment'],
     ['NETFLIX', 'Subscriptions', 'Entertainment'],
     ['UBER ONE', 'Subscriptions', 'Other subscriptions'],
     ['UBER EATS', 'Meals & outings', 'Delivery'],
-    ['ALFAJORES ONLINE', 'Meals & outings', 'Treats & alfajores'],
+    ['ALFAJORES ONLINE', 'Meals & outings', 'Snacks'],
     ['EVENT CINEMA', 'Entertainment', 'Cinema'],
-    ['AIR NEW ZEALAND', 'Travel', 'Tickets & transfers'],
+    ['AIR NEW ZEALAND', 'Travel', 'Tickets'],
     ['AIRBNB', 'Travel', 'Accommodation'],
     ['TRAVEL MEAL', 'Travel', 'Meals & activities during travel'],
   ])('proposes %s with reason and explicit confirmation, never auto-applies', (merchant, category, subcategory) => {
@@ -37,7 +34,7 @@ describe('purpose-v4 explicit proposals', () => {
     expect(suggestion?.reason).toBeTruthy();
     expect(categorizeMerchant(merchant)).toEqual(review);
   });
-  it.each(['AMAZON', 'AMAZON NETFLIX', 'PAYPAL *CLOUDFLARE', 'PAYPAL *ALFAJORES', 'APPLE.COM/BILL', 'APPLE COM BILL', 'APPLE.COM/BILL APPLE TV DEVICE', 'KOGAN', 'INSURANCE', 'EQUIPMENT', 'TRADEME'])('leaves ambiguous %s unknown instead of inferring purpose', merchant => {
+  it.each(['AMAZON', 'AMAZON NETFLIX', 'PAYPAL *CLOUDFLARE', 'PAYPAL *ALFAJORES', 'APPLE.COM/BILL', 'APPLE COM BILL', 'APPLE.COM/BILL APPLE TV DEVICE', 'KOGAN', 'INSURANCE', 'EQUIPMENT', 'TRADEME', 'OPENAI', 'CURSOR', 'CAR INSURANCE', 'AA ROADSIDE', 'AIRPORT SHUTTLE', 'SUICA', 'PASMO'])('leaves ambiguous %s unknown instead of inferring purpose', merchant => {
     expect(suggestCategoryForMerchant(merchant)).toMatchObject({ ...review, confidence: 'unknown', requiresConfirmation: true });
   });
   it.each(['MOBILIZE FITNESS', 'NICHOLAS MARKET', 'UNKNOWN LOCAL MERCHANT'])('does not match unrelated tokens in %s', merchant => {
@@ -63,7 +60,7 @@ describe('purpose-v4 explicit proposals', () => {
     ['APPLETV+', 'subscription_entertainment', 'Entertainment'],
     ['APPLE TV PLUS', 'subscription_entertainment', 'Entertainment'],
     ['APPLE ARCADE', 'subscription_entertainment', 'Entertainment'],
-    ['APPLE.COM/BILL ICLOUD+', 'subscription_other', 'Other subscriptions'],
+    ['APPLE.COM/BILL ICLOUD+', 'subscription_cloud', 'Storage & cloud'],
     ['APPLE ONE FAMILY', 'subscription_other', 'Other subscriptions'],
     ['APPLE ONE APPLE MUSIC ICLOUD', 'subscription_other', 'Other subscriptions'],
   ])('uses the named service in %s without guessing a generic Apple bill', (merchant, subcategoryKey, subcategory) => {
@@ -88,10 +85,10 @@ describe('purpose-v4 explicit proposals', () => {
   });
 
   it.each([
-    ['RESTAURANT DINNER', 'Meals & outings', 'Restaurants'],
-    ['CAFE COFFEE', 'Meals & outings', 'Cafés'],
+    ['RESTAURANT DINNER', 'Meals & outings', 'Eating out'],
+    ['CAFE COFFEE', 'Meals & outings', 'Eating out'],
     ['DOORDASH RESTAURANT', 'Meals & outings', 'Delivery'],
-    ['ALFAJORES', 'Meals & outings', 'Treats & alfajores'],
+    ['ALFAJORES', 'Meals & outings', 'Snacks'],
     ['CINEMA TICKET', 'Entertainment', 'Cinema'],
     ['TICKETMASTER CONCERT', 'Entertainment', 'Events'],
     ['MUSEUM ENTRY', 'Entertainment', 'Activities'],
@@ -100,14 +97,14 @@ describe('purpose-v4 explicit proposals', () => {
   });
 
   it.each([
-    ['OPENAI API CREDITS', 'Work & learning', 'Software & tools'],
-    ['OPENAI API CREDITS CHATGPT SUBSCR', 'Work & learning', 'Software & tools'],
-    ['OPENAI API TOP-UP CHATGPT SUBSCRIPTION', 'Work & learning', 'Software & tools'],
-    ['LIFETIME SOFTWARE LICENSE', 'Work & learning', 'Software & tools'],
-    ['LIFETIME SOFTWARE LICENSE CHATGPT SUBSCR', 'Work & learning', 'Software & tools'],
-    ['CLOUDFLARE DOMAIN PURCHASE', 'Work & learning', 'Software & tools'],
-    ['CHATGPT PLUS', 'Subscriptions', 'Work'],
-    ['GITHUB COPILOT', 'Subscriptions', 'Work'],
+    ['OPENAI API CREDITS', 'Work & Study', 'API usage'],
+    ['OPENAI API CREDITS CHATGPT SUBSCR', 'Work & Study', 'API usage'],
+    ['OPENAI API TOP-UP CHATGPT SUBSCRIPTION', 'Work & Study', 'API usage'],
+    ['LIFETIME SOFTWARE LICENSE', 'Work & Study', 'One-off tools & licences'],
+    ['LIFETIME SOFTWARE LICENSE CHATGPT SUBSCR', 'Work & Study', 'One-off tools & licences'],
+    ['CLOUDFLARE DOMAIN PURCHASE', 'Work & Study', 'One-off tools & licences'],
+    ['CHATGPT PLUS', 'Subscriptions', 'Work tools'],
+    ['GITHUB COPILOT', 'Subscriptions', 'Work tools'],
   ])('does not treat explicit one-off work tools as subscriptions in %s', (merchant, category, subcategory) => {
     expect(suggestCategoryForMerchant(merchant)).toMatchObject({ category, subcategory, requiresConfirmation: true });
     expect(categorizeMerchant(merchant)).toEqual(review);
@@ -133,13 +130,13 @@ describe('specific bank evidence without merchant assignment', () => {
   const columns = { headerRowIndex: -1, dateColumn: 0, descriptionColumn: 1, amountColumn: 2, categoryColumn: 3 };
   const extract = (merchant: string, bank: string) => extractTransactions([['2026-09-12', merchant, '20', bank]], columns).rows[0];
   it.each([
-    ['insurance-car insurance', 'Basic living', 'Transport'],
+    ['insurance-car insurance', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-health insurance', 'Personal purchases', 'Health'],
     ['Retail & Grocery-Computer Supplies', 'Others', 'Miscellaneous'],
     ['Retail & Grocery-Equipment', 'Others', 'Miscellaneous'],
     ['Communications-Telephone Telecom', 'Basic living', 'Phone'],
     ['Communications-Internet Communication', 'Basic living', 'Power & internet'],
-    ['Travel & Transport-Airline', 'Travel', 'Tickets & transfers'],
+    ['Travel & Transport-Airline', 'Travel', 'Tickets'],
     ['Travel & Transport-Accommodation', 'Travel', 'Accommodation'],
     ['Retail & Grocery-Furnishing', 'Personal purchases', 'Home'],
   ])('maps evidence %s without using a misleading family prefix', (label, category, subcategory) => {

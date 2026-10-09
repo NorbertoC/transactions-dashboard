@@ -23,9 +23,9 @@ describe('seven purpose groups and preserved evidence', () => {
       expect(normalizeCategoryPair(category, subcategory, 'manual')).toEqual({ category, subcategory });
     }
   });
-  it('offers exactly seven purpose groups plus review and separate savings', () => {
-    expect(CATEGORIES.filter(cat => !['Others', 'Savings'].includes(cat.name)).map(cat => cat.name)).toEqual(['Basic living', 'Personal purchases', 'Work & learning', 'Subscriptions', 'Meals & outings', 'Entertainment', 'Travel']);
-    expect(CATEGORIES.slice(0, 7).flatMap(group => group.subcategories)).toHaveLength(25);
+  it('offers exactly seven purpose groups plus review and savings outside the catalog', () => {
+    expect(CATEGORIES.filter(cat => !['Others', 'Savings'].includes(cat.name)).map(cat => cat.name)).toEqual(['Basic living', 'Personal purchases', 'Work & Study', 'Subscriptions', 'Meals & outings', 'Entertainment', 'Travel']);
+    expect(CATEGORIES.slice(0, 7).flatMap(group => group.subcategories)).toHaveLength(32);
     expect(new Set(CATEGORIES.map(group => group.key)).size).toBe(8);
     expect(CATEGORIES.some(cat => cat.subcategories.some(sub => sub.name === 'Subscriptions' || sub.name === 'Personal Allowance'))).toBe(false);
     for (const cat of CATEGORIES) {
@@ -77,7 +77,7 @@ describe('seven purpose groups and preserved evidence', () => {
 
 it('retains all manual purpose subcategories on repeated client reloads without merchant fallback', async () => {
   const pairs = CATEGORIES.slice(0, 7).flatMap(group => group.subcategories.map(sub => [group.name, sub.name]));
-  expect(pairs).toHaveLength(25);
+  expect(pairs).toHaveLength(32);
   pairs.push(['Dining', 'Restaurants'], ['Shopping', 'Clothing'], ['Fun & Social', 'Subscriptions'], ['Custom bucket', 'Custom purpose']);
   const rows = pairs.map(([category, subcategory], index) => row(index + 1, category, subcategory, {
     category_source: 'manual', record_type: 'expense', direction: 'outflow', place: 'NETFLIX CHEMIST WAREHOUSE',
@@ -98,15 +98,15 @@ it('preserves manual blank/legacy/custom pairs and nonmanual custom subcategorie
   }
   expect(normalizeCategoryPair('', '', 'manual')).toEqual({ category: '', subcategory: '' });
   expect(normalizeCategoryPair('Housing', 'Rent', 'manual')).toEqual({ category: 'Housing', subcategory: 'Rent' });
-  expect(normalizeCategoryPair('Transport', 'Fuel')).toEqual({ category: 'Basic living', subcategory: 'Transport' });
-  expect(normalizeCategoryPair('Transport', 'Insurance')).toEqual({ category: 'Basic living', subcategory: 'Transport' });
+  expect(normalizeCategoryPair('Transport', 'Fuel')).toEqual({ category: 'Transport', subcategory: 'Fuel' });
+  expect(normalizeCategoryPair('Transport', 'Insurance')).toEqual({ category: 'Transport', subcategory: 'Insurance' });
 });
 
 it('keeps the dry run read-only, manual-safe and separated from actual financial fields', () => {
   const records = [row(1, 'Others', 'Miscellaneous', { place: 'ALFAJORES ONLINE' }), row(2, 'Others', '', { place: 'PAYPAL *ALFAJORES' }), row(3, 'Housing', 'Rent', { category_source: 'manual', place: 'OPENAI' }), row(4, 'Income', '', { place: 'NETFLIX' })];
   const snapshot = structuredClone(records);
   const preview = previewCategoryChanges(records);
-  expect(preview[0]).toMatchObject({ taxonomyVersion: 'purpose-v4', needsReview: true, requiresConfirmation: true, suggestion: { category: 'Meals & outings', subcategory: 'Treats & alfajores', requiresConfirmation: true } });
+  expect(preview[0]).toMatchObject({ taxonomyVersion: 'purpose-v5', needsReview: true, requiresConfirmation: true, suggestion: { category: 'Meals & outings', subcategory: 'Snacks', requiresConfirmation: true } });
   expect(preview[1]).toMatchObject({ protectedRecord: true, changed: false, requiresConfirmation: false, suggestion: null });
   for (const protectedRow of preview.slice(2)) {
     expect(protectedRow).toMatchObject({ protectedRecord: true, changed: false, requiresConfirmation: false, suggestion: null });
@@ -145,4 +145,17 @@ it('preserves intentional blanks, null subcategories and literal whitespace in c
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(records))));
   expect(await ApiService.fetchTransactionsClient()).toEqual(records);
   expect(previewCategoryChanges(records.slice(0, 1))).toMatchObject([{ protectedRecord: true, changed: false, suggestion: null }]);
+});
+
+it('has the exact approved grouped counts, one mobility purpose and declared travel context in all locales', async () => {
+  expect(CATEGORIES.map(group => group.subcategories.length)).toEqual([6,6,4,4,3,4,5,1]);
+  expect(new Set(CATEGORIES.flatMap(group => group.subcategories.map(sub => sub.key))).size).toBe(33);
+  expect(CATEGORIES.find(group => group.key === 'basic_living')!.subcategories.map(sub => sub.key)).toEqual(['rent','power_internet','home_food','phone','fuel','public_transport']);
+  expect(CATEGORIES.find(group => group.key === 'meals_outings')!.subcategories.map(sub => sub.nameEs)).toEqual(['Salir a comer','Delivery','Snacks']);
+  const { getSubcategoryPurposeHint } = await import('@/constants/categories');
+  for (const locale of ['en','es','ja'] as const) {
+    expect(getSubcategoryPurposeHint('Occasional mobility', locale)).toBeTruthy();
+    expect(getSubcategoryPurposeHint('Transfers during travel', locale)).toBeTruthy();
+  }
+  for (const sub of ['Car maintenance','Insurance']) expect(normalizeCategoryPair('Transport',sub)).toEqual({ category:'Transport',subcategory:sub });
 });

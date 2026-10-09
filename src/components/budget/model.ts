@@ -1,4 +1,5 @@
 import { CATEGORIES, normalizeCategoryPair } from '@/constants/categories';
+import { LEGACY_CATEGORIES } from '@/constants/legacy-categories';
 import { isIsoDate } from '@/lib/api-validation';
 import type { Transaction } from '@/types/transaction';
 import { currentYearExpenseEvidence } from '@/utils/expense-evidence';
@@ -19,13 +20,25 @@ export function preservePurposeV3Draft(draft: Draft): Draft {
   const rekey = <T,>(items: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(items).map(([key, value]) => [legacyIds[key] ?? key, value]));
   return { ...draft, amounts: rekey(draft.amounts), kinds: rekey(draft.kinds), lastEdited: draft.lastEdited === null ? null : legacyIds[draft.lastEdited] ?? draft.lastEdited };
 }
+/** Keep an old device amount on its original bucket; never split or combine it. */
+export function preservePurposeV4Draft(draft: Draft): Draft {
+  const changedIds = new Map(LEGACY_CATEGORIES.flatMap(group => group.subcategories
+    .filter(sub => !CATEGORIES.some(current => current.name === group.name && current.subcategories.some(item => item.key === sub.key && item.name === sub.name)))
+    .map(sub => [sub.key, JSON.stringify([group.name, sub.name])] as const)));
+  const rekey = <T,>(items: Record<string, T>): Record<string, T> => {
+    const entries = Object.entries(items).map(([key, value]) => [changedIds.get(key) ?? key, value] as const);
+    if (new Set(entries.map(([key]) => key)).size !== entries.length) throw new Error('Conflicting legacy draft buckets');
+    return Object.fromEntries(entries);
+  };
+  return { ...draft, amounts: rekey(draft.amounts), kinds: rekey(draft.kinds), lastEdited: draft.lastEdited === null ? null : changedIds.get(draft.lastEdited) ?? draft.lastEdited };
+}
 export function defaults(scenario: Scenario, income: number | null = null): Draft {
   return { income, savings: scenario === 'current' ? 2705.18 : 1984.80,
     baby: scenario === 'baby1' ? 800 : scenario === 'baby2' ? 1400 : 0, auto: false, amounts: {}, kinds: {}, lastEdited: null };
 }
-const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'software_tools', 'equipment_training', 'subscription_work']);
-const PROTECTED = new Set(['rent', 'power_internet', 'home_food', 'transport', 'phone', 'health', 'home_purchases', 'software_tools', 'equipment_training', 'subscription_work']);
-const CUT_ORDER = ['tickets_transfers', 'accommodation', 'travel_food_activities', 'restaurants', 'cafes', 'delivery', 'food_treats', 'video_games', 'cinema', 'events', 'activities', 'subscription_entertainment', 'subscription_other', 'clothing_footwear', 'personal_care'];
+const NEEDS = new Set(['rent', 'power_internet', 'home_food', 'fuel', 'public_transport', 'phone', 'health', 'one_off_tools', 'api_usage', 'work_equipment', 'courses_study', 'subscription_work']);
+const PROTECTED = new Set([...NEEDS, 'home_purchases']);
+const CUT_ORDER = ['travel_tickets', 'tickets_transfers', 'travel_transfers', 'accommodation', 'travel_food_activities', 'travel_documents', 'eating_out', 'restaurants', 'cafes', 'delivery', 'snacks', 'food_treats', 'video_games', 'cinema', 'events', 'activities', 'subscription_entertainment', 'subscription_other', 'clothing_footwear', 'personal_care', 'personal_electronics', 'occasional_mobility'];
 export function budgetEvidence(transactions: Transaction[], today: string) {
   const period = currentYearExpenseEvidence(transactions, today);
   // Reuse the expense-derived calendar window for receipts too.

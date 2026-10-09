@@ -13,35 +13,389 @@ export interface ClassificationSuggestion extends Classification {
 }
 // These are proposals for explicit approval, never automatic merchant-purpose assignments.
 const RULES = [
-  {"groupKey": "basic_living", "subcategoryKey": "transport", "keywords": ["suica", "pasmo", "public transport", "at hop", "athop", "ax bus fare", "bus fare", "petrol", "gasoline", "fuel", "bp", "z energy", "caltex", "mobil", "gull", "u-go triangle", "vtnz", "wof", "aa roadside", "car insurance", "vehicle insurance"]},
-  {"groupKey": "basic_living", "subcategoryKey": "phone", "keywords": ["kogan mobile", "kogan prepaid", "skinny mobile", "spark mobile", "mobile top up", "one nz", "2degrees"]},
-  {"groupKey": "basic_living", "subcategoryKey": "power_internet", "keywords": ["mercury energy", "genesis energy", "contact energy", "electric kiwi", "powershop", "broadband", "fibre internet"]},
-  {"groupKey": "basic_living", "subcategoryKey": "rent", "keywords": ["rent payment", "landlord"]},
-  {"groupKey": "basic_living", "subcategoryKey": "home_food", "keywords": ["woolworths", "pak n save", "paksave", "new world", "countdown", "supermarket"]},
-  {"groupKey": "personal_purchases", "subcategoryKey": "health", "keywords": ["chemist", "pharmacy", "unimeds", "medical clinic", "health insurance", "medical insurance", "cocokarafine"]},
-  {"groupKey": "personal_purchases", "subcategoryKey": "clothing_footwear", "keywords": ["adidas", "puma", "nike", "tommy hilfiger", "hallensteins", "glassons", "tnf onehunga", "h&m", "bonds onehunga"]},
-  {"groupKey": "personal_purchases", "subcategoryKey": "personal_care", "keywords": ["barber", "hairdresser", "hair salon", "nails", "lash co"]},
-  {"groupKey": "personal_purchases", "subcategoryKey": "home_purchases", "keywords": ["briscoes"]},
-  {"groupKey": "work_learning", "subcategoryKey": "software_tools", "keywords": ["one-off work tool", "one-time work software", "work software purchase", "lifetime software license", "perpetual software license", "openai api credits", "openai api top up", "cloudflare domain purchase"]},
-  {"groupKey": "work_learning", "subcategoryKey": "equipment_training", "keywords": ["language lesson", "music lesson", "art class", "work equipment", "work laptop", "professional training"]},
-  {"groupKey": "subscriptions", "subcategoryKey": "subscription_work", "keywords": ["chatgpt plus", "chatgpt pro", "chatgpt subscription", "chatgpt subscr", "openai subscription", "claude pro", "claude max", "cursor pro", "github copilot", "cloudflare subscription"]},
-  {"groupKey": "subscriptions", "subcategoryKey": "subscription_other", "keywords": ["apple one"]},
-  {"groupKey": "subscriptions", "subcategoryKey": "subscription_entertainment", "keywords": ["netflix", "spotify", "disney plus", "apple music", "apple tv+", "appletv+", "apple tv plus", "apple arcade", "paramount", "hbo", "youtube premium", "twitch subscription", "playstation plus", "ps plus", "psplus", "psn plus", "xbox game pass", "game pass", "gamepass", "nintendo switch online", "steam subscription"]},
-  {"groupKey": "subscriptions", "subcategoryKey": "subscription_other", "keywords": ["icloud", "uber one membership", "uber one", "gym membership"]},
-  {"groupKey": "work_learning", "subcategoryKey": "software_tools", "keywords": ["openai", "claude", "cursor", "cloudflare"]},
-  {"groupKey": "meals_outings", "subcategoryKey": "delivery", "keywords": ["uber eats", "ubereats", "doordash", "door dash", "deliveroo", "menulog"]},
-  {"groupKey": "meals_outings", "subcategoryKey": "food_treats", "keywords": ["alfajores", "food treats"]},
-  {"groupKey": "meals_outings", "subcategoryKey": "cafes", "keywords": ["coffee", "cafe", "café", "gong cha"]},
-  {"groupKey": "meals_outings", "subcategoryKey": "restaurants", "keywords": ["burgerfuel", "mc donalds", "mcdonald", "sals pizza", "restaurant", "kfc", "burger king", "pizza hut", "kura sushi"]},
-  {"groupKey": "entertainment", "subcategoryKey": "video_games", "keywords": ["playstation", "steam", "nintendo", "xbox", "video game", "videogame"]},
-  {"groupKey": "entertainment", "subcategoryKey": "cinema", "keywords": ["event cinema", "cinema", "cinemas", "movie ticket"]},
-  {"groupKey": "entertainment", "subcategoryKey": "events", "keywords": ["concert", "theatre", "theater", "ticketmaster"]},
-  {"groupKey": "entertainment", "subcategoryKey": "activities", "keywords": ["museum", "bowling", "escape room"]},
-  {"groupKey": "travel", "subcategoryKey": "tickets_transfers", "keywords": ["air new zealand", "jetstar", "qantas", "airline", "flight tickets", "airport shuttle"]},
-  {"groupKey": "travel", "subcategoryKey": "accommodation", "keywords": ["hotel", "airbnb", "hilton", "marriott", "motel", "accommodation"]},
-  {"groupKey": "travel", "subcategoryKey": "travel_food_activities", "keywords": ["travel meal", "meal during travel", "travel activity"]},
+  {
+    "groupKey": "basic_living",
+    "subcategoryKey": "public_transport",
+    "keywords": [
+      "public transport",
+      "at hop",
+      "athop",
+      "ax bus fare",
+      "bus fare"
+    ]
+  },
+  {
+    "groupKey": "basic_living",
+    "subcategoryKey": "fuel",
+    "keywords": [
+      "petrol",
+      "gasoline",
+      "fuel",
+      "bp",
+      "z energy",
+      "caltex",
+      "mobil",
+      "gull",
+      "u-go triangle"
+    ]
+  },
+  {
+    "groupKey": "basic_living",
+    "subcategoryKey": "phone",
+    "keywords": [
+      "kogan mobile",
+      "kogan prepaid",
+      "skinny mobile",
+      "spark mobile",
+      "mobile top up",
+      "one nz",
+      "2degrees"
+    ]
+  },
+  {
+    "groupKey": "basic_living",
+    "subcategoryKey": "power_internet",
+    "keywords": [
+      "mercury energy",
+      "genesis energy",
+      "contact energy",
+      "electric kiwi",
+      "powershop",
+      "broadband",
+      "fibre internet"
+    ]
+  },
+  {
+    "groupKey": "basic_living",
+    "subcategoryKey": "rent",
+    "keywords": [
+      "rent payment",
+      "landlord"
+    ]
+  },
+  {
+    "groupKey": "basic_living",
+    "subcategoryKey": "home_food",
+    "keywords": [
+      "woolworths",
+      "pak n save",
+      "paksave",
+      "new world",
+      "countdown",
+      "supermarket"
+    ]
+  },
+  {
+    "groupKey": "personal_purchases",
+    "subcategoryKey": "health",
+    "keywords": [
+      "chemist",
+      "pharmacy",
+      "unimeds",
+      "medical clinic",
+      "health insurance",
+      "medical insurance",
+      "cocokarafine"
+    ]
+  },
+  {
+    "groupKey": "personal_purchases",
+    "subcategoryKey": "clothing_footwear",
+    "keywords": [
+      "adidas",
+      "puma",
+      "nike",
+      "tommy hilfiger",
+      "hallensteins",
+      "glassons",
+      "tnf onehunga",
+      "h&m",
+      "bonds onehunga"
+    ]
+  },
+  {
+    "groupKey": "personal_purchases",
+    "subcategoryKey": "personal_care",
+    "keywords": [
+      "barber",
+      "hairdresser",
+      "hair salon",
+      "nails",
+      "lash co"
+    ]
+  },
+  {
+    "groupKey": "personal_purchases",
+    "subcategoryKey": "home_purchases",
+    "keywords": [
+      "briscoes"
+    ]
+  },
+  {
+    "groupKey": "work_learning",
+    "subcategoryKey": "one_off_tools",
+    "keywords": [
+      "one-off work tool",
+      "one-time work software",
+      "work software purchase",
+      "lifetime software license",
+      "perpetual software license",
+      "cloudflare domain purchase"
+    ]
+  },
+  {
+    "groupKey": "work_learning",
+    "subcategoryKey": "api_usage",
+    "keywords": [
+      "openai api credits",
+      "openai api top up",
+      "api usage charge"
+    ]
+  },
+  {
+    "groupKey": "work_learning",
+    "subcategoryKey": "work_equipment",
+    "keywords": [
+      "work equipment",
+      "work laptop"
+    ]
+  },
+  {
+    "groupKey": "work_learning",
+    "subcategoryKey": "courses_study",
+    "keywords": [
+      "language lesson",
+      "music lesson",
+      "art class",
+      "professional training",
+      "study course"
+    ]
+  },
+  {
+    "groupKey": "subscriptions",
+    "subcategoryKey": "subscription_work",
+    "keywords": [
+      "chatgpt plus",
+      "chatgpt pro",
+      "chatgpt subscription",
+      "chatgpt subscr",
+      "openai subscription",
+      "claude pro",
+      "claude max",
+      "cursor pro",
+      "github copilot",
+      "cloudflare subscription"
+    ]
+  },
+  {
+    "groupKey": "subscriptions",
+    "subcategoryKey": "subscription_other",
+    "keywords": [
+      "apple one"
+    ]
+  },
+  {
+    "groupKey": "subscriptions",
+    "subcategoryKey": "subscription_entertainment",
+    "keywords": [
+      "netflix",
+      "spotify",
+      "disney plus",
+      "apple music",
+      "apple tv+",
+      "appletv+",
+      "apple tv plus",
+      "apple arcade",
+      "paramount",
+      "hbo",
+      "youtube premium",
+      "twitch subscription",
+      "playstation plus",
+      "ps plus",
+      "psplus",
+      "psn plus",
+      "xbox game pass",
+      "game pass",
+      "gamepass",
+      "nintendo switch online",
+      "steam subscription"
+    ]
+  },
+  {
+    "groupKey": "subscriptions",
+    "subcategoryKey": "subscription_cloud",
+    "keywords": [
+      "icloud",
+      "google one storage",
+      "dropbox subscription"
+    ]
+  },
+  {
+    "groupKey": "subscriptions",
+    "subcategoryKey": "subscription_other",
+    "keywords": [
+      "uber one membership",
+      "uber one",
+      "gym membership"
+    ]
+  },
+  {
+    "groupKey": "meals_outings",
+    "subcategoryKey": "delivery",
+    "keywords": [
+      "uber eats",
+      "ubereats",
+      "doordash",
+      "door dash",
+      "deliveroo",
+      "menulog"
+    ]
+  },
+  {
+    "groupKey": "meals_outings",
+    "subcategoryKey": "snacks",
+    "keywords": [
+      "alfajores",
+      "food treats"
+    ]
+  },
+  {
+    "groupKey": "meals_outings",
+    "subcategoryKey": "eating_out",
+    "keywords": [
+      "coffee",
+      "cafe",
+      "café",
+      "gong cha"
+    ]
+  },
+  {
+    "groupKey": "meals_outings",
+    "subcategoryKey": "eating_out",
+    "keywords": [
+      "burgerfuel",
+      "mc donalds",
+      "mcdonald",
+      "sals pizza",
+      "restaurant",
+      "kfc",
+      "burger king",
+      "pizza hut",
+      "kura sushi"
+    ]
+  },
+  {
+    "groupKey": "entertainment",
+    "subcategoryKey": "video_games",
+    "keywords": [
+      "playstation",
+      "steam",
+      "nintendo",
+      "xbox",
+      "video game",
+      "videogame"
+    ]
+  },
+  {
+    "groupKey": "entertainment",
+    "subcategoryKey": "cinema",
+    "keywords": [
+      "event cinema",
+      "cinema",
+      "cinemas",
+      "movie ticket"
+    ]
+  },
+  {
+    "groupKey": "entertainment",
+    "subcategoryKey": "events",
+    "keywords": [
+      "concert",
+      "theatre",
+      "theater",
+      "ticketmaster"
+    ]
+  },
+  {
+    "groupKey": "entertainment",
+    "subcategoryKey": "activities",
+    "keywords": [
+      "museum",
+      "bowling",
+      "escape room"
+    ]
+  },
+  {
+    "groupKey": "travel",
+    "subcategoryKey": "travel_tickets",
+    "keywords": [
+      "air new zealand",
+      "jetstar",
+      "qantas",
+      "airline",
+      "flight tickets"
+    ]
+  },
+  {
+    "groupKey": "travel",
+    "subcategoryKey": "accommodation",
+    "keywords": [
+      "hotel",
+      "airbnb",
+      "hilton",
+      "marriott",
+      "motel",
+      "accommodation"
+    ]
+  },
+  {
+    "groupKey": "travel",
+    "subcategoryKey": "travel_food_activities",
+    "keywords": [
+      "travel meal",
+      "meal during travel",
+      "travel activity"
+    ]
+  },
+  {
+    "groupKey": "personal_purchases",
+    "subcategoryKey": "occasional_mobility",
+    "keywords": [
+      "uber trip",
+      "uber ride",
+      "taxi fare",
+      "lime ride",
+      "lime scooter",
+      "parking fee",
+      "toll road",
+      "parking & tolls"
+    ]
+  },
+  {
+    "groupKey": "personal_purchases",
+    "subcategoryKey": "personal_electronics",
+    "keywords": [
+      "personal electronics purchase"
+    ]
+  },
+  {
+    "groupKey": "travel",
+    "subcategoryKey": "travel_transfers",
+    "keywords": [
+      "transfer during travel",
+      "transfer for identified trip"
+    ]
+  },
+  {
+    "groupKey": "travel",
+    "subcategoryKey": "travel_documents",
+    "keywords": [
+      "travel visa fee",
+      "passport application fee"
+    ]
+  }
 ];
-const AMBIGUOUS_MERCHANTS = ['amazon', 'paypal', 'apple.com', 'apple com bill', 'applecom', 'kogan', 'insurance', 'equipment', 'computer supplies', 'electronics', 'warehouse', 'kmart', 'bunnings', 'mitre 10', 'ikea', 'noel leeming', 'harvey norman', 'farmers', 'temu', 'trademe', 'trade me', 'booking.com', 'suica', 'pasmo'];
+const AMBIGUOUS_MERCHANTS = ['amazon', 'paypal', 'apple.com', 'apple com bill', 'applecom', 'kogan', 'insurance', 'equipment', 'computer supplies', 'electronics', 'warehouse', 'kmart', 'bunnings', 'mitre 10', 'ikea', 'noel leeming', 'harvey norman', 'farmers', 'temu', 'trademe', 'trade me', 'booking.com', 'suica', 'pasmo', 'openai', 'claude', 'cursor', 'cloudflare', 'vtnz', 'wof', 'aa roadside', 'uber', 'lime', 'airport shuttle'];
 function normalize(value = '') {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
 }
@@ -74,7 +428,8 @@ export function suggestCategoryForMerchant(place = ''): ClassificationSuggestion
     const keyword = rule.normalizedKeywords.find(keyword => matchesKeyword(normalizedPlace, keyword));
     const collapsedMatch = !keyword && rule.collapsedKeywords.some(keyword => collapsedPlace.includes(keyword));
     if (keyword || collapsedMatch) {
-      const pair = getTaxonomyPair(rule.groupKey, rule.subcategoryKey)!;
+      const pair = getTaxonomyPair(rule.groupKey, rule.subcategoryKey);
+      if (!pair) continue;
       return { ...pair, groupKey: rule.groupKey, subcategoryKey: rule.subcategoryKey, confidence: 'medium', reviewReason: 'purpose',
         reasonCode: 'merchant_keyword', matchedKeyword: keyword ?? rule.keywords[0], reason: `Merchant text matches ${keyword ?? rule.keywords[0]}; confirm the actual purchase purpose.`, requiresConfirmation: true };
     }

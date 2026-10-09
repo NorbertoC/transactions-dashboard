@@ -14,7 +14,7 @@ export class ApiService {
   private static normalizeTransactions(transactions: Transaction[]): Transaction[] {
     return transactions.map((transaction) => {
       if (transaction.record_type === 'income' || transaction.record_type === 'transfer') return transaction;
-      // V4 never silently splits historical meals, entertainment or subscriptions.
+      // The negotiated catalog never silently splits historical expense purposes.
       // Manual, custom and intentionally blank evidence stays literal on every read.
       const storedCategory = transaction.category;
       const suppliedPair = transaction.category_source === 'manual' || storedCategory != null;

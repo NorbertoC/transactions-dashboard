@@ -7,7 +7,7 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn(async () => session.value)
 import { GET } from '@/app/api/taxonomy/route';
 import { PUT } from '@/app/api/transactions/[id]/route';
 import { POST } from '@/app/api/upload-json/route';
-const capability = () => ({ version: 'purpose-v4', manual_category_persistence: true, categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name, subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
+const capability = () => ({ version: 'purpose-v5', manual_category_persistence: true, categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name, subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
 beforeEach(() => {
   vi.stubEnv('ALLOWED_EMAIL_1', 'synthetic-a@example.test'); vi.stubEnv('ALLOWED_EMAIL_2', 'synthetic-b@example.test'); vi.stubEnv('NEXTAUTH_URL', 'https://fixture.test'); vi.stubEnv('API_KEY', 'synthetic-key'); vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://synthetic.test/transactions');
   session.value = { user: { email: 'synthetic-a@example.test', provider: 'google', emailVerified: true } };

@@ -36,7 +36,7 @@ it('explicitly loads legacy assumptions without changing their stored income or 
   click(forecastMessages.en.load); expect(input(budgetMessages.en.income).value).toBe('13,492.56'); expect(input(budgetMessages.en.savings).value).toBe('777');
   expect(container.textContent).toContain(budgetMessages.en.legacyIncomeNote); expect(container.textContent).toContain('7,777.12');
   click(forecastMessages.en.save);
-  const saved = JSON.parse(stored.get('gastos.family-budget.v3:synthetic-A')!); expect(saved.drafts.current.income).toBe(7777.123456); expect(saved).toMatchObject({ version: 3, taxonomyVersion: 'purpose-v4' });
+  const saved = JSON.parse(stored.get('gastos.family-budget.v3:synthetic-A')!); expect(saved.drafts.current.income).toBe(7777.123456); expect(saved).toMatchObject({ version: 3, taxonomyVersion: 'purpose-v5' });
   expect(stored.get('gastos.family-budget.v1:synthetic-A')).toBe(legacy); expect(stored.get('gastos.forecast.selected11.v1')).toBe('legacy raw draft');
   render(rows, true, 'synthetic-B'); click(forecastMessages.en.load); expect(input(budgetMessages.en.savings).value).toBe('2705.18');
   render(); click(forecastMessages.en.load); expect(input(budgetMessages.en.savings).value).toBe('777'); expect(input(budgetMessages.en.income).value).toBe('13,492.56');
@@ -71,7 +71,7 @@ it.each([
 ])('preserves explicit legacy loads and category overrides for $version/$taxonomyVersion', ({ version, taxonomyVersion, legacy }) => {
   const mixedId = JSON.stringify(['Outings & entertainment', 'Meals & treats']);
   const originalId = legacy ? 'food_treats' : 'restaurants';
-  const targetId = legacy ? mixedId : 'restaurants';
+  const targetId = legacy ? mixedId : JSON.stringify(['Meals & outings', 'Restaurants']);
   const original = Object.fromEntries(SCENARIOS.map(id => [id, { ...defaults(id, 9000), savings: 555, amounts: { [originalId]: 123.45 }, kinds: { [originalId]: 'want' }, lastEdited: originalId }]));
   const key = `gastos.family-budget.v${version}:synthetic-A`, raw = JSON.stringify({ version, taxonomyVersion, drafts: original });
   stored.set(key, raw);
@@ -85,20 +85,20 @@ it.each([
   expect(container.textContent).toContain(budgetMessages.en.legacyIncomeNote);
   click(forecastMessages.en.save);
   const saved = JSON.parse(stored.get('gastos.family-budget.v3:synthetic-A')!);
-  expect(saved).toMatchObject({ version: 3, taxonomyVersion: 'purpose-v4', legacyIncomePreserved: true });
+  expect(saved).toMatchObject({ version: 3, taxonomyVersion: 'purpose-v5', legacyIncomePreserved: true });
   expect(saved.drafts.current).toMatchObject({ income: 9000, savings: 555, amounts: { [targetId]: 123.45 }, kinds: { [targetId]: 'want' }, lastEdited: targetId });
   expect(stored.get(key)).toBe(raw);
   render([rows[0], source], true, 'synthetic-B'); click(forecastMessages.en.load);
   expect(input(budgetMessages.en.savings).value).toBe('2705.18');
 });
-it('loads the newest schema without re-keying narrower v4 purposes or overwriting older saves', () => {
+it('keeps old v4 draft amounts on their literal buckets and preserves older saves', () => {
   const makeDrafts = (amount: number) => Object.fromEntries(SCENARIOS.map(id => [id, { ...defaults(id, 8888), amounts: { food_treats: amount } }]));
   const older = JSON.stringify({ version: 2, taxonomyVersion: 'purpose-v4', drafts: makeDrafts(42) });
   stored.set('gastos.family-budget.v2:synthetic-A', older);
   stored.set('gastos.family-budget.v3:synthetic-A', JSON.stringify({ version: 3, taxonomyVersion: 'purpose-v4', drafts: makeDrafts(77), legacyIncomePreserved: true }));
   render(); click(forecastMessages.en.load); click(forecastMessages.en.save);
   const saved = JSON.parse(stored.get('gastos.family-budget.v3:synthetic-A')!);
-  expect(saved.drafts.current.amounts).toEqual({ food_treats: 77 });
+  expect(saved.drafts.current.amounts).toEqual({ [JSON.stringify(['Meals & outings', 'Treats & alfajores'])]: 77 });
   expect(saved.drafts.current.income).toBe(8888);
   expect(stored.get('gastos.family-budget.v2:synthetic-A')).toBe(older);
 });

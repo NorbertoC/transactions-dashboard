@@ -4,7 +4,7 @@ import { categoryReviewAvailable, isReviewExpense, saveVerifiedCategory, support
 import type { Transaction } from '@/types/transaction';
 import { getClientSessionGeneration, setClientSessionScope } from '@/utils/client-session';
 
-export const capability = () => ({ version: 'purpose-v4', manual_category_persistence: true,
+export const capability = () => ({ version: 'purpose-v5', manual_category_persistence: true,
   categories: CATEGORIES.filter(group => group.name !== 'Savings').map(group => ({ key: group.key, name: group.name,
     subcategories: group.subcategories.map(sub => ({ key: sub.key, name: sub.name })) })) });
 const fixture: Transaction = { id: 42, place: 'Synthetic Netflix', amount: '12.00', value: 12, date: '2026-01-10', date_iso: '2026-01-10', currency: 'NZD', category: 'Others', subcategory: '', record_type: 'expense', direction: 'outflow' };
@@ -24,7 +24,7 @@ describe('review queue and capability', () => {
     expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats' })).toBe(true);
     expect(isReviewExpense({ ...fixture, category: 'Outings & entertainment', subcategory: 'Meals & treats', category_source: 'manual' })).toBe(false);
   });
-  it('requires the seven purpose groups/twenty-five pairs and exact persistence capability', () => {
+  it('requires the eight groups/thirty-three pairs and exact persistence capability', () => {
     expect(supportsCategoryReview(capability())).toBe(true);
     for (const bad of [null, {}, { ...capability(), version: 'legacy' }, { ...capability(), manual_category_persistence: false }, { ...capability(), categories: [] }]) expect(supportsCategoryReview(bad)).toBe(false);
     const partial = capability(); partial.categories[0].subcategories.pop();
@@ -34,8 +34,8 @@ describe('review queue and capability', () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({}, 404)));
     expect(await categoryReviewAvailable()).toBe(false);
   });
-  it('rejects v3 metadata, duplicated keys and cross-group subcategory pairs', () => {
-    expect(supportsCategoryReview({ ...capability(), version: 'purpose-v3' })).toBe(false);
+  it('rejects v3/v4 metadata, duplicated keys and cross-group subcategory pairs', () => {
+    for (const version of ['purpose-v3', 'purpose-v4']) expect(supportsCategoryReview({ ...capability(), version })).toBe(false);
     const duplicate = capability(); duplicate.categories[1].key = duplicate.categories[0].key;
     expect(supportsCategoryReview(duplicate)).toBe(false);
     const crossed = capability(); [crossed.categories[3].subcategories[0], crossed.categories[4].subcategories[0]] = [crossed.categories[4].subcategories[0], crossed.categories[3].subcategories[0]];
@@ -100,3 +100,19 @@ describe('actual stored category confirmation', () => {
     await expect(probe).rejects.toMatchObject({ name: 'AbortError' }); expect(getClientSessionGeneration()).toBe(generation);
   });
 });
+
+ it('confirms and refreshes all 33 approved pairs without touching other fields', async () => {
+  let persisted = { ...fixture, category_source: 'manual' as const };
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') { persisted = { ...persisted, ...JSON.parse(String(init.body)) }; return json({}); }
+    return json(url.includes('/api/taxonomy') ? capability() : [persisted]);
+  });
+  vi.stubGlobal('fetch', fetch);
+  for (const group of CATEGORIES) for (const sub of group.subcategories) {
+    const saved = await saveVerifiedCategory(persisted, group.name, sub.name);
+    expect(saved).toEqual({ ...fixture, category: group.name, subcategory: sub.name, category_source: 'manual' });
+    const refresh = await import('@/services/api').then(({ ApiService }) => ApiService.fetchTransactionsClient());
+    expect(refresh).toMatchObject([saved]);
+  }
+  expect(fetch.mock.calls.filter(([,init]) => init?.method === 'PUT')).toHaveLength(33);
+ });

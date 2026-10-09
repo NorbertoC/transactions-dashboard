@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { budgetEvidence, calculate, defaults, preservePurposeV3Draft, SCENARIOS, validDraft, type BudgetRow } from '../model';
+import { budgetEvidence, calculate, defaults, preservePurposeV3Draft, preservePurposeV4Draft, SCENARIOS, validDraft, type BudgetRow } from '../model';
 import type { Transaction } from '@/types/transaction';
 const row = (id: string, amount: number, kind: BudgetRow['kind'] = 'want', protectedCost = false, travel = false): BudgetRow => ({ id, amount, kind, protected: protectedCost, travel, category: 'Test', name: id, observed: true, count: 1 });
 const rows = [row('rent', 2600, 'need', true), row('health', 212, 'need', true), row('home_purchases', 80, 'want', true), row('tickets_transfers', 600, 'want', false, true), row('accommodation', 650, 'want', false, true), row('food_treats', 140), row('manual', 200, 'unknown', true)];
@@ -52,15 +52,15 @@ it('reconciles observed spending exactly, isolates manual names and protects unk
   expect(records[2].category).toBe('My manual group'); expect(e.partial).toBe(true); expect(e.excluded).toBe(true);
   expect(budgetEvidence([], '2026-10-07').total).toBeNull();
 });
-it('separates reviewed v4 spending and protects work subscriptions and unresolved legacy buckets from cuts', () => {
-  const records = [tx(1, 30, 'Subscriptions', 'Work'), tx(2, 40, 'Subscriptions', 'Entertainment'), tx(3, 20, 'Subscriptions', 'Other subscriptions'),
-    tx(4, 25, 'Meals & outings', 'Restaurants'), tx(5, 15, 'Entertainment', 'Video games'), tx(6, 60, 'Outings & entertainment', 'Meals & treats')];
+it('separates reviewed v5 spending and protects work subscriptions and unresolved legacy buckets from cuts', () => {
+  const records = [tx(1, 30, 'Subscriptions', 'Work tools'), tx(2, 40, 'Subscriptions', 'Entertainment'), tx(3, 20, 'Subscriptions', 'Other subscriptions'),
+    tx(4, 25, 'Meals & outings', 'Eating out'), tx(5, 15, 'Entertainment', 'Video games'), tx(6, 60, 'Outings & entertainment', 'Meals & treats')];
   const source = budgetEvidence(records, '2026-10-07');
   expect(source.total).toBe(190); expect(source.rows.reduce((sum, item) => sum + item.amount, 0)).toBe(190);
   expect(source.rows.find(item => item.id === 'subscription_work')).toMatchObject({ kind: 'need', protected: true });
   expect(source.rows.find(item => item.category === 'Outings & entertainment')).toMatchObject({ kind: 'unknown', protected: true, amount: 60 });
   const result = calculate({ ...defaults('single'), income: 0, savings: 0, auto: true }, source.rows, true);
-  expect(result.changes.map(item => item.id)).toEqual(['restaurants', 'video_games', 'subscription_entertainment', 'subscription_other']);
+  expect(result.changes.map(item => item.id)).toEqual(['eating_out', 'video_games', 'subscription_entertainment', 'subscription_other']);
   expect(result.spending).toBe(90); expect(result.gap).toBe(90);
   expect(records[5].subcategory).toBe('Meals & treats');
 });
@@ -71,4 +71,19 @@ it('loads old device draft amounts against literal mixed buckets without applyin
   expect(result.amounts).toEqual({ [legacyId]: 123.45, [JSON.stringify(['Personal subscriptions', 'Streaming & content'])]: 12, rent: 2000 });
   expect(result.lastEdited).toBe(legacyId); expect(result.kinds).toEqual({ [legacyId]: 'want' });
   expect(result.amounts).not.toHaveProperty('food_treats'); expect(draft).toEqual(original);
+});
+
+it('preserves v4 draft amounts on old literal rows without copying them to merged or split purposes', () => {
+  const oldPairs = [['restaurants','Meals & outings','Restaurants'], ['cafes','Meals & outings','Cafés'], ['transport','Basic living','Transport'], ['software_tools','Work & learning','Software & tools'], ['subscription_work','Subscriptions','Work']];
+  const original = { ...defaults('single'), amounts: Object.fromEntries(oldPairs.map(([id],i) => [id,100+i])), kinds: { restaurants: 'want' as const }, lastEdited: 'restaurants' };
+  const before = structuredClone(original), migrated = preservePurposeV4Draft(original);
+  const evidence = budgetEvidence(oldPairs.map(([,group,name],i) => tx(i+1,10,group,name)), '2026-10-09');
+  for (const [id,group,name] of oldPairs) {
+    const key = JSON.stringify([group,name]);
+    expect(migrated.amounts[key]).toBe(original.amounts[id]);
+    expect(evidence.rows.find(row => row.id === key)).toMatchObject({ protected:true,kind:'unknown' });
+  }
+  expect(migrated.amounts).not.toHaveProperty('eating_out'); expect(migrated.amounts).not.toHaveProperty('fuel');
+  expect(original).toEqual(before); expect(preservePurposeV4Draft(migrated)).toEqual(migrated);
+  expect(() => preservePurposeV4Draft({ ...original, amounts: { restaurants: 10, [JSON.stringify(['Meals & outings','Restaurants'])]: 20 } })).toThrow('Conflicting');
 });

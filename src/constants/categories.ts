@@ -1,8 +1,9 @@
-/** Purpose v4 draft. Historical mixed pairs stay literal until reviewed. */
+/** Approved v5 catalog. Existing mixed/custom pairs stay literal until reviewed. */
+import { LEGACY_CATEGORIES } from './legacy-categories';
 export interface CategoryColorConfig { hex: string; bg: string; text: string; }
 export interface SubcategoryInfo { key: string; name: string; nameJa: string; nameEs: string; }
 export interface CategoryInfo { key: string; name: string; nameJa: string; nameEs: string; color: CategoryColorConfig; subcategories: SubcategoryInfo[]; }
-export const PURPOSE_TAXONOMY_VERSION = 'purpose-v4';
+export const PURPOSE_TAXONOMY_VERSION = 'purpose-v5';
 export const PURPOSE_TAXONOMY_HEADER = 'X-Finance-Taxonomy';
 export const DEFAULT_CATEGORY = 'Others';
 export const DEFAULT_SUBCATEGORY = 'Miscellaneous';
@@ -11,29 +12,34 @@ export const CATEGORIES: CategoryInfo[] = [
     { key: "rent", name: "Rent", nameEs: "Alquiler", nameJa: "家賃" },
     { key: "power_internet", name: "Power & internet", nameEs: "Luz e internet", nameJa: "電気・インターネット" },
     { key: "home_food", name: "Food for home", nameEs: "Comida para casa", nameJa: "家庭の食料品" },
-    { key: "transport", name: "Transport", nameEs: "Transporte", nameJa: "交通" },
     { key: "phone", name: "Phone", nameEs: "Teléfono", nameJa: "携帯電話" },
+    { key: "fuel", name: "Fuel", nameEs: "Combustible", nameJa: "燃料" },
+    { key: "public_transport", name: "Public transport", nameEs: "Transporte público", nameJa: "公共交通" },
   ] },
   { key: "personal_purchases", name: "Personal purchases", nameEs: "Compras personales", nameJa: "個人の買い物", color: { hex: "#8b5cf6", bg: "bg-violet-500/15", text: "text-violet-600" }, subcategories: [
     { key: "health", name: "Health", nameEs: "Salud", nameJa: "健康" },
     { key: "clothing_footwear", name: "Clothing & footwear", nameEs: "Ropa y calzado", nameJa: "衣服・靴" },
     { key: "personal_care", name: "Personal care", nameEs: "Cuidado personal", nameJa: "身だしなみ" },
     { key: "home_purchases", name: "Home", nameEs: "Hogar", nameJa: "住まい" },
+    { key: "personal_electronics", name: "Personal electronics", nameEs: "Electrónica personal", nameJa: "個人用電子機器" },
+    { key: "occasional_mobility", name: "Occasional mobility", nameEs: "Movilidad ocasional", nameJa: "臨時の移動" },
   ] },
-  { key: "work_learning", name: "Work & learning", nameEs: "Trabajo y formación", nameJa: "仕事・学習", color: { hex: "#06b6d4", bg: "bg-cyan-500/15", text: "text-cyan-600" }, subcategories: [
-    { key: "software_tools", name: "Software & tools", nameEs: "Software y herramientas", nameJa: "ソフトウェア・ツール" },
-    { key: "equipment_training", name: "Equipment & training", nameEs: "Equipamiento y formación", nameJa: "機器・学習" },
+  { key: "work_learning", name: "Work & Study", nameEs: "Trabajo y estudio", nameJa: "仕事・学習", color: { hex: "#06b6d4", bg: "bg-cyan-500/15", text: "text-cyan-600" }, subcategories: [
+    { key: "one_off_tools", name: "One-off tools & licences", nameEs: "Herramientas y licencias puntuales", nameJa: "買い切りのツール・ライセンス" },
+    { key: "api_usage", name: "API usage", nameEs: "Consumo de API", nameJa: "APIの使用量" },
+    { key: "work_equipment", name: "Equipment", nameEs: "Equipamiento", nameJa: "機器" },
+    { key: "courses_study", name: "Courses & study", nameEs: "Cursos y formación", nameJa: "講座・学習" },
   ] },
   { key: "subscriptions", name: "Subscriptions", nameEs: "Suscripciones", nameJa: "サブスクリプション", color: { hex: "#f59e0b", bg: "bg-amber-500/15", text: "text-amber-600" }, subcategories: [
-    { key: "subscription_work", name: "Work", nameEs: "Trabajo", nameJa: "仕事" },
     { key: "subscription_entertainment", name: "Entertainment", nameEs: "Entretenimiento", nameJa: "娯楽" },
+    { key: "subscription_cloud", name: "Storage & cloud", nameEs: "Almacenamiento y nube", nameJa: "ストレージ・クラウド" },
+    { key: "subscription_work", name: "Work tools", nameEs: "Herramientas de trabajo", nameJa: "仕事用ツール" },
     { key: "subscription_other", name: "Other subscriptions", nameEs: "Otras suscripciones", nameJa: "その他のサブスクリプション" },
   ] },
   { key: "meals_outings", name: "Meals & outings", nameEs: "Comidas y salidas", nameJa: "外食・食の楽しみ", color: { hex: "#f97316", bg: "bg-orange-500/15", text: "text-orange-600" }, subcategories: [
-    { key: "restaurants", name: "Restaurants", nameEs: "Restaurantes", nameJa: "レストラン" },
-    { key: "cafes", name: "Cafés", nameEs: "Cafés", nameJa: "カフェ" },
+    { key: "eating_out", name: "Eating out", nameEs: "Salir a comer", nameJa: "外食" },
     { key: "delivery", name: "Delivery", nameEs: "Delivery", nameJa: "出前・デリバリー" },
-    { key: "food_treats", name: "Treats & alfajores", nameEs: "Gustos y alfajores", nameJa: "お菓子・アルファホーレス" },
+    { key: "snacks", name: "Snacks", nameEs: "Snacks", nameJa: "スナック" },
   ] },
   { key: "entertainment", name: "Entertainment", nameEs: "Entretenimiento", nameJa: "娯楽", color: { hex: "#d946ef", bg: "bg-fuchsia-500/15", text: "text-fuchsia-600" }, subcategories: [
     { key: "video_games", name: "Video games", nameEs: "Videojuegos", nameJa: "ビデオゲーム" },
@@ -42,9 +48,11 @@ export const CATEGORIES: CategoryInfo[] = [
     { key: "activities", name: "Activities", nameEs: "Actividades", nameJa: "アクティビティ" },
   ] },
   { key: "travel", name: "Travel", nameEs: "Viajes", nameJa: "旅行", color: { hex: "#10b981", bg: "bg-emerald-500/15", text: "text-emerald-600" }, subcategories: [
-    { key: "tickets_transfers", name: "Tickets & transfers", nameEs: "Pasajes y traslados", nameJa: "切符・移動" },
+    { key: "travel_tickets", name: "Tickets", nameEs: "Pasajes", nameJa: "交通チケット" },
+    { key: "travel_transfers", name: "Transfers during travel", nameEs: "Traslados", nameJa: "旅行中の移動" },
     { key: "accommodation", name: "Accommodation", nameEs: "Alojamiento", nameJa: "宿泊" },
     { key: "travel_food_activities", name: "Meals & activities during travel", nameEs: "Comidas y actividades durante viaje", nameJa: "旅行中の食事・活動" },
+    { key: "travel_documents", name: "Documents & paperwork", nameEs: "Trámites y documentos", nameJa: "渡航書類・手続き" },
   ] },
   { key: "others", name: "Others", nameEs: "Otros · Por revisar", nameJa: "その他・要確認", color: { hex: "#64748b", bg: "bg-slate-500/15", text: "text-slate-600" }, subcategories: [
     { key: "unclassified", name: "Miscellaneous", nameEs: "Sin clasificar", nameJa: "未分類" },
@@ -74,16 +82,6 @@ const LEGACY_PAIR_MAP: Record<string, { category: string; subcategory: string }>
   "home & daily living|supermarkets": {"category": "Basic living", "subcategory": "Food for home"},
   "home & daily living|medicine & supplements": {"category": "Personal purchases", "subcategory": "Health"},
   "home & daily living|personal care": {"category": "Personal purchases", "subcategory": "Personal care"},
-  "transport|fuel": {"category": "Basic living", "subcategory": "Transport"},
-  "transport|public transport": {"category": "Basic living", "subcategory": "Transport"},
-  "transport|parking & tolls": {"category": "Basic living", "subcategory": "Transport"},
-  "transport|car maintenance": {"category": "Basic living", "subcategory": "Transport"},
-  "transport|insurance": {"category": "Basic living", "subcategory": "Transport"},
-  "car|fuel": {"category": "Basic living", "subcategory": "Transport"},
-  "car|public transport": {"category": "Basic living", "subcategory": "Transport"},
-  "car|parking & tolls": {"category": "Basic living", "subcategory": "Transport"},
-  "car|car maintenance": {"category": "Basic living", "subcategory": "Transport"},
-  "car|insurance": {"category": "Basic living", "subcategory": "Transport"},
   "personal needs|health": {"category": "Personal purchases", "subcategory": "Health"},
   "personal needs|clothing & footwear": {"category": "Personal purchases", "subcategory": "Clothing & footwear"},
   "personal needs|personal care": {"category": "Personal purchases", "subcategory": "Personal care"},
@@ -156,34 +154,34 @@ function generateColorFromName(name: string): CategoryColorConfig {
 }
 
 export const CATEGORY_COLORS: Record<string, CategoryColorConfig> = Object.fromEntries(
-  CATEGORIES.map(cat => [cat.name, cat.color])
+  [...LEGACY_CATEGORIES, ...CATEGORIES].map(cat => [cat.name, cat.color])
 );
 
 const LEGACY_CATEGORY_JA = { 'Personal subscriptions': '個人の定期サービス', 'Outings & entertainment': '外出・娯楽', 'Home & daily living': '住まい・日々の生活', 'Personal needs': '身の回りの必要品', Entertainment: '娯楽', Savings: '貯蓄', Housing: '住まい', Groceries: '食費・日用品・健康', Transport: '交通', 'Fun & Social': '娯楽・交際', 'Personal spending': '個人費（お小遣い）' };
 const LEGACY_CATEGORY_ES = { 'Personal subscriptions': 'Suscripciones personales', 'Outings & entertainment': 'Salidas y entretenimiento', 'Home & daily living': 'Hogar y vida diaria', 'Personal needs': 'Necesidades personales', Entertainment: 'Entretenimiento', Savings: 'Ahorro', Housing: 'Hogar', Groceries: 'Necesidades diarias', Transport: 'Transporte', 'Fun & Social': 'Ocio y vida social', 'Personal spending': 'Gastos personales' };
 
 export const CATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
-  CATEGORIES.map(cat => [cat.name, cat.nameJa])
+  [...LEGACY_CATEGORIES, ...CATEGORIES].map(cat => [cat.name, cat.nameJa])
 );
 
 export const SUBCATEGORY_JA_NAMES: Record<string, string> = Object.fromEntries(
-  CATEGORIES.flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameJa]))
+  [...LEGACY_CATEGORIES, ...CATEGORIES].flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameJa]))
 );
 
 export const CATEGORY_ES_NAMES: Record<string, string> = Object.fromEntries(
-  CATEGORIES.map(cat => [cat.name, cat.nameEs])
+  [...LEGACY_CATEGORIES, ...CATEGORIES].map(cat => [cat.name, cat.nameEs])
 );
 
 export const SUBCATEGORY_ES_NAMES: Record<string, string> = Object.fromEntries(
-  CATEGORIES.flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameEs]))
+  [...LEGACY_CATEGORIES, ...CATEGORIES].flatMap(cat => cat.subcategories.map(sub => [sub.name, sub.nameEs]))
 );
 
 export function getCategoryJapaneseName(category: string): string | undefined {
   return CATEGORY_JA_NAMES[category] || LEGACY_CATEGORY_JA[category as keyof typeof LEGACY_CATEGORY_JA];
 }
 
-const LEGACY_SUBCATEGORY_JA: Record<string, string> = { 'Streaming & content': '配信・コンテンツ', 'Memberships & other services': '会員費・その他サービス', 'Meals & treats': '食事・楽しみの食品', 'Activities & entertainment': '活動・娯楽', 'Medicine & Supplements': '薬・サプリ', 'Travel & Entertainment': '旅行・エンタメ', Subscriptions: 'サブスク', 'Personal Allowance': 'おこづかい', 'Hobbies & Shopping': '趣味・買い物', Fuel: 'ガソリン', 'Public transport': '公共交通', 'Taxi & Rideshare': 'タクシー・配車', 'Parking & Tolls': '駐車場・有料道路', 'Car maintenance': '車の整備' };
-const LEGACY_SUBCATEGORY_ES: Record<string, string> = { 'Streaming & content': 'Streaming y contenido', 'Memberships & other services': 'Membresías y otros servicios', 'Meals & treats': 'Comidas y gustos', 'Activities & entertainment': 'Actividades y entretenimiento', 'Medicine & Supplements': 'Medicinas y suplementos', 'Travel & Entertainment': 'Viajes y entretenimiento', Subscriptions: 'Suscripciones', 'Personal Allowance': 'Mesada personal', 'Hobbies & Shopping': 'Hobbies y compras', Fuel: 'Combustible', 'Public transport': 'Transporte público', 'Taxi & Rideshare': 'Taxi y rideshare', 'Parking & Tolls': 'Estacionamiento y peajes', 'Car maintenance': 'Mantenimiento del auto' };
+const LEGACY_SUBCATEGORY_JA: Record<string, string> = { 'Streaming & content': '配信・コンテンツ', 'Memberships & other services': '会員費・その他サービス', 'Meals & treats': '食事・楽しみの食品', 'Activities & entertainment': '活動・娯楽', 'Medicine & Supplements': '薬・サプリ', 'Travel & Entertainment': '旅行・エンタメ', Subscriptions: 'サブスク', 'Personal Allowance': 'おこづかい', 'Hobbies & Shopping': '趣味・買い物', Fuel: 'ガソリン', 'Public transport': '公共交通', 'Taxi & Rideshare': 'タクシー・配車', 'Parking & Tolls': '駐車場・有料道路', 'Car maintenance': '車の整備', Insurance: '保険' };
+const LEGACY_SUBCATEGORY_ES: Record<string, string> = { 'Streaming & content': 'Streaming y contenido', 'Memberships & other services': 'Membresías y otros servicios', 'Meals & treats': 'Comidas y gustos', 'Activities & entertainment': 'Actividades y entretenimiento', 'Medicine & Supplements': 'Medicinas y suplementos', 'Travel & Entertainment': 'Viajes y entretenimiento', Subscriptions: 'Suscripciones', 'Personal Allowance': 'Mesada personal', 'Hobbies & Shopping': 'Hobbies y compras', Fuel: 'Combustible', 'Public transport': 'Transporte público', 'Taxi & Rideshare': 'Taxi y rideshare', 'Parking & Tolls': 'Estacionamiento y peajes', 'Car maintenance': 'Mantenimiento del auto', Insurance: 'Seguro' };
 
 export function getSubcategoryJapaneseName(subcategory: string): string | undefined {
   return SUBCATEGORY_JA_NAMES[subcategory] || LEGACY_SUBCATEGORY_JA[subcategory];
@@ -250,4 +248,12 @@ export function getCategoryBadgeStyles(category: string): { bg: string; text: st
       color: color.hex
     }
   } as const;
+}
+
+export function getSubcategoryPurposeHint(subcategory: string, locale: 'en' | 'es' | 'ja'): string | null {
+  const hints: Record<string, Record<'en' | 'es' | 'ja', string>> = {
+    'Occasional mobility': { en: 'Taxis, Uber, Lime, parking and tolls.', es: 'Taxis, Uber, Lime, parking y peajes.', ja: 'タクシー、Uber、Lime、駐車場、有料道路。' },
+    'Transfers during travel': { en: 'Only transfers linked to an identified trip.', es: 'Sólo traslados vinculados a un viaje identificado.', ja: '確認できる旅行に関連した移動のみ。' },
+  };
+  return hints[subcategory]?.[locale] ?? null;
 }

@@ -15,6 +15,7 @@ import {
   getLocalizedCategoryName,
   getLocalizedSubcategoryName,
   getSubcategoriesForCategory,
+  getSubcategoryPurposeHint,
 } from '@/constants/categories';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getLocalizedSuggestionReason, suggestCategoryForMerchant, type ClassificationSuggestion } from '@/utils/classification';
@@ -412,6 +413,7 @@ export default function TransactionsTable({
             </select><ChevronDown aria-hidden="true" /></div>
           </div>
         </div>
+        {getSubcategoryPurposeHint(subcategoryInput, locale) && <p className="mesa-micro">{getSubcategoryPurposeHint(subcategoryInput, locale)}</p>}
         {actionError?.id === transaction.id && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {actionError.message}
